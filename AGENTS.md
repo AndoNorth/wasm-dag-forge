@@ -11,7 +11,7 @@ Detail: docs/architecture/.
 ## Where to look
 | Need | Go to |
 |------|-------|
-| Why the system has this shape | docs/architecture/ (one note and diagram per area) |
+| Why the system has this shape | docs/architecture/ (draw.io diagrams today, a note per area is added as each domain executes) |
 | What a domain must deliver | the epic issue for that area (label `epic`, GitHub Project 2) |
 | How to run and test | docs/dev-setup.md (written by the dev environment epic) |
 
