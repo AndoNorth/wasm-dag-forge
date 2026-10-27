@@ -57,5 +57,5 @@ tool wasmtime wasmtime --version
 tool wasm-tools wasm-tools --version
 
 check >/dev/null
-with_nix_tools yq -o=props '.' "$root/deploy/versions.yaml" | sed -e '/^#/d' -e 's/ = /: /' -e 's/^/pin./'
+with_nix_tools yq -o=props '.' "$root/deploy/versions.yaml" | sed -e '/^#/d' -e '/^$/d' -e 's/ = /: /' -e 's/^/pin./'
 exit "$missing"
