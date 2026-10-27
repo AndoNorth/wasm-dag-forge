@@ -3,7 +3,6 @@
 One Nix flake pins every tool, and `just` is the single entrypoint.
 The same commands run on a laptop, on a second contributor's machine and in CI.
 This document, `just doctor` and the CI `check` job are the verification surface of the dev environment, which has no verifier skill.
-Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/1
 Breakdown: [docs/epics/01-dev-environment.md](epics/01-dev-environment.md)
 
 ## Host prerequisites
@@ -49,12 +48,12 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 
 | Recipe | Status | Owner | What it does |
 | --- | --- | --- | --- |
-| `doctor [--json]` | real | #1 | host preflight, see below |
-| `versions [--check]` | real | #1 | prints tool versions and `deploy/versions.yaml`, `--check` validates the file against its schema |
-| `lint` | real | #1 | ruff, yamllint, shellcheck, actionlint, kubeconform and nixfmt over the files each owns |
-| `test` | real | #1 | `pytest -m "not integration"`, nothing collected counts as success |
-| `itest [domain]` | real | #1 | `pytest -m integration`, optionally limited to `packages/<domain>` |
-| `ci` | real | #1 | `lint`, `test`, `itest`, `nix flake check` |
+| `doctor [--json]` | real | - | host preflight, see below |
+| `versions [--check]` | real | - | prints tool versions and `deploy/versions.yaml`, `--check` validates the file against its schema |
+| `lint` | real | - | ruff, yamllint, shellcheck, actionlint, kubeconform and nixfmt over the files each owns |
+| `test` | real | - | `pytest -m "not integration"`, nothing collected counts as success |
+| `itest [domain]` | real | - | `pytest -m integration`, optionally limited to `packages/<domain>` |
+| `ci` | real | - | `lint`, `test`, `itest`, `nix flake check` |
 | `up` | stub | #2 | create the cluster |
 | `down` | stub | #2 | stop the cluster |
 | `nuke` | stub | #2 | destroy the cluster and its state |
@@ -120,7 +119,7 @@ Outside the flake shell the only result is `fail in-dev-shell`, because host cop
 | `wsl-systemd` | PID 1 is systemd | set `[boot]` `systemd=true` in `/etc/wsl.conf`, then `wsl --shutdown` from Windows |
 | `repo-on-ext4` | the repo is not under `/mnt/<drive>/` and not on a 9p, drvfs, cifs or nfs mount | move the clone under the WSL home directory, a `warn` means a non-ext4 local filesystem |
 | `inotify-instances` | `fs.inotify.max_user_instances` is at least 512 | `sudo sysctl fs.inotify.max_user_instances=512`, persisted in `/etc/sysctl.d/` |
-| `memory-vs-preset` | host memory covers `memory_mib` in `deploy/presets/$WDF_PRESET.yaml` (default preset `ci`) | give WSL2 more memory in `.wslconfig`, a `warn` with `no preset file yet` is expected until #2 adds presets |
+| `memory-vs-preset` | host memory covers `memory_mib` in `deploy/presets/$WDF_PRESET.yaml` (default preset `ci`) | give WSL2 more memory in `.wslconfig`, a `warn` with `no preset file yet` is expected until the cluster epic adds presets |
 | `path-provenance` | for all 14 tools the first match on PATH is a `/nix/store` path, not `~/.nix-profile` or `/nix/var/nix/profiles` | the detail prints `which -a` for each offender, so a profile copy ahead of the flake can be removed or PATH reordered |
 
 `scripts/doctor.test.sh` is the fault-injection self-test.
@@ -182,7 +181,7 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 | `fail cgroup-v2` or `fail wsl-systemd` | WSL2 configuration, see the table above, then `wsl --shutdown` |
 | `fail repo-on-ext4` | the clone is on a Windows drive, clone again under the WSL home directory |
 | `fail inotify-instances` | raise the sysctl as above |
-| `warn memory-vs-preset: no preset file yet` | expected until #2 writes `deploy/presets/`, no action |
+| `warn memory-vs-preset: no preset file yet` | expected until the cluster epic writes `deploy/presets/`, no action |
 | `uv sync` picks a different Python | `UV_PYTHON_PREFERENCE` is not `only-system`, which means the shell was not entered through the flake |
 | `error: experimental feature 'flakes' is disabled` | Nix config lacks flakes, see `nix-flakes` |
 
@@ -191,7 +190,7 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 On a clean checkout, with the host prerequisites in place:
 
 - [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 14 tools resolve first to the flake`.
-  Only `warn memory-vs-preset: no preset file yet` is acceptable until #2 adds presets.
+  Only `warn memory-vs-preset: no preset file yet` is acceptable until the cluster epic adds presets.
 - [ ] `nix develop -c just --list` prints exactly 14 recipe names.
 - [ ] `nix develop -c just ci` exits 0, ending with `all checks passed!` from `nix flake check`.
   The tests print `notice: no tests collected` until a package adds some.
