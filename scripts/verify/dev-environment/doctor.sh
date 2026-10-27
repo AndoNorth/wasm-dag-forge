@@ -12,7 +12,8 @@ say() {
   [ "$1" != fail ] || status=1
 }
 
-if nix --version >/dev/null 2>&1 && nix show-config 2>/dev/null | grep -Eq '^experimental-features = .*flakes'; then
+nix_conf=$(nix show-config 2>/dev/null || true)
+if nix --version >/dev/null 2>&1 && grep -Eq '^experimental-features = .*flakes' <<<"$nix_conf"; then
   say ok nix-flakes "$(nix --version)"
 else
   say fail nix-flakes "nix missing or flakes not enabled"
