@@ -225,7 +225,7 @@ The command output is kept in the PR that records the run.
 | # | Command | Expected |
 | --- | --- | --- |
 | 1 | `nix flake check` and `nix develop -c just versions` | exit 0, 16 tool versions and the pins file printed, helm major 3, wasmtime 48.0.7 |
-| 2 | `just doctor` in the shell, then `scripts/doctor.test.sh` | exit 0 on the host, seven injected faults each exit 1 naming one check |
+| 2 | `just doctor` in the shell, then `scripts/doctor.test.sh` | exit 0 on the host, eight injected faults each exit 1 naming one check |
 | 3 | `just doctor` outside the shell (`env -i`) | exit 1, `fail in-dev-shell` |
 | 4 | `just lint` and the six bad fixtures | clean, then six distinct failures |
 | 5 | `just --list`, then each stub recipe | 14 names, stubs exit 3 with owner |
