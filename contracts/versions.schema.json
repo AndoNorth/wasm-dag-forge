@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/versions.schema.json",
+  "title": "deploy/versions.yaml",
+  "type": "object",
+  "required": ["kind_node_image", "charts", "images"],
+  "additionalProperties": false,
+  "properties": {
+    "kind_node_image": { "$ref": "#/$defs/pin" },
+    "charts": { "$ref": "#/$defs/pins" },
+    "images": { "$ref": "#/$defs/pins" }
+  },
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "required": ["version", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "pins": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/pin" }
+    }
+  }
+}

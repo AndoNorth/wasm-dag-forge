@@ -1,0 +1,9 @@
+---
+# Runtime artifact pins. Schema: contracts/versions.schema.json.
+# Policy: docs/versions-policy.md.
+kind_node_image:
+  version: v1.35.0
+  # yamllint disable-line rule:line-length
+  digest: sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+charts: {}
+images: {}

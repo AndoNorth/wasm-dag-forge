@@ -20,3 +20,24 @@ The compile image (#11) uses the same versions, so a local build and a cluster b
 `componentize-py` is not pinned here.
 `uv.lock` belongs to the Python bootstrap lane, and the package has no consumer before #11.
 #11 adds a hash-pinned `componentize-py` entry to `uv.lock` (E7).
+
+## Where each pin lives
+
+| Pin | File | Bump |
+| --- | --- | --- |
+| Shell tools (kind, kubectl, helm, tilt, just, uv, python, linters) | `flake.lock` | `nix flake update`, review the `just versions` diff |
+| `wasmtime`, `wasm-tools` | `nix/wasm-tools.nix` | see above |
+| Python dependencies | `uv.lock` | `uv lock --upgrade-package <name>` |
+| kind node image, charts, images | `deploy/versions.yaml` | one edit |
+
+A tool bump is a `flake.lock` update.
+A chart or image bump is one edit to `deploy/versions.yaml`, setting both `version` and `digest` of the entry.
+Every entry is `{version, digest}` and the digest is `sha256:` plus 64 hex characters.
+`just versions --check` validates the file against `contracts/versions.schema.json` and exits 1 on a missing digest.
+`just versions` prints the tool versions from the shell followed by the file's entries, one key per line.
+The kind node image digest is the one published in the kind release notes for the pinned kind version, not whatever the tag points at today.
+
+## First-party charts
+
+Prefer first-party charts and images, pinned, over Bitnami or community-maintained ones.
+The product choices stay with the epics that consume the file (#3, #6, #7).
