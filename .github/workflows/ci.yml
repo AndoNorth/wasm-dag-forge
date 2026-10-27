@@ -18,3 +18,13 @@ jobs:
       - uses: actions/checkout@v7
       - uses: DeterminateSystems/nix-installer-action@v23
       - run: nix develop -c just ci
+      - name: Reproducibility check
+        run: |
+          drv() {
+            mkdir "$1" && git archive HEAD | tar -x -C "$1"
+            (cd "$1" && nix eval --raw .#devShells.x86_64-linux.default.drvPath)
+          }
+          a=$(drv "$RUNNER_TEMP/export-a")
+          b=$(drv "$RUNNER_TEMP/export-b")
+          echo "$a"
+          [ "$a" = "$b" ] || { echo "drvPath differs: $b" >&2; exit 1; }
