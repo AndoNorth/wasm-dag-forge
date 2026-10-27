@@ -1,0 +1,10 @@
+# <recipe or contract path>: reason it is not referenced by a feature file
+up: stub owned by #2, verified by verify-cluster
+down: stub owned by #2, verified by verify-cluster
+nuke: stub owned by #2, verified by verify-cluster
+cluster-verify: stub owned by #2, verified by verify-cluster
+smoke: stub owned by #17, verified by verify-system
+e2e: stub owned by #17, verified by verify-system
+load-test: stub owned by #14, verified by verify-load
+characterize: stub owned by #16, verified by verify-load
+verify-lint: the map lint itself, runs in just ci

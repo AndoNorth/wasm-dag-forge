@@ -4,6 +4,7 @@ import 'just/cluster.just'
 import 'just/quality.just'
 import 'just/tooling.just'
 import 'just/acceptance.just'
+import 'just/verify.just'
 
 [private]
 default:
