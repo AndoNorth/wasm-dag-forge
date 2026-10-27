@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  # Setting the repository variable CI_ENABLED to false skips this job; a commit message containing [skip ci] also skips runs natively.
+  # Setting the repository variable CI_ENABLED to false skips this job.
+  # A commit message containing [skip ci] also skips runs natively.
   check:
     if: ${{ vars.CI_ENABLED != 'false' }}
     runs-on: ubuntu-latest
