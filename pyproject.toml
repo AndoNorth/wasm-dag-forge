@@ -6,3 +6,6 @@ dependencies = []
 
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[dependency-groups]
+dev = ["pytest"]
