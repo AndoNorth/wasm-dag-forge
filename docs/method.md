@@ -108,7 +108,7 @@ Spikes that need a runtime but change no product file are the only work allowed 
 
 ## Definition of done per epic
 
-1. Every lane issue is closed with acceptance criteria ticked and evidence linked.
+1. Every lane issue is closed with acceptance criteria ticked and evidence linked, as pasted output per the PR evidence section below.
 2. The exit test (spec section 7) passed from a clean export of `main`, run by a worker who did not write the lanes.
    Where the domain has a verifier, evidence is kept at `.verify-evidence/<domain>/<run id>/` and summarised in the spec's Closure.
    Where it has none, the command output is kept in the PR and summarised in Closure.
@@ -118,6 +118,19 @@ Spikes that need a runtime but change no product file are the only work allowed 
 6. The architecture note is refined, and diagrams are re-exported if touched (`scripts/export-diagrams.sh --check` clean).
 7. The epic issue carries a closing comment and is closed.
 8. No `TODO` without an issue, and no stub left that a later epic does not own by name.
+
+## PR evidence
+
+A pull request body follows the [template](../.github/pull_request_template.md): Summary, Notable decisions, Test plan and Risks.
+Every Test plan line is a checked box naming the exact command run, followed by a collapsed block holding the real output, response body or log lines, trimmed to the relevant part.
+Evidence is output that was captured, never a description of it, and a UI or rendered output carries a screenshot or rendered text.
+A criterion that cannot run yet says which later work it waits for.
+
+## Comments
+
+Code and config comments explain intent and never name an issue, epic or task, because those references rot.
+Ownership and sequencing live in the issue, the epic spec and the PR.
+A stub's runtime message and exit code are a recipe contract and may name an owner, but its comment does not.
 
 ## Revisiting a closed epic
 
