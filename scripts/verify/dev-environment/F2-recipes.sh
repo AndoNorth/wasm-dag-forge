@@ -53,7 +53,7 @@ cap versions nd just versions
 if [ "$RC" = 0 ]; then
   ok versions "just versions exit 0"
 elif [ "$RC" = 3 ] && grep -Fq 'not implemented: owned by #' "$LAST_ERR"; then
-  skipc versions "still a stub: $(head -1 "$LAST_ERR")"
+  skipc versions "still a stub: $(grep -m1 "not implemented" "$LAST_ERR")"
 else
   bad versions "exit $RC"
 fi
