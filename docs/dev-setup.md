@@ -36,6 +36,7 @@ nix develop -c just doctor
 
 With direnv installed, `.envrc` (`use flake`, nothing else) enters the shell automatically.
 It needs a one-time `direnv allow` in the repo root.
+`just` is only available inside `nix develop`, so outside the shell every recipe runs as `nix develop -c just <recipe>`.
 
 A first realisation downloads roughly 886 MiB.
 Later entries take seconds.
@@ -138,6 +139,7 @@ nix develop -c just lint
 
 The recipe runs ruff (check and format), yamllint (`--strict`, 120 columns), shellcheck, actionlint, kubeconform (over `deploy/**`, except the pins file) and nixfmt.
 A linter with no files to check prints `skip <name>: no files`.
+Lint works on a git checkout or on a `git archive` export, and it exits 1 when no file at all was linted in a tree that has files.
 Config lives in `ruff.toml`, `.yamllint`, `.shellcheckrc` and `.editorconfig`, and not in `pyproject.toml`.
 `scripts/fixtures/lint-bad/` holds one bad file per linter.
 `scripts/lint.sh --self-test` proves each linter rejects its fixture, and `scripts/lint.sh --expect-fail <file>` does the same for one file.
