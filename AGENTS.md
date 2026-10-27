@@ -23,7 +23,7 @@ When a domain closes, refine the note and the epic with what was learned.
 ## Conventions
 - This file stays shallow. Put detail in docs/ and link it.
 - One source of truth per fact: link, never copy.
-- Comments only where intent is ambiguous.
+- Comments state intent only, and the code should speak for itself. Never reference issues, epics or tasks in comments.
 - Diagrams are draw.io files in docs/architecture/.
 - Design specs use the spec template.
 
