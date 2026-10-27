@@ -12,9 +12,25 @@ run_actionlint()  { actionlint "$@"; }
 run_kubeconform() { kubeconform -strict -summary "$@"; }
 run_nixfmt()      { nixfmt --check "$@"; }
 
-# Tracked and untracked-but-not-ignored files matching the patterns, minus the bad fixtures.
+# Every candidate file: tracked and untracked-but-not-ignored in a git checkout, found on disk otherwise (an export).
+all_files() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        git ls-files -z --cached --others --exclude-standard
+    else
+        find . \( -name .git -o -name .venv -o -name node_modules -o -name .verify-evidence -o -name result \) -prune \
+            -o -type f -print0 | sed -z 's|^\./||'
+    fi
+}
+
+# Candidate files matching the glob patterns, minus the bad fixtures.
 files() {
-    git ls-files -z --cached --others --exclude-standard -- "$@" | tr '\0' '\n' | grep -v "^$FIXTURES/" || true
+    local p g
+    while IFS= read -r -d '' p; do
+        for g in "$@"; do
+            # shellcheck disable=SC2254
+            case $p in $g) printf '%s\n' "$p"; break ;; esac
+        done
+    done < <(all_files) | grep -v "^$FIXTURES/" || true
 }
 
 # Linter named by the fixture's basename stem (ruff.py -> ruff).
@@ -32,13 +48,14 @@ expect_fail() {
 
 lint_all() {
     local -a f
-    local rc=0
+    local rc=0 linted=0
     step() {
         local name=$1 fn=$2
         shift 2
         mapfile -t f < <(files "$@")
         if [ ${#f[@]} -eq 0 ]; then echo "skip $name: no files"; return; fi
         echo "== $name (${#f[@]} files)"
+        linted=$((linted + ${#f[@]}))
         "$fn" "${f[@]}" || rc=1
     }
     step ruff        run_ruff        '*.py'
@@ -47,8 +64,12 @@ lint_all() {
     step actionlint  run_actionlint  '.github/workflows/*.yml' '.github/workflows/*.yaml'
     # deploy/versions.yaml is a pins file, not a Kubernetes manifest.
     mapfile -t f < <(files 'deploy/*.yaml' 'deploy/*.yml' | grep -v '^deploy/versions\.yaml$' || true)
-    if [ ${#f[@]} -gt 0 ]; then echo "== kubeconform (${#f[@]} files)"; run_kubeconform "${f[@]}" || rc=1; else echo "skip kubeconform: no files"; fi
+    if [ ${#f[@]} -gt 0 ]; then echo "== kubeconform (${#f[@]} files)"; linted=$((linted + ${#f[@]})); run_kubeconform "${f[@]}" || rc=1; else echo "skip kubeconform: no files"; fi
     step nixfmt      run_nixfmt      '*.nix'
+    if [ "$linted" -eq 0 ] && [ -n "$(all_files | tr -d '\0')" ]; then
+        echo "error: no files linted in a tree that has files, refusing to report success" >&2
+        rc=1
+    fi
     return $rc
 }
 
