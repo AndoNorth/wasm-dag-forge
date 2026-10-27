@@ -14,7 +14,7 @@ Everything else is pinned by `flake.lock`.
 | --- | --- | --- |
 | Nix with `experimental-features = nix-command flakes` | provides the dev shell | `nix-flakes` |
 | Docker engine, major version 24 or newer, daemon reachable | kind runs cluster nodes as containers | `docker-engine`, `docker-version` |
-| WSL2 with systemd as PID 1 | the cluster epics assume systemd-managed Docker | `wsl-systemd` |
+| WSL2 with systemd as PID 1 | the cluster tooling assumes systemd-managed Docker | `wsl-systemd` |
 | cgroup v2 (unified hierarchy) | kind nodes require it | `cgroup-v2` |
 | Repo on the WSL ext4 filesystem, not under `/mnt/c` | file watching and Nix evaluation over 9p are slow and unreliable | `repo-on-ext4` |
 | `fs.inotify.max_user_instances` of at least 512 | many kind nodes and watchers exhaust the default | `inotify-instances` |
@@ -54,14 +54,14 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 | `test` | real | - | `pytest -m "not integration"`, nothing collected counts as success |
 | `itest [domain]` | real | - | `pytest -m integration`, optionally limited to `packages/<domain>` |
 | `ci` | real | - | `lint`, `test`, `itest`, `nix flake check` |
-| `up` | stub | #2 | create the cluster |
-| `down` | stub | #2 | stop the cluster |
-| `nuke` | stub | #2 | destroy the cluster and its state |
-| `cluster-verify` | stub | #2 | cluster acceptance checks |
-| `smoke` | stub | #17 | end-to-end smoke run |
-| `e2e` | stub | #17 | end-to-end run |
-| `load-test` | stub | #14 | load generation |
-| `characterize` | stub | #16 | characterization run |
+| `up` | stub | cluster | create the cluster |
+| `down` | stub | cluster | stop the cluster |
+| `nuke` | stub | cluster | destroy the cluster and its state |
+| `cluster-verify` | stub | cluster | cluster acceptance checks |
+| `smoke` | stub | acceptance | end-to-end smoke run |
+| `e2e` | stub | acceptance | end-to-end run |
+| `load-test` | stub | load | load generation |
+| `characterize` | stub | characterization | characterization run |
 
 A stub fails the way a real failure does, so a script cannot mistake it for success:
 
@@ -119,7 +119,7 @@ Outside the flake shell the only result is `fail in-dev-shell`, because host cop
 | `wsl-systemd` | PID 1 is systemd | set `[boot]` `systemd=true` in `/etc/wsl.conf`, then `wsl --shutdown` from Windows |
 | `repo-on-ext4` | the repo is not under `/mnt/<drive>/` and not on a 9p, drvfs, cifs or nfs mount | move the clone under the WSL home directory, a `warn` means a non-ext4 local filesystem |
 | `inotify-instances` | `fs.inotify.max_user_instances` is at least 512 | `sudo sysctl fs.inotify.max_user_instances=512`, persisted in `/etc/sysctl.d/` |
-| `memory-vs-preset` | host memory covers `memory_mib` in `deploy/presets/$WDF_PRESET.yaml` (default preset `ci`) | give WSL2 more memory in `.wslconfig`, a `warn` with `no preset file yet` is expected until the cluster epic adds presets |
+| `memory-vs-preset` | host memory covers `memory_mib` in `deploy/presets/$WDF_PRESET.yaml` (default preset `ci`) | give WSL2 more memory in `.wslconfig`, a `warn` with `no preset file yet` is expected until cluster presets exist |
 | `path-provenance` | for all 14 tools the first match on PATH is a `/nix/store` path, not `~/.nix-profile` or `/nix/var/nix/profiles` | the detail prints `which -a` for each offender, so a profile copy ahead of the flake can be removed or PATH reordered |
 
 `scripts/doctor.test.sh` is the fault-injection self-test.
@@ -181,7 +181,7 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 | `fail cgroup-v2` or `fail wsl-systemd` | WSL2 configuration, see the table above, then `wsl --shutdown` |
 | `fail repo-on-ext4` | the clone is on a Windows drive, clone again under the WSL home directory |
 | `fail inotify-instances` | raise the sysctl as above |
-| `warn memory-vs-preset: no preset file yet` | expected until the cluster epic writes `deploy/presets/`, no action |
+| `warn memory-vs-preset: no preset file yet` | expected until cluster presets exist in `deploy/presets/`, no action |
 | `uv sync` picks a different Python | `UV_PYTHON_PREFERENCE` is not `only-system`, which means the shell was not entered through the flake |
 | `error: experimental feature 'flakes' is disabled` | Nix config lacks flakes, see `nix-flakes` |
 
@@ -190,7 +190,7 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 On a clean checkout, with the host prerequisites in place:
 
 - [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 14 tools resolve first to the flake`.
-  Only `warn memory-vs-preset: no preset file yet` is acceptable until the cluster epic adds presets.
+  Only `warn memory-vs-preset: no preset file yet` is acceptable until cluster presets exist.
 - [ ] `nix develop -c just --list` prints exactly 14 recipe names.
 - [ ] `nix develop -c just ci` exits 0, ending with `all checks passed!` from `nix flake check`.
   The tests print `notice: no tests collected` until a package adds some.
