@@ -269,3 +269,5 @@ Follow-ups left:
 - A second contributor machine is unverified.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+
+- 2026-10-28: recipe table v2 and the `deploy/presets/` lint exclusion, see https://github.com/AndoNorth/wasm-dag-forge/issues/49.

@@ -43,7 +43,7 @@ Later entries take seconds.
 
 ## Recipes
 
-`just --list` prints exactly 14 names.
+`just --list` prints exactly 17 names.
 Recipes that are not built yet print `not implemented: owned by #N` and exit 3.
 No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 
@@ -54,7 +54,10 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 | `lint` | real | - | ruff, yamllint, shellcheck, actionlint, kubeconform and nixfmt over the files each owns |
 | `test` | real | - | `pytest -m "not integration"`, nothing collected counts as success |
 | `itest [domain]` | real | - | `pytest -m integration`, optionally limited to `packages/<domain>` |
-| `ci` | real | - | `lint`, `test`, `itest`, `nix flake check` |
+| `ci` | real | - | `lint`, `verify-lint`, `test`, `itest`, `nix flake check` |
+| `verify-lint` | real | - | checks each `verify-<domain>` skill has a `SKILL.md` named after its directory, passes when none exist |
+| `verify` | stub | cluster | end-to-end verifier run |
+| `verify-clean` | stub | cluster | removes verifier evidence |
 | `up` | stub | cluster | create the cluster |
 | `down` | stub | cluster | stop the cluster |
 | `nuke` | stub | cluster | destroy the cluster and its state |
@@ -193,7 +196,7 @@ On a clean checkout, with the host prerequisites in place:
 
 - [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 14 tools resolve first to the flake`.
   Only `warn memory-vs-preset: no preset file yet` is acceptable until cluster presets exist.
-- [ ] `nix develop -c just --list` prints exactly 14 recipe names.
+- [ ] `nix develop -c just --list` prints exactly 17 recipe names.
 - [ ] `nix develop -c just ci` exits 0, ending with `all checks passed!` from `nix flake check`.
   The tests print `notice: no tests collected` until a package adds some.
 - [ ] The reproducibility check prints one `/nix/store/...-nix-shell.drv` path and exits 0.
