@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: lint.sh | lint.sh --expect-fail <file> | lint.sh --self-test
+# Usage: lint.sh | lint.sh --expect-fail <file> | lint.sh --self-test | lint.sh --verify-skills
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -62,8 +62,8 @@ lint_all() {
     step yamllint    run_yamllint    '*.yaml' '*.yml'
     step shellcheck  run_shellcheck  '*.sh'
     step actionlint  run_actionlint  '.github/workflows/*.yml' '.github/workflows/*.yaml'
-    # deploy/versions.yaml is a pins file, not a Kubernetes manifest.
-    mapfile -t f < <(files 'deploy/*.yaml' 'deploy/*.yml' | grep -v '^deploy/versions\.yaml$' || true)
+    # deploy/versions.yaml and deploy/presets/ hold pins and presets, not Kubernetes manifests.
+    mapfile -t f < <(files 'deploy/*.yaml' 'deploy/*.yml' | grep -Ev '^deploy/(versions\.yaml|presets/)' || true)
     if [ ${#f[@]} -gt 0 ]; then echo "== kubeconform (${#f[@]} files)"; linted=$((linted + ${#f[@]})); run_kubeconform "${f[@]}" || rc=1; else echo "skip kubeconform: no files"; fi
     step nixfmt      run_nixfmt      '*.nix'
     if [ "$linted" -eq 0 ] && [ -n "$(all_files | tr -d '\0')" ]; then
@@ -73,7 +73,24 @@ lint_all() {
     return $rc
 }
 
+# Each verify-<domain> skill needs a SKILL.md whose frontmatter name matches its directory.
+verify_skills() {
+    local d name rc=0 n=0
+    for d in .claude/skills/verify-*/; do
+        [ -d "$d" ] || continue
+        n=$((n + 1))
+        name=$(basename "$d")
+        if ! grep -qx "name: $name" "$d/SKILL.md" 2>/dev/null; then
+            echo "error: $d/SKILL.md missing or its name is not $name" >&2
+            rc=1
+        fi
+    done
+    echo "verify-lint: $n skills checked"
+    return $rc
+}
+
 case "${1:-}" in
+    --verify-skills) verify_skills ;;
     --expect-fail) [ $# -eq 2 ] || { echo "usage: lint.sh --expect-fail <file>" >&2; exit 2; }; expect_fail "$2" ;;
     --self-test)
         rc=0
@@ -82,5 +99,5 @@ case "${1:-}" in
         [ ${#fixtures[@]} -eq 6 ] || { echo "expected 6 fixtures" >&2; rc=1; }
         exit $rc ;;
     "") lint_all ;;
-    *) echo "usage: lint.sh [--expect-fail <file> | --self-test]" >&2; exit 2 ;;
+    *) echo "usage: lint.sh [--expect-fail <file> | --self-test | --verify-skills]" >&2; exit 2 ;;
 esac

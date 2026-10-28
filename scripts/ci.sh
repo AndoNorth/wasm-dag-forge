@@ -4,6 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 scripts/lint.sh
+echo "== verify-lint"
+scripts/lint.sh --verify-skills
 scripts/test.sh
 scripts/itest.sh
 nix flake check
