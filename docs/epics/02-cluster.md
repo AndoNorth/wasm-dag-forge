@@ -1,6 +1,6 @@
 # Epic #2: Fixed-resource cluster and Tilt - breakdown
 
-Status: draft
+Status: approved
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/2
 Architecture note: docs/architecture/09-cluster-and-tilt.drawio
 Verifier: .claude/skills/verify-cluster/ (created in lane 0)
@@ -15,14 +15,15 @@ Spike reports consulted: Temporal at 100,000 jobs (S3b) and the object store (S5
 
 Each question has a recommendation and a default that applies when there is no answer.
 The fifth blocks lane 0 and the others do not block any lane start.
+All five were answered on 2026-10-28 by taking the recommendation.
 
-| # | Question | Options | Recommendation | Default if no answer |
-| --- | --- | --- | --- | --- |
-| 1 | Where does the weekend soak run, and which host do the 100,000-job runs use? The epic and the characterization epic leave it open on purpose, and it sets the `soak` preset. | (a) this 7.8 GiB WSL laptop, (b) a larger WSL VM, (c) a dedicated Linux host | Keep it open through this epic. The footprint spike (S2) ends with a host requirement table, one row per preset, and the choice is made from that table before characterization opens. This spec ships `soak` as a schema-valid preset marked `fitted: false`, which `just up` refuses on a host below its `memory_mib`. | `soak` stays unfitted and unstartable, and nothing in this epic depends on it. |
-| 2 | Does this epic ship the real infra modules (Temporal, Postgres, RabbitMQ, object store, observability), or only the module contract and a dummy module? The epic's detail issues 7 and 8 say "first modules", while its Does-not-own and Interfaces sections give each module to the owner epic (state and storage, workflow engine, broker, observability). | (a) contract plus dummy modules, real modules by their owners, (b) real modules here | (a). It matches the delivery method, keeps this epic free of component tuning, and lets every owner epic plug into a proven contract. | (a) |
-| 3 | What can the footprint spike prove at the exit of this epic, when only dummy modules exist? Real Temporal and Postgres do not exist until their owner epics merge. | (a) host fit with ballast stand-ins sized from the measured figures, real footprints re-measured by characterization, (b) delay the spike until the real modules exist | (a). Host fit is the one finding that can stop the PoC on this machine, so it is answered first and the gate is not held back. The pass line is in section 5. | (a) |
-| 4 | Do all presets have the same six node roles (control plane, infra, obs, compile, simulate, aggregate) with one node per role in `ci`, and does `aggregate` get its own node? The epic lists "whether `aggregate` needs its own node or shares one" as open. | (a) same six roles in every preset, `aggregate` has its own node, (b) shared node for `aggregate` and `simulate` in `ci` | (a). A taint is per node, so sharing a node would need a second isolation mechanism that the epic does not define, and "presets change only the numbers" stays true. The cost is one more idle node in `ci` (about 185 MiB measured idle), and S2 tells whether that fits. | (a) |
-| 5 | The epic needs changes in files the closed dev environment epic owns: three recipes `verify`, `verify-clean`, `verify-lint` (the method puts `verify-lint` into `just ci`), a kubeconform exclusion for non-manifest YAML under `deploy/` (the lint glob is `deploy/*.yaml`, so `deploy/presets/*.yaml` would be linted as Kubernetes manifests), and the "exactly 14 names" sentence in `docs/dev-setup.md`. Handled as a `revisit` child issue of the dev environment epic, or as a lane 0 edit? | (a) one `revisit` child, blocking lane 0, as the method says for gaps in a closed epic, (b) lane 0 edits the files directly | (a). The method forbids rewriting a closed epic, and the child records the recipe table moving from 14 names to 17 (recipe table v2) with its consumers. Section 2 lists it under Consumes once filed. | (a) |
+| # | Question | Options | Recommendation | Default if no answer | Answer |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Where does the weekend soak run, and which host do the 100,000-job runs use? The epic and the characterization epic leave it open on purpose, and it sets the `soak` preset. | (a) this 7.8 GiB WSL laptop, (b) a larger WSL VM, (c) a dedicated Linux host | Keep it open through this epic. The footprint spike (S2) ends with a host requirement table, one row per preset, and the choice is made from that table before characterization opens. This spec ships `soak` as a schema-valid preset marked `fitted: false`, which `just up` refuses on a host below its `memory_mib`. | `soak` stays unfitted and unstartable, and nothing in this epic depends on it. | Answer: recommendation taken, 2026-10-28 |
+| 2 | Does this epic ship the real infra modules (Temporal, Postgres, RabbitMQ, object store, observability), or only the module contract and a dummy module? The epic's detail issues 7 and 8 say "first modules", while its Does-not-own and Interfaces sections give each module to the owner epic (state and storage, workflow engine, broker, observability). | (a) contract plus dummy modules, real modules by their owners, (b) real modules here | (a). It matches the delivery method, keeps this epic free of component tuning, and lets every owner epic plug into a proven contract. | (a) | Answer: recommendation taken, 2026-10-28 |
+| 3 | What can the footprint spike prove at the exit of this epic, when only dummy modules exist? Real Temporal and Postgres do not exist until their owner epics merge. | (a) host fit with ballast stand-ins sized from the measured figures, real footprints re-measured by characterization, (b) delay the spike until the real modules exist | (a). Host fit is the one finding that can stop the PoC on this machine, so it is answered first and the gate is not held back. The pass line is in section 5. | (a) | Answer: recommendation taken, 2026-10-28 |
+| 4 | Do all presets have the same six node roles (control plane, infra, obs, compile, simulate, aggregate) with one node per role in `ci`, and does `aggregate` get its own node? The epic lists "whether `aggregate` needs its own node or shares one" as open. | (a) same six roles in every preset, `aggregate` has its own node, (b) shared node for `aggregate` and `simulate` in `ci` | (a). A taint is per node, so sharing a node would need a second isolation mechanism that the epic does not define, and "presets change only the numbers" stays true. The cost is one more idle node in `ci` (about 185 MiB measured idle), and S2 tells whether that fits. | (a) | Answer: recommendation taken, 2026-10-28 |
+| 5 | The epic needs changes in files the closed dev environment epic owns: three recipes `verify`, `verify-clean`, `verify-lint` (the method puts `verify-lint` into `just ci`), a kubeconform exclusion for non-manifest YAML under `deploy/` (the lint glob is `deploy/*.yaml`, so `deploy/presets/*.yaml` would be linted as Kubernetes manifests), and the "exactly 14 names" sentence in `docs/dev-setup.md`. Handled as a `revisit` child issue of the dev environment epic, or as a lane 0 edit? | (a) one `revisit` child, blocking lane 0, as the method says for gaps in a closed epic, (b) lane 0 edits the files directly | (a). The method forbids rewriting a closed epic, and the child records the recipe table moving from 14 names to 17 (recipe table v2) with its consumers. Section 2 lists it under Consumes once filed. | (a) | Answer: recommendation taken, 2026-10-28 |
 
 ## 1. Goal and non-goals
 
@@ -48,7 +49,7 @@ Non-goals for this pass:
 | Dev environment | `deploy/versions.yaml`: `kind_node_image` (v1.35.0 with digest), empty `charts` and `images` maps | schema v1 | none, exists [read] |
 | Dev environment | `just doctor`, reading top-level `memory_mib:` from `deploy/presets/<preset>.yaml` with a `sed` match on `^memory_mib:` | doctor contract v1 | none, exists [read: `scripts/doctor.sh` line 113] |
 | Dev environment | Recipe stubs `up`, `down`, `nuke`, `cluster-verify` exiting 3 with `not implemented: owned by #2` | recipe table v1 | the stubs are what this epic replaces |
-| Dev environment | `revisit` child issue for recipe table v2, the lint exclusion and the dev-setup count (decision 5) | filed after approval | none, blocks lane 0 |
+| Dev environment | `revisit` child issue [#49](https://github.com/AndoNorth/wasm-dag-forge/issues/49) for recipe table v2, the lint exclusion and the dev-setup count (decision 5) | recipe table v2 | none, blocks lane 0 |
 | Spike reports | Temporal and its Postgres sizes at 100,000 jobs, object store idle size | S3b section 7, S5 section 4.5 | numbers are carried into section 5 as inputs, not as contracts |
 
 Host facts checked [ran]: 7,942 MiB total memory with 4,953 MiB available while other work shares the Docker daemon, 6 CPUs, `fs.inotify.max_user_instances` 512 (from the dev environment spec).
@@ -73,14 +74,14 @@ Shapes below are proposals made concrete in lane 0, and a change after the pin i
 
 | Lane | Workers | Owns (exclusive) | Issues | Needs |
 | --- | --- | --- | --- | --- |
-| 0 Contracts and skeleton | 1 | `contracts/preset/**`, `contracts/module/**`, `contracts/topology/**`, `.claude/skills/verify-cluster/SKILL.md`, `.claude/skills/verify-cluster/features/README.md`, `scripts/verify/cluster/run.sh`, `scripts/verify/cluster/doctor.sh`, `scripts/verify/cluster/lib/**`, `just/verify.just`, `deploy/dummy/**`, and until replaced the stub `Tiltfile` and `scripts/cluster/*.sh` | 0.1, 0.2 | the `revisit` child on the dev environment epic merged (barrier) |
-| A Cluster | 1 | `deploy/presets/*.yaml`, `deploy/cluster/**`, `scripts/cluster/**`, `scripts/up.sh`, `just/cluster.just`, `.claude/skills/verify-cluster/features/{cluster-up,hard-limits,topology}.md`, `scripts/verify/cluster/features/{cluster-up,hard-limits,topology}.sh` | A.1, A.2, A.3, A.4, then A.5 after S2 | lane 0 |
-| N Namespaces | 1 | `deploy/namespaces/**`, `scripts/cluster/namespaces.sh` | N.1 | lane 0, and A.4 for presets to read |
-| T Tilt | 1 | `Tiltfile`, `deploy/tilt/**`, `scripts/tilt/**`, `.claude/skills/verify-cluster/features/tilt-profiles.md`, `scripts/verify/cluster/features/tilt-profiles.sh` | T.1, T.2 | lane 0 (T.1 needs no cluster) |
-| H Host | 1 | `deploy/host/**`, `scripts/down.sh`, `scripts/nuke.sh`, `docs/cluster-host.md`, `.claude/skills/verify-cluster/features/{host-access,persistence}.md`, `scripts/verify/cluster/features/{host-access,persistence}.sh` | H.1, H.2, H.3 | lane 0, and A.2 for a cluster to exist |
-| W Mirror | 1 | `deploy/mirror/**`, `.claude/skills/verify-cluster/features/mirror.md`, `scripts/verify/cluster/features/mirror.sh` | W.1 | lane 0, and A.4 for the compile pool |
-| F Footprint | 1 | `spikes/S2/**`, `docs/spikes/S2-footprint.md` | F.1 | lanes A to W merged, runs the cluster |
-| X Exit | 1 | `.github/workflows/kind-smoke.yml` | X.1 | lanes A to W merged |
+| 0 Contracts and skeleton | 1 | `contracts/preset/**`, `contracts/module/**`, `contracts/topology/**`, `.claude/skills/verify-cluster/SKILL.md`, `.claude/skills/verify-cluster/features/README.md`, `scripts/verify/cluster/run.sh`, `scripts/verify/cluster/doctor.sh`, `scripts/verify/cluster/lib/**`, `just/verify.just`, `deploy/dummy/**`, and until replaced the stub `Tiltfile` and `scripts/cluster/*.sh` | [#50](https://github.com/AndoNorth/wasm-dag-forge/issues/50), [#51](https://github.com/AndoNorth/wasm-dag-forge/issues/51) | the `revisit` child [#49](https://github.com/AndoNorth/wasm-dag-forge/issues/49) on the dev environment epic merged (barrier) |
+| A Cluster | 1 | `deploy/presets/*.yaml`, `deploy/cluster/**`, `scripts/cluster/**`, `scripts/up.sh`, `just/cluster.just`, `.claude/skills/verify-cluster/features/{cluster-up,hard-limits,topology}.md`, `scripts/verify/cluster/features/{cluster-up,hard-limits,topology}.sh` | [#52](https://github.com/AndoNorth/wasm-dag-forge/issues/52), [#55](https://github.com/AndoNorth/wasm-dag-forge/issues/55), [#56](https://github.com/AndoNorth/wasm-dag-forge/issues/56), [#58](https://github.com/AndoNorth/wasm-dag-forge/issues/58), then [#64](https://github.com/AndoNorth/wasm-dag-forge/issues/64) after S2 | lane 0 |
+| N Namespaces | 1 | `deploy/namespaces/**`, `scripts/cluster/namespaces.sh` | [#60](https://github.com/AndoNorth/wasm-dag-forge/issues/60) | lane 0, and A.4 for presets to read |
+| T Tilt | 1 | `Tiltfile`, `deploy/tilt/**`, `scripts/tilt/**`, `.claude/skills/verify-cluster/features/tilt-profiles.md`, `scripts/verify/cluster/features/tilt-profiles.sh` | [#53](https://github.com/AndoNorth/wasm-dag-forge/issues/53), [#62](https://github.com/AndoNorth/wasm-dag-forge/issues/62) | lane 0 (T.1 needs no cluster) |
+| H Host | 1 | `deploy/host/**`, `scripts/down.sh`, `scripts/nuke.sh`, `docs/cluster-host.md`, `.claude/skills/verify-cluster/features/{host-access,persistence}.md`, `scripts/verify/cluster/features/{host-access,persistence}.sh` | [#57](https://github.com/AndoNorth/wasm-dag-forge/issues/57), [#59](https://github.com/AndoNorth/wasm-dag-forge/issues/59), [#54](https://github.com/AndoNorth/wasm-dag-forge/issues/54) | lane 0, and A.2 for a cluster to exist |
+| W Mirror | 1 | `deploy/mirror/**`, `.claude/skills/verify-cluster/features/mirror.md`, `scripts/verify/cluster/features/mirror.sh` | [#61](https://github.com/AndoNorth/wasm-dag-forge/issues/61) | lane 0, and A.4 for the compile pool |
+| F Footprint | 1 | `spikes/S2/**`, `docs/spikes/S2-footprint.md` | [#63](https://github.com/AndoNorth/wasm-dag-forge/issues/63) | lanes A to W merged, runs the cluster |
+| X Exit | 1 | `.github/workflows/kind-smoke.yml` | [#65](https://github.com/AndoNorth/wasm-dag-forge/issues/65) | lanes A to W merged |
 
 The preset schema feature `presets` is lane 0's (`features/presets.md`, `features/presets.sh`) and is the one feature that is `scripted` when lane 0 merges.
 
@@ -100,10 +101,10 @@ Shared-file rules:
 
 ## 4. Issues
 
-Each block follows the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md).
+The `revisit` child on the dev environment epic is [#49](https://github.com/AndoNorth/wasm-dag-forge/issues/49), and it blocks lane 0.
+Each lane issue below was filed on 2026-10-28 from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #2, and its body holds the scope, owns, acceptance criteria and needs.
 Proposal numbering from the epic is in brackets.
 Every acceptance line is a command with an observable result.
-Blocks are replaced by `#NNN` links after filing.
 
 ### Mapping from the epic's detail issues
 
@@ -124,137 +125,26 @@ Blocks are replaced by `#NNN` links after filing.
 | 13 Footprint measurement and sizing pass | F.1, A.5 |
 | 14 Package mirror and compile egress | W.1 |
 
-**0.1 Pinned contracts** [4, 7] Lane 0, tier T0.
-
-- `contracts/preset/`, `contracts/module/` and `contracts/topology/` each hold a schema or table file, valid and invalid vectors, a loader test, a `version` and a `README.md` naming the owner epic.
-- `deploy/presets/ci.yaml`, `dev.yaml` and `soak.yaml` validate against the preset schema, with `soak` carrying `fitted: false`.
-  `sed -n 's/^memory_mib: *\([0-9][0-9]*\).*/\1/p' deploy/presets/ci.yaml` prints a number, because doctor reads it that way.
-- Invalid vectors each fail with a named reason: a missing role, a node memory below the derived reservation, `memory_mib` not equal to the sum of node memory, an unknown role, a module `obs` dependency from another group.
-- The loader test fails when any vector flips result, and runs in `just ci` through `just verify-lint` once the `revisit` child is merged.
-- Proof: `just verify cluster presets`, valid vectors exit 0 and each invalid one exits 1 with its reason.
-
-**0.2 Verifier skeleton, dummy modules and stubs** [7, 8, 12] Lane 0, T0.
-
-- `.claude/skills/verify-cluster/` has `SKILL.md` with the required sections in the order the method gives, `features/README.md` with the eight-row table (section 6) and one `features/<feature>.md` per feature with the four H2 sections.
-  Every row is `planned` except `presets`, and `planned` rows name the lane that flips them.
-- `just verify cluster presets` runs the whole loop on the `presets` feature: launch (a clean export is made), doctor, drive, evidence under `.verify-evidence/cluster/<run id>/summary.json`, cleanup, and the evidence is still present after `just verify-clean cluster`, which prints no resource.
-- `scripts/verify/cluster/doctor.sh` checks tools present, `/tmp/wdf-cluster.lock` free, scratch directory writable and host prerequisites, and it reads `.wslconfig` for idle timeouts when `/mnt/c` is reachable and otherwise prints `warn wslconfig: not readable`.
-  It never edits `scripts/doctor.sh`.
-- `deploy/dummy/` holds one dummy module per group (`infra`, `control`, `workers`, `obs`), each a pinned pause-class image with its requests and limits, readiness and group name, passing the module contract.
-  The dummy `obs` module is the proof that nothing outside `obs` depends on it.
-- Stubs for `scripts/cluster/*.sh` and the `Tiltfile` exit 3 with `not implemented: owned by #2`, and `scripts/verify/cluster/features/<feature>.sh` for each `planned` feature exits 3 the same way.
-- Proof: `just verify cluster presets` output and the `just verify-clean cluster` output pasted in the PR.
-
-**A.1 Preset renderer** [1] Lane A, T0. Needs lane 0.
-
-- `scripts/cluster/render.sh <preset>` writes the ctlptl cluster file and one kubelet patch per node from the preset, and is deterministic: two runs give byte-identical output (`diff` exits 0).
-- Per-node kubelet flags are rendered per node and not only for the first node, because kind reads a `KubeletConfiguration` patch from the first node only.
-  The rendered file for `ci` carries `system-reserved` cpu and `eviction-hard` memory derived from that node's limit by the contract's rule.
-- Kind node count, labels and taints in the output equal the preset's `nodes` list.
-- Output validates with `kubeconform` where it is a Kubernetes object, and rendering `dev` and `soak` succeeds without starting anything.
-- Proof: `just verify cluster cluster-up --render-only`, the T0 half of `cluster-up`.
-
-**A.2 ctlptl cluster and registry** [3] Lane A, T2. Needs A.1.
-
-- `just up` on `ci` creates one kind cluster `wdf` and a local registry through `ctlptl apply`, using the `kind_node_image` version and digest from `deploy/versions.yaml`, and `kubectl --context kind-wdf get nodes` lists every node Ready.
-- A second `just up` with nothing changed exits 0 and changes nothing (the idempotence check compares node and registry container ids before and after).
-- `just up` refuses with exit 4 when the current kubectl context is not `kind-wdf` and a cluster it did not start exists, and when `WDF_PRESET` needs more memory than the host.
-- An image pushed to the local registry is pulled by a pod without `kind load`.
-- Proof: `just verify cluster cluster-up`, which flips `cluster-up` to `scripted` at T2.
-
-**A.3 Hard node limits and canaries** [2] Lane A, T2. Needs A.2.
-
-- After `ctlptl apply`, `scripts/cluster/limits.sh` runs `docker update --cpus --memory --memory-swap` on every node container with `memory-swap` equal to `memory`, disables node swap, and sets restart policy `unless-stopped`.
-- `kubectl get nodes -o jsonpath` allocatable memory and CPU per node equal the preset's node size minus the derived reservation, to the MiB (the check prints expected and actual).
-- Canaries prove the limits are real: a pod that allocates past a node's memory limit ends with exit code 137 and a node `oom_kill` count above zero in `memory.events`, a pod requesting more than allocatable stays Pending with `Insufficient memory`, and a CPU spinner on a limited node is throttled (`cpu.stat` `nr_throttled` above zero).
-- Detection is by exit code 137 plus node events and never by `OOMKilled`, which the check asserts is not relied on.
-- `memory.events` `max` is read and reported alongside `oom_kill`, because Temporal at its limit stopped serving with `OOMKilled` false and `oom_kill` 0 while `max` kept rising.
-- Proof: `just verify cluster hard-limits`, which flips `hard-limits` to `scripted`.
-
-**A.4 Node pools and sizes** [4] Lane A, T2. Needs A.3.
-
-- Pool nodes carry `wdf.dev/pool` and a `NoSchedule` taint as the topology contract says, and counts and sizes per preset come from `deploy/presets/*.yaml`.
-- `kubectl get nodes -L wdf.dev/pool` shows one node per role in `ci`.
-  A pod with no toleration is never scheduled on a pool node, and a pod with the toleration and node selector is (two scheduling canaries).
-- `compile` and `aggregate` pools set one task per pod: the preset states requests equal limits for one pod slot, starting at 1 CPU and 1 GiB per pod, marked as an estimate to be settled by S2 and characterization.
-- Proof: `just verify cluster topology`, the pool half of `topology`.
-
-**A.5 Apply the sizing result** [13] Lane A, T0. Needs F.1 merged.
-
-- `deploy/presets/*.yaml` numbers equal the S2 result table, and `just verify cluster presets` still passes the schema and sum checks.
-- `docs/cluster-host.md` is not edited here (lane H wrote it), and the S2 result file is linked from the preset README line.
-- Proof: `just verify cluster presets` and the `memory-vs-preset` line of `just doctor` for `ci`.
-
-**N.1 Namespaces, quotas and limit ranges** [5] Lane N, T2. Needs lane 0 and A.4.
-
-- `kubectl get ns` lists `wdf-infra`, `wdf-control`, `wdf-workers`, `wdf-obs`, and each has one ResourceQuota and one LimitRange (`kubectl -n <ns> get resourcequota,limitrange`).
-- Quotas are rendered from the preset and not copied: the `wdf-workers` quota is slightly above the pool allocatable sum for that preset, and the check prints both numbers.
-- A pod without requests or limits in each namespace is admitted with the LimitRange defaults, and a pod above the quota is rejected with the quota in the message.
-- Proof: `just verify cluster topology`, the namespace half of `topology`.
-
-**T.1 Tiltfile skeleton and profiles** [6, 8] Lane T, T0. Needs lane 0.
-
-- The `Tiltfile` carries a context guard that refuses any context other than `kind-wdf`, tested against a second `kind-*` context name (the guard exits non-zero, because Tilt treats every `kind-*` context as local).
-- Profiles `minimal`, `dev`, `full` and `ci` are selected through `config.define_string` and `config.set_enabled_resources`.
-  `tilt alpha tiltfile-result` offline lists the enabled resource groups per profile against a table in `deploy/tilt/profiles.yaml`: `minimal` infra, `dev` infra, control and workers, `full` dev plus the full obs tier, `ci` dev plus the lean obs tier and the mirror.
-  The test runs without a cluster, because the alpha API is the offline selection check.
-- The module loader reads each `deploy/<component>/Tiltfile.module` and a module that fails the module contract fails the load with the contract's reason.
-- `tilt ci` is wired for `ci` and soak starts, and `just up` calls it for the `ci` preset.
-- Proof: `just verify cluster tilt-profiles`, which flips `tilt-profiles` to `scripted` at T0.
-
-**T.2 Live-update convention and the immutable soak mode** [9] Lane T, T0. Needs T.1.
-
-- `deploy/tilt/live-update.md` (one page) states the convention for Python services, and a library function in `deploy/tilt/` applies it to a module that opts in.
-- A `soak` start (`tilt ci` with the profile that disables live update) deploys immutable image tags, and the offline profile test asserts that no resource in that mode has a live-update step.
-- Live update is only for iteration, and the document says why (replaying open Temporal workflows against live-reloaded code risks non-determinism).
-- Proof: the offline profile test of T.1 extended with the immutable-mode assertion.
-
-**H.1 Host access map** [10] Lane H, T2. Needs A.2.
-
-- `deploy/host/ports.yaml` lists each endpoint with a `127.0.0.1:<port>` and a NodePort, and the renderer maps them through `extraPortMappings` bound to 127.0.0.1 only.
-- `ss -ltn` on the host shows every mapped port bound to `127.0.0.1` and none to `0.0.0.0`.
-- The dummy module's endpoint answers on its host port with Tilt not running (the check stops Tilt first and then curls).
-- Proof: `just verify cluster host-access`, which flips `host-access` to `scripted`.
-
-**H.2 Persistence** [11] Lane H, T2. Needs H.1.
-
-- `extraMounts` mounts one host data directory on the infra node, taken from the preset's `host.data_dir`.
-- A marker file written through a dummy StatefulSet's PVC survives `just down` followed by `just up`.
-- `just nuke` removes the cluster, the registry and the data directory, and a second `just nuke` exits 0 with nothing left (`docker ps -a` and the directory listing show none).
-- `just nuke` refuses with exit 4 on a data directory outside the repo's configured path.
-- Proof: `just verify cluster persistence`, which flips `persistence` to `scripted`.
-
-**H.3 WSL2 host guide** [12] Lane H, T0. Needs lane 0.
-
-- `docs/cluster-host.md` covers `.wslconfig` memory and processors, `vmIdleTimeout` and `instanceIdleTimeout`, inotify, ext4 location and sleep settings, one sentence per line, with a table of what each setting protects and what no setting covers (Windows sleep and update reboots).
-- Every check named in the guide exists in `scripts/verify/cluster/doctor.sh` or in `just doctor`, and the guide links to `docs/dev-setup.md` and does not copy it.
-- Proof: `grep` of each named check id against the two scripts, run in the PR.
-
-**W.1 Package mirror** [14] Lane W, T2. Needs lane 0 and A.4.
-
-- `deploy/mirror/` is a module (passing the module contract) serving a wheelhouse directory from `wdf-infra`, with a fixture wheelhouse of one hash-pinned wheel.
-- From a pod on the `compile` pool, `pip download --no-index --find-links http://<mirror service> --require-hashes` of the fixture succeeds, and with the hash altered it fails.
-- The module is enabled by the `ci` profile and disabled by `minimal`.
-- Aggregate pods run with no package egress configured, and no module in this epic gives them any.
-- Contents beyond the fixture come from the toolchain epic, and a mirror shape change is a contract-change PR.
-- Proof: `just verify cluster mirror`, which flips `mirror` to `scripted`.
-
-**F.1 Footprint spike S2** [13] Lane F, T2. Needs lanes A, N, T, H and W merged.
-
-- Timeboxed to one day, one issue labelled `spike`, throwaway code in `spikes/S2/`, result in `docs/spikes/S2-footprint.md` stating pass or fail, the numbers and the decision it settles.
-- Pass line and method are in section 5.
-- Proof: the result file with the run's raw output, and the host requirement table.
-
-**X.1 Kind smoke CI job** Lane X, T2. Needs lanes A, N, T, H and W merged.
-
-- `.github/workflows/kind-smoke.yml` has one job `kind-smoke` on `ubuntu-latest` that installs Nix, runs `nix develop -c just up`, `nix develop -c just cluster-verify` and `nix develop -c just down` on the `ci` preset, passes `actionlint`, and does not edit `.github/workflows/ci.yml`.
-- The job honours the repository variable `CI_ENABLED` as the `check` job does, and a failed run uploads the cluster logs as an artifact.
-- One green run URL on a pull request and one on `main` are linked in the PR and in Closure.
-- Proof: the CI run URL, and the runner's memory and CPU printed in the log, recorded because the host size differs from this laptop.
+- [#50](https://github.com/AndoNorth/wasm-dag-forge/issues/50) **0.1 Pinned contracts** [4, 7] Lane 0, tier T0.
+- [#51](https://github.com/AndoNorth/wasm-dag-forge/issues/51) **0.2 Verifier skeleton, dummy modules and stubs** [7, 8, 12] Lane 0, T0.
+- [#52](https://github.com/AndoNorth/wasm-dag-forge/issues/52) **A.1 Preset renderer** [1] Lane A, T0. Needs lane 0.
+- [#55](https://github.com/AndoNorth/wasm-dag-forge/issues/55) **A.2 ctlptl cluster and registry** [3] Lane A, T2. Needs A.1.
+- [#56](https://github.com/AndoNorth/wasm-dag-forge/issues/56) **A.3 Hard node limits and canaries** [2] Lane A, T2. Needs A.2.
+- [#58](https://github.com/AndoNorth/wasm-dag-forge/issues/58) **A.4 Node pools and sizes** [4] Lane A, T2. Needs A.3.
+- [#64](https://github.com/AndoNorth/wasm-dag-forge/issues/64) **A.5 Apply the sizing result** [13] Lane A, T0. Needs F.1 merged.
+- [#60](https://github.com/AndoNorth/wasm-dag-forge/issues/60) **N.1 Namespaces, quotas and limit ranges** [5] Lane N, T2. Needs lane 0 and A.4.
+- [#53](https://github.com/AndoNorth/wasm-dag-forge/issues/53) **T.1 Tiltfile skeleton and profiles** [6, 8] Lane T, T0. Needs lane 0.
+- [#62](https://github.com/AndoNorth/wasm-dag-forge/issues/62) **T.2 Live-update convention and the immutable soak mode** [9] Lane T, T0. Needs T.1.
+- [#57](https://github.com/AndoNorth/wasm-dag-forge/issues/57) **H.1 Host access map** [10] Lane H, T2. Needs A.2.
+- [#59](https://github.com/AndoNorth/wasm-dag-forge/issues/59) **H.2 Persistence** [11] Lane H, T2. Needs H.1.
+- [#54](https://github.com/AndoNorth/wasm-dag-forge/issues/54) **H.3 WSL2 host guide** [12] Lane H, T0. Needs lane 0.
+- [#61](https://github.com/AndoNorth/wasm-dag-forge/issues/61) **W.1 Package mirror** [14] Lane W, T2. Needs lane 0 and A.4.
+- [#63](https://github.com/AndoNorth/wasm-dag-forge/issues/63) **F.1 Footprint spike S2** [13] Lane F, T2. Needs lanes A, N, T, H and W merged.
+- [#65](https://github.com/AndoNorth/wasm-dag-forge/issues/65) **X.1 Kind smoke CI job** Lane X, T2. Needs lanes A, N, T, H and W merged.
 
 ## 5. Order, stubs and spikes
 
-- Barrier: the `revisit` child issue on the dev environment epic (decision 5), then lane 0 (0.1, then 0.2, one worker, merged alone).
+- Barrier: the `revisit` child issue [#49](https://github.com/AndoNorth/wasm-dag-forge/issues/49) on the dev environment epic (decision 5), then lane 0 (0.1, then 0.2, one worker, merged alone).
   The estimate is one day and a half.
 - After lane 0: A.1, T.1 and H.3 start together, and none of them needs a cluster.
   A.2 gates every issue that runs a cluster (A.3, H.1, H.2).
