@@ -247,6 +247,25 @@ CI was not run while preparing this spec.
 
 ## 9. Closure (filled at close)
 
-Not closed yet.
+Epic closed.
+The exit test passed 8 of 8 rows.
+Green CI run of `just ci` on `main`: https://github.com/AndoNorth/wasm-dag-forge/actions/runs/40600173571
+
+Merged pull requests:
+
+- Shell and justfile: flake dev shell and justfile skeleton.
+- uv workspace: uv workspace, python pin and manylinux shim.
+- Doctor: `just doctor` with its fault-injection self-test.
+- Lint and CI: lint, CI workflow and test recipes.
+- Version pins: WASM toolchain pins and versions file.
+- Docs: dev setup guide and reproducibility check, and the verifier removal.
+- Hygiene: issue references dropped from comments and an evidence-based PR template.
+- Exit-test fixes: lint and test no longer give a false green outside a git checkout.
+
+Follow-ups left:
+
+- `kubeconform` fetches schemas from the network.
+- `just --list` lacks descriptions.
+- A second contributor machine is unverified.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
