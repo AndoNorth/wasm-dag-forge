@@ -67,6 +67,27 @@ Paths under `/mnt/c` use 9p, where file watching is unreliable and Postgres and 
 `docker-engine` and `docker-version` check the daemon, and `cgroup-v2` checks the unified hierarchy kind requires.
 The setup steps are in [docs/dev-setup.md](dev-setup.md).
 
+## Host access map
+
+`deploy/host/ports.yaml` is the one table of endpoints a host process can reach without Tilt running.
+Each row maps `127.0.0.1:<host_port>` to a NodePort on the cluster, and the table shape is pinned in [contracts/preset/](../contracts/preset/README.md).
+The renderer places the mappings on the control plane node as `extraPortMappings` with `listenAddress: 127.0.0.1`, so no row can widen the bind.
+
+| Name | Host address | NodePort |
+| --- | --- | --- |
+| `control-api` | `127.0.0.1:18080` | 30080 |
+| `dispatch-api` | `127.0.0.1:18081` | 30081 |
+
+`deploy/host/dummy-endpoint.yaml` is a stand-in for the `control-api` endpoint, one busybox replica in `wdf-control`, until a real module serves it.
+Port mappings are fixed when the cluster is created, so a changed table takes effect after `just nuke` and `just up`.
+A mapped port answers only once the Service behind it has endpoints, and a request before that is reset.
+
+```sh
+kubectl --context kind-wdf apply -f deploy/host/dummy-endpoint.yaml
+ss -ltn | grep -E ':(18080|18081)\b'
+curl http://127.0.0.1:18080/
+```
+
 ## What each setting protects
 
 | Setting | Protects against | Doctor check |

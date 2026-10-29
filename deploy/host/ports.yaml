@@ -1,0 +1,10 @@
+---
+# Host access map: each row maps 127.0.0.1:<host_port> to a NodePort on the cluster, so an endpoint answers without
+# Tilt running. Shape: contracts/preset/ports.schema.json. The listen address is fixed to loopback by the renderer.
+ports:
+  - name: control-api
+    host_port: 18080
+    node_port: 30080
+  - name: dispatch-api
+    host_port: 18081
+    node_port: 30081
