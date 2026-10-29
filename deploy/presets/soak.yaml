@@ -1,0 +1,33 @@
+name: soak
+fitted: false
+memory_mib: 38912
+cpus: 30
+nodes:
+  - role: control-plane
+    count: 1
+    cpus: 2
+    memory_mib: 2048
+  - role: infra
+    count: 1
+    cpus: 6
+    memory_mib: 12288
+  - role: obs
+    count: 1
+    cpus: 2
+    memory_mib: 4096
+  - role: compile
+    count: 4
+    cpus: 2
+    memory_mib: 2048
+  - role: simulate
+    count: 4
+    cpus: 2
+    memory_mib: 2048
+  - role: aggregate
+    count: 2
+    cpus: 2
+    memory_mib: 2048
+host:
+  ports: deploy/host/ports.yaml
+  data_dir: ~/.local/share/wdf/soak
+mirror: false

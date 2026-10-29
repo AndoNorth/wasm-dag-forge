@@ -1,0 +1,16 @@
+name: vector
+group: obs
+namespace: wdf-obs
+artifact:
+  kind: image
+  pin: fixture-image
+resources:
+  vector:
+    requests: {cpu: 50m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 32Mi}
+readiness:
+  resource: deployment/vector
+  condition: Available
+profiles: [minimal, dev, full, ci]
+depends_on:
+  - obs/collector

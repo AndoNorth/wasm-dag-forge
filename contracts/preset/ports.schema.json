@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/preset/ports.schema.json",
+  "title": "deploy/host/ports.yaml",
+  "type": "object",
+  "required": ["ports"],
+  "additionalProperties": false,
+  "properties": {
+    "ports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "host_port", "node_port"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "host_port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+          "node_port": { "type": "integer", "minimum": 30000, "maximum": 32767 }
+        }
+      }
+    }
+  }
+}

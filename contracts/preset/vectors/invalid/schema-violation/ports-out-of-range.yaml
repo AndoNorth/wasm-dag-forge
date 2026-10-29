@@ -1,0 +1,4 @@
+ports:
+  - name: api
+    host_port: 80
+    node_port: 30080

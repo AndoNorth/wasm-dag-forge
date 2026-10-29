@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/preset/preset.schema.json",
+  "title": "deploy/presets/<name>.yaml",
+  "type": "object",
+  "required": ["name", "fitted", "memory_mib", "cpus", "nodes", "host", "mirror"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "fitted": { "type": "boolean" },
+    "memory_mib": { "type": "integer", "minimum": 1 },
+    "cpus": { "type": "number", "exclusiveMinimum": 0, "multipleOf": 0.5 },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "count", "cpus", "memory_mib"],
+        "additionalProperties": false,
+        "properties": {
+          "role": { "enum": ["control-plane", "infra", "obs", "compile", "simulate", "aggregate"] },
+          "count": { "type": "integer", "minimum": 1 },
+          "cpus": { "type": "number", "exclusiveMinimum": 0, "multipleOf": 0.5 },
+          "memory_mib": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "required": ["ports", "data_dir"],
+      "additionalProperties": false,
+      "properties": {
+        "ports": { "type": "string", "pattern": "^deploy/.+\\.yaml$" },
+        "data_dir": { "type": "string", "pattern": "^(~/|/).+" }
+      }
+    },
+    "mirror": { "type": "boolean" }
+  }
+}

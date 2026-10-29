@@ -1,0 +1,33 @@
+name: vector
+fitted: true
+memory_mib: 5667
+cpus: 6
+nodes:
+  - role: control-plane
+    count: 1
+    cpus: 1
+    memory_mib: 1024
+  - role: infra
+    count: 1
+    cpus: 1
+    memory_mib: 1024
+  - role: obs
+    count: 1
+    cpus: 1
+    memory_mib: 547
+  - role: compile
+    count: 1
+    cpus: 1
+    memory_mib: 1024
+  - role: simulate
+    count: 1
+    cpus: 1
+    memory_mib: 1024
+  - role: aggregate
+    count: 1
+    cpus: 1
+    memory_mib: 1024
+host:
+  ports: deploy/host/ports.yaml
+  data_dir: ~/.local/share/wdf/vector
+mirror: false

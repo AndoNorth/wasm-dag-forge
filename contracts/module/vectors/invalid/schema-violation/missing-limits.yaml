@@ -1,0 +1,13 @@
+name: vector
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: fixture-image
+resources:
+  vector:
+    requests: {cpu: 50m, memory: 16Mi}
+readiness:
+  resource: deployment/vector
+  condition: Available
+profiles: [minimal, dev, full, ci]

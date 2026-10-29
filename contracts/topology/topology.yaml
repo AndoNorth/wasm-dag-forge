@@ -1,0 +1,17 @@
+# Pool and namespace topology. Schema: topology.schema.json.
+# The wdf.dev prefix is a placeholder, and consumers read the label key from here.
+pool_label: wdf.dev/pool
+taint_effect: NoSchedule
+# Preset node role to pool label value. The control-plane role has no pool and keeps its own taint.
+pools:
+  infra: infra
+  obs: obs
+  compile: compile
+  simulate: simulate
+  aggregate: aggregate
+# Every namespace carries a ResourceQuota and a LimitRange.
+namespaces:
+  wdf-infra: {group: infra}
+  wdf-control: {group: control}
+  wdf-workers: {group: workers}
+  wdf-obs: {group: obs}
