@@ -2,12 +2,19 @@
 # Tilt profile table: the resource groups each profile enables.
 # A module is enabled when its group is listed here and the profile is in its manifest `profiles`,
 # which is how `full` and `ci` pick different observability tiers and how only `ci` gets the mirror.
+# `live_update` turns on live-update steps for modules that opt in, so only the iteration profile has it.
+# `modules` names the profile whose module selection applies, defaulting to the profile itself.
 profiles:
   minimal:
     groups: [infra]
   dev:
     groups: [infra, control, workers]
+    live_update: true
   full:
     groups: [infra, control, workers, obs]
   ci:
     groups: [infra, control, workers, obs]
+  soak:
+    groups: [infra, control, workers, obs]
+    modules: ci
+    live_update: false

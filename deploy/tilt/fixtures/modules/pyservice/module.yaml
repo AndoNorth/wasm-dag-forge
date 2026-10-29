@@ -1,0 +1,11 @@
+name: pyservice
+group: workers
+namespace: wdf-workers
+artifact: {kind: image, pin: pause}
+resources:
+  pyservice:
+    requests: {cpu: 50m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 32Mi}
+readiness: {command: ['true']}
+profiles: [dev, full, ci]
+depends_on: [infra/store]

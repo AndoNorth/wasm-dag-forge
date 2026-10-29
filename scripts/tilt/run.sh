@@ -7,7 +7,7 @@ cd "$(dirname "$0")/../.."
 preset=${1:-}
 [ $# -gt 0 ] && shift
 case $preset in
-    ci | soak) exec tilt ci "$@" -- --profile ci ;;
+    ci | soak) exec tilt ci "$@" -- --profile "$preset" ;;
     dev) exec tilt up "$@" -- --profile dev ;;
     *) echo "usage: run.sh <ci|dev|soak> [tilt args...]" >&2; exit 2 ;;
 esac
