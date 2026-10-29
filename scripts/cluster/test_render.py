@@ -59,7 +59,8 @@ def test_every_node_is_rendered_from_the_preset(preset, tmp_path):
         if role == "control-plane":
             assert "kind: InitConfiguration" in patch
         else:
-            assert f"value: wdf.dev/pool={role}\n" in patch
+            assert f"node-labels: wdf.dev/pool={role}\n" in patch
+            assert "apiVersion: kubeadm.k8s.io/v1beta3\n" in patch
             assert f"value: {role}\n                effect: NoSchedule" in patch
 
 
@@ -76,6 +77,18 @@ def test_every_node_has_a_hard_limit(preset, tmp_path):
     names = [e[0] for e in entries]
     assert len(set(names)) == len(names)
     kind = ["control-plane"] + ["worker"] + [f"worker{i}" for i in range(2, len(want))]
-    assert names == [f"wdf-{preset}-{k}" for k in kind]
+    assert names == [f"wdf-{k}" for k in kind]
     for (_, *got), (role, mem, cpus) in zip(entries, want, strict=True):
         assert got == [role, cpus, str(mem), str(mem)]
+
+
+@pytest.mark.parametrize("preset", PRESETS)
+def test_cluster_and_registry_are_named_for_the_wdf_context(preset, tmp_path):
+    out = render(preset, tmp_path)
+    cluster = (out / "cluster.yaml").read_text()
+    assert re.search(r"^name: kind-wdf$", cluster, re.M)
+    assert re.search(r"^  name: wdf$", cluster, re.M)
+    registry = (out / "registry.yaml").read_text()
+    assert re.search(r"^name: (\S+)$", registry, re.M).group(1) in cluster
+    assert "listenAddress: 127.0.0.1\n" in registry
+    assert re.search(r"^image: registry:\S+@sha256:[0-9a-f]{64}$", registry, re.M)

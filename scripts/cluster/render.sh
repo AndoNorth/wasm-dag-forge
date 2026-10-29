@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Renders the ctlptl cluster file and one kubelet patch per node from a preset, without starting anything.
-# Usage: render.sh <preset>. Writes <dir>/<preset>/{cluster.yaml,limits.yaml,kubelet-<role>-<n>.yaml} and prints the directory.
+# Renders the ctlptl cluster and registry files and one kubelet patch per node from a preset, without starting anything.
+# Usage: render.sh <preset>. Writes <dir>/<preset>/{cluster.yaml,registry.yaml,limits.yaml,kubelet-<role>-<n>.yaml} and
+# prints the directory. The kind cluster is always named wdf, so every preset renders the same context and container names.
 # The directory is WDF_RENDER_DIR, or a cache directory outside the tree, because the output holds ctlptl, kubeadm and
 # kubelet documents that the repo's manifest lint has no schema for.
 # Exit 0 rendered, 1 the preset or a table is invalid, 2 usage.
@@ -26,9 +27,15 @@ fi
 pool_label=$(yq '.pool_label' contracts/topology/topology.yaml)
 taint_effect=$(yq '.taint_effect' contracts/topology/topology.yaml)
 image="kindest/node:$(yq '.kind_node_image.version' deploy/versions.yaml)@$(yq '.kind_node_image.digest' deploy/versions.yaml)"
+registry_image="registry:$(yq '.images.registry.version' deploy/versions.yaml)@$(yq '.images.registry.digest' deploy/versions.yaml)"
+registry_name=wdf-registry
+registry_port=5001
 # The control plane keeps kubeadm's own taint, so it is registered without a pool label or taint of its own.
 # A cpu reservation for system daemons is not part of the preset contract, so every node reserves the same amount.
 SYSTEM_RESERVED_CPU=100m
+# kind patches a kubeadm document only when the patch carries the apiVersion kind generated for the node image, and it
+# ignores a mismatch silently. v1beta3 is what kind generates for the pinned node image, and up.sh checks the labels.
+KUBEADM_API=kubeadm.k8s.io/v1beta3
 
 out=${WDF_RENDER_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/wasm-dag-forge/cluster}/$name
 rm -rf "$out"
@@ -37,10 +44,10 @@ mkdir -p "$out"
 # Hard limits of every node container, one entry per kind node in kind's own naming order (control-plane, worker,
 # worker2, ...). Memory swap equals memory, so no node can grow past its declared size. kind has no limit setting,
 # so the cluster step applies this file with docker update before the nodes join.
-limits_head() { printf 'cluster: wdf-%s\nnodes:\n' "$name"; }
+limits_head() { printf 'cluster: wdf\nnodes:\n'; }
 limit_entry() { # <kind node name> <role> <cpus> <memory_mib>
-    printf '  - container: wdf-%s-%s\n    role: %s\n    cpus: %s\n    memory_mib: %s\n    memory_swap_mib: %s\n' \
-        "$name" "$1" "$2" "$3" "$4" "$4"
+    printf '  - container: wdf-%s\n    role: %s\n    cpus: %s\n    memory_mib: %s\n    memory_swap_mib: %s\n' \
+        "$1" "$2" "$3" "$4" "$4"
 }
 limits_head >"$out/limits.yaml"
 kind_index=0
@@ -61,18 +68,17 @@ evictionHard:
 ---
 PATCH
     if [ "$role" = control-plane ]; then
-        printf 'apiVersion: kubeadm.k8s.io/v1beta4\nkind: InitConfiguration\n'
+        printf 'apiVersion: %s\nkind: InitConfiguration\n' "$KUBEADM_API"
         return
     fi
     local pool
     pool=$(yq ".pools.$role" contracts/topology/topology.yaml)
     cat <<PATCH
-apiVersion: kubeadm.k8s.io/v1beta4
+apiVersion: $KUBEADM_API
 kind: JoinConfiguration
 nodeRegistration:
   kubeletExtraArgs:
-    - name: node-labels
-      value: $pool_label=$pool
+    node-labels: $pool_label=$pool
   taints:
     - key: $pool_label
       value: $pool
@@ -85,9 +91,10 @@ PATCH
 apiVersion: ctlptl.dev/v1alpha1
 kind: Cluster
 product: kind
-name: kind-wdf-$name
+name: kind-wdf
+registry: $registry_name
 kindV1Alpha4Cluster:
-  name: wdf-$name
+  name: wdf
   nodes:
 HEAD
     # kind lists the control plane first, then the workers in preset order.
@@ -117,5 +124,15 @@ NODE
         done
     done < <(yq '.nodes | sort_by(.role == "control-plane" | not) | .[] | .role + " " + .count + " " + .memory_mib + " " + .cpus' "$preset")
 } >"$out/cluster.yaml"
+
+# The registry listens on loopback only. ctlptl wires it into the kind nodes as localhost:<port>.
+cat >"$out/registry.yaml" <<REGISTRY
+apiVersion: ctlptl.dev/v1alpha1
+kind: Registry
+name: $registry_name
+port: $registry_port
+listenAddress: 127.0.0.1
+image: $registry_image
+REGISTRY
 
 echo "$out"
