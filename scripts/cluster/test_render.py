@@ -68,7 +68,8 @@ def test_every_node_has_a_hard_limit(preset, tmp_path):
     out = render(preset, tmp_path)
     want = sorted(preset_nodes(preset), key=lambda n: n[0] != "control-plane")
     entries = re.findall(
-        r"- container: (\S+)\n    role: (\S+)\n    cpus: (\S+)\n    memory_mib: (\d+)\n    memory_swap_mib: (\d+)\n",
+        r"- container: (\S+)\n    role: (\S+)\n    cpus: (\S+)\n"
+        r"    memory_mib: (\d+)\n    memory_swap_mib: (\d+)\n",
         (out / "limits.yaml").read_text(),
     )
     assert len(entries) == len(want)
@@ -76,5 +77,5 @@ def test_every_node_has_a_hard_limit(preset, tmp_path):
     assert len(set(names)) == len(names)
     kind = ["control-plane"] + ["worker"] + [f"worker{i}" for i in range(2, len(want))]
     assert names == [f"wdf-{preset}-{k}" for k in kind]
-    for (_, role, cpus, mem, swap), (want_role, want_mem, want_cpus) in zip(entries, want, strict=True):
-        assert (role, cpus, int(mem), int(swap)) == (want_role, want_cpus, want_mem, want_mem)
+    for (_, *got), (role, mem, cpus) in zip(entries, want, strict=True):
+        assert got == [role, cpus, str(mem), str(mem)]
