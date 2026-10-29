@@ -213,11 +213,10 @@ The verifier skeleton is part of lane 0, so it exists before the other lanes sta
 5. Report the commit sha, evidence path where there is one, per-feature result, and explicitly what was not run and why.
    A report that claims done without step 3 is not done.
 
-### The 10 verifiers
+### The 9 verifiers
 
 | Verifier | Epics | Created at | Tiers when created | Can verify now | Cannot yet |
 | --- | --- | --- | --- | --- | --- |
-| `verify-cluster` | #2 | E2 | T2 | Yes, on host capacity: one cluster, S2 decides which preset fits | `dev` and `soak` presets on a 7.8 GiB host |
 | `verify-job-model` | #4, #5 | E3 | T0 | Yes (pure libraries, fixtures, CLI) | Nothing blocking |
 | `verify-storage` | #3, #12 | E5 | T1 | Yes (TimescaleDB and S3 containers) | Compile cache and reaper timing until #11 and #10 exist |
 | `verify-workloads` | #11 | E7 | T0, T1 | Yes (real `componentize-py`, `wasmtime`, kernel golden vectors) | Pause and resume workloads until #18 |
@@ -228,7 +227,7 @@ The verifier skeleton is part of lane 0, so it exists before the other lanes sta
 | `verify-resilience` | #15, #18 | E16 | T2 | No | All of it until #6, #8, #10, #12 exist, injector library alone at T1 |
 | `verify-system` | #17 | gate | T2 | No: it is the smoke and e2e suite, assembled from the others | Until the first smoke at the gate |
 
-One verifier covers each surface a user or agent drives, except the dev environment, which has none for the reason given in the convention above.
+One verifier covers each surface a user or agent drives, except the dev environment, which has none for the reason given in the convention above, and the cluster, whose acceptance is direct commands with pasted output.
 The broker and admission sit behind the dispatch API, so they merge with it.
 `verify-system` is not a separate implementation: its Drive section calls the other verifiers' features in the order the acceptance flow in #17 gives.
 
@@ -241,7 +240,7 @@ Where owners and consumers form a cycle (#10 with #11, #3 with #12), a lane-0 st
 | Pos | Epic | Verifier | Contracts pinned in its lane 0 | Spikes |
 | --- | --- | --- | --- | --- |
 | E1 | #1 Dev environment | none, covered by `just doctor`, CI and `docs/dev-setup.md` | `versions.yaml` schema, `just` recipe table | none |
-| E2 | #2 Cluster and Tilt | `verify-cluster` | preset schema, module contract, pool label and taint, namespaces | S2 footprint (#2-13), gate G1 |
+| E2 | #2 Cluster and Tilt | none, direct acceptance commands and the exit test | preset schema, module contract, pool label and taint, namespaces | S2 footprint (#2-13), gate G1 |
 | E2.5 | spike block | none | none | S3 Temporal with Python (owner #6), S4 AMQP 1.0 client (#7), S5 object store (#3-8) |
 | E3 | #4 Envelope | `verify-job-model` | tranche A: events and keys, status, artifact reference and bucket layout, instrumentation contract (#13-1) | none |
 | E4 | #5 Validator | `verify-job-model` | job document and plan JSON Schema, limits profile | none |
