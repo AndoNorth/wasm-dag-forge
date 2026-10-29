@@ -50,7 +50,7 @@ def test_enabled_groups_match_the_profile_table(profile):
 
 def test_obs_tier_and_mirror_differ_per_profile():
     assert set(selection("minimal")[0]) == {"store"}
-    assert set(selection("dev")[0]) == {"store", "control-plane", "worker"}
+    assert set(selection("dev")[0]) == {"store", "control-plane", "worker", "pyservice"}
     assert "vector" in selection("full")[0] and "vector-lite" not in selection("full")[0]
     assert "vector-lite" in selection("ci")[0] and "mirror" in selection("ci")[0]
     assert "mirror" not in selection("full")[0]
@@ -69,7 +69,7 @@ def test_unknown_profile_is_refused():
 
 
 def test_module_failing_the_contract_fails_the_load_with_its_reason(tmp_path):
-    shutil.copytree(MODULES, tmp_path / "modules")
+    shutil.copytree(MODULES, tmp_path / "modules", ignore=shutil.ignore_patterns("pyservice"))
     bad = tmp_path / "modules/store/module.yaml"
     bad.write_text(bad.read_text().replace("group: infra", "group: nonsense"))
     run = tiltfile_result(modules=tmp_path / "modules")
@@ -78,10 +78,33 @@ def test_module_failing_the_contract_fails_the_load_with_its_reason(tmp_path):
 
 
 def test_dependency_on_a_disabled_module_is_refused(tmp_path):
-    shutil.copytree(MODULES, tmp_path / "modules")
+    shutil.copytree(MODULES, tmp_path / "modules", ignore=shutil.ignore_patterns("pyservice"))
     worker = tmp_path / "modules/worker/module.yaml"
     worker.write_text(worker.read_text().replace("[infra/store]", "[infra/store, infra/mirror]"))
     assert tiltfile_result("ci", modules=tmp_path / "modules").returncode == 0
     run = tiltfile_result("dev", modules=tmp_path / "modules")
     assert run.returncode != 0
     assert "module worker depends on" in run.stderr
+
+
+def live_update_steps(profile):
+    run = tiltfile_result(profile)
+    assert run.returncode == 0, run.stderr
+    manifests = json.loads(run.stdout)["Manifests"]
+    steps = {}
+    for m in manifests:
+        specs = [t["LiveUpdateSpec"] for t in m["ImageTargets"] or []]
+        if specs:
+            steps[m["Name"]] = [k for k in ("syncs", "execs") if any(s.get(k) for s in specs)]
+    return steps
+
+
+def test_only_the_dev_profile_live_updates_a_module_that_opts_in():
+    assert live_update_steps("dev") == {"pyservice": ["syncs", "execs"]}
+    for profile in set(PROFILES) - {"dev", "minimal"}:
+        assert live_update_steps(profile) == {"pyservice": []}
+
+
+def test_soak_enables_the_ci_modules_with_no_live_update_step():
+    assert set(selection("soak")[0]) == set(selection("ci")[0])
+    assert live_update_steps("soak") == {"pyservice": []}

@@ -1,0 +1,18 @@
+load('../../../live_update.star', 'python_live_update')
+
+module = read_yaml('module.yaml')
+
+python_live_update('wdf-pyservice', '.', src='src', dest='/app')
+k8s_yaml(encode_yaml({
+    'apiVersion': 'apps/v1',
+    'kind': 'Deployment',
+    'metadata': {'name': module['name'], 'namespace': module['namespace']},
+    'spec': {
+        'selector': {'matchLabels': {'app': module['name']}},
+        'template': {
+            'metadata': {'labels': {'app': module['name']}},
+            'spec': {'containers': [{'name': module['name'], 'image': 'wdf-pyservice'}]},
+        },
+    },
+}))
+k8s_resource(module['name'], labels=[module['group']], resource_deps=['store'])

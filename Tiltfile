@@ -21,6 +21,11 @@ profiles = read_yaml('deploy/tilt/profiles.yaml')['profiles']
 if profile not in profiles:
     fail('unknown profile %s, expected one of %s' % (profile, sorted(profiles.keys())))
 groups = profiles[profile]['groups']
+# A profile may reuse another profile's module selection, which is how soak runs the ci modules without live update.
+module_profile = profiles[profile].get('modules', profile)
+
+# Library functions read the mode from the environment because a loaded file cannot see Tiltfile globals.
+os.putenv('WDF_LIVE_UPDATE', '1' if profiles[profile].get('live_update', False) else '0')
 
 # Components sit at most two levels down (deploy/dummy/<group>), so fixtures under deploy/tilt are skipped.
 root = os.path.abspath(modules_dir) + '/'
@@ -35,7 +40,7 @@ for path in manifests:
     local(['contracts/module/check.sh', path], quiet=True)
     module = read_yaml(path)
     module['dir'] = path[:-len('/module.yaml')]
-    if module['group'] in groups and profile in module['profiles']:
+    if module['group'] in groups and module_profile in module['profiles']:
         modules.append(module)
 
 enabled = [m['name'] for m in modules]
