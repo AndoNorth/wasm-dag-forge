@@ -62,8 +62,8 @@ lint_all() {
     step yamllint    run_yamllint    '*.yaml' '*.yml'
     step shellcheck  run_shellcheck  '*.sh'
     step actionlint  run_actionlint  '.github/workflows/*.yml' '.github/workflows/*.yaml'
-    # deploy/versions.yaml, deploy/presets/, deploy/tilt/ and the module manifests hold pins, presets and module shapes, not Kubernetes manifests.
-    mapfile -t f < <(files 'deploy/*.yaml' 'deploy/*.yml' | grep -Ev '^deploy/(versions\.yaml|presets/|tilt/|.*/module\.yaml$)' || true)
+    # deploy/versions.yaml, deploy/presets/, deploy/tilt/, deploy/host/ports.yaml and the module manifests hold pins, presets, host ports and module shapes, not Kubernetes manifests.
+    mapfile -t f < <(files 'deploy/*.yaml' 'deploy/*.yml' | grep -Ev '^deploy/(versions\.yaml|host/ports\.yaml|presets/|tilt/|.*/module\.yaml$)' || true)
     if [ ${#f[@]} -gt 0 ]; then echo "== kubeconform (${#f[@]} files)"; linted=$((linted + ${#f[@]})); run_kubeconform "${f[@]}" || rc=1; else echo "skip kubeconform: no files"; fi
     step nixfmt      run_nixfmt      '*.nix'
     if [ "$linted" -eq 0 ] && [ -n "$(all_files | tr -d '\0')" ]; then
