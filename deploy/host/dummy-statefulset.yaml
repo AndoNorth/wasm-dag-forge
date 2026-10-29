@@ -1,0 +1,50 @@
+# Stand-in for a stateful component: one replica on the infra pool with a volume claim, so data written through the
+# claim can be checked on the host data directory that the infra node mounts.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wdf-infra
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dummy-state
+  namespace: wdf-infra
+spec:
+  serviceName: dummy-state
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dummy-state
+  template:
+    metadata:
+      labels:
+        app: dummy-state
+    spec:
+      nodeSelector:
+        wdf.dev/pool: infra
+      tolerations:
+        - key: wdf.dev/pool
+          operator: Exists
+      containers:
+        - name: idle
+          image: busybox:1.37@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+          command: ["sleep", "infinity"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              cpu: 50m
+              memory: 16Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 16Mi

@@ -26,6 +26,12 @@ if [ -f "$ports" ]; then
     contracts/preset/check.sh "$ports" >&2 || exit 1
 fi
 
+# The infra node keeps its persistent volumes in the preset's host data directory, which outlives the cluster.
+# The directory is created here so it belongs to the user and not to the root that the node container runs as.
+data_dir=$(yq '.host.data_dir' "$preset")
+data_dir=${data_dir/#\~/$HOME}
+VOLUME_DIR=/var/local-path-provisioner
+
 pool_label=$(yq '.pool_label' contracts/topology/topology.yaml)
 taint_effect=$(yq '.taint_effect' contracts/topology/topology.yaml)
 image="kindest/node:$(yq '.kind_node_image.version' deploy/versions.yaml)@$(yq '.kind_node_image.digest' deploy/versions.yaml)"
@@ -138,6 +144,10 @@ NODE
             fi
             printf '      extraMounts:\n        - hostPath: %s\n          containerPath: %s\n          readOnly: true\n' \
                 "$out/patches/$kind_name" "$PATCH_DIR"
+            if [ "$role" = infra ]; then
+                mkdir -p "$data_dir"
+                printf '        - hostPath: %s\n          containerPath: %s\n' "$data_dir" "$VOLUME_DIR"
+            fi
             echo "      kubeadmConfigPatches:"
             echo "        - |"
             kubeadm_patch "$role" | indent

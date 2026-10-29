@@ -88,6 +88,21 @@ ss -ltn | grep -E ':(18080|18081)\b'
 curl http://127.0.0.1:18080/
 ```
 
+## Persistence
+
+The infra node mounts the preset `host.data_dir` at `/var/local-path-provisioner`, where the default storage class keeps every volume.
+A volume claim on the infra pool therefore lives on the host, and `deploy/host/dummy-statefulset.yaml` is a stand-in that proves it.
+The renderer creates the directory so it belongs to the user, while the node containers write into it as root.
+
+| Recipe | Effect on the data directory |
+| --- | --- |
+| `just down` | stops the node containers, the data stays and `just up` starts them again |
+| `just nuke` | deletes the cluster and the registry, then empties and removes the data directory |
+
+`just nuke` can be repeated, and a run with nothing left exits 0.
+It removes only a directory that a preset in `deploy/presets/` names, and otherwise exits 4 before deleting anything.
+`WDF_DATA_DIR` names another directory for it, which makes the refusal testable and is refused for every path outside the presets.
+
 ## What each setting protects
 
 | Setting | Protects against | Doctor check |

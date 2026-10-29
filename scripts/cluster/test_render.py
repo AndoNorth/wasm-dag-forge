@@ -22,6 +22,7 @@ def render(preset, out):
         cwd=ROOT,
         env={
             "PATH": os.environ["PATH"],
+            "HOME": os.environ["HOME"],
             "WDF_RENDER_DIR": str(out),
             "WDF_HOST_MEM_KIB": str(HOST_MEM_KIB),
             "WDF_HOST_CPUS": str(HOST_CPUS),
@@ -132,3 +133,14 @@ def test_cluster_and_registry_are_named_for_the_wdf_context(preset, tmp_path):
     assert re.search(r"^name: (\S+)$", registry, re.M).group(1) in cluster
     assert "listenAddress: 127.0.0.1\n" in registry
     assert re.search(r"^image: registry:\S+@sha256:[0-9a-f]{64}$", registry, re.M)
+
+
+@pytest.mark.parametrize("preset", PRESETS)
+def test_only_the_infra_node_mounts_the_data_directory(preset, tmp_path):
+    out = render(preset, tmp_path)
+    preset_text = (ROOT / f"deploy/presets/{preset}.yaml").read_text()
+    data_dir = re.search(r"data_dir: (\S+)", preset_text).group(1)
+    data_dir = data_dir.replace("~", os.environ["HOME"], 1)
+    cluster = (out / "cluster.yaml").read_text()
+    mounts = re.findall(r"hostPath: (\S+)\n\s+containerPath: /var/local-path-provisioner", cluster)
+    assert mounts == [data_dir]
