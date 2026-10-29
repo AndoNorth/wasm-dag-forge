@@ -1,0 +1,20 @@
+name: dummy-obs
+group: obs
+namespace: wdf-obs
+artifact:
+  kind: image
+  pin: pause
+resources:
+  dummy-obs:
+    requests:
+      cpu: 10m
+      memory: 8Mi
+    limits:
+      cpu: 50m
+      memory: 16Mi
+readiness:
+  resource: deployment/dummy-obs
+  condition: Available
+profiles: [full]
+depends_on:
+  - infra/dummy-infra

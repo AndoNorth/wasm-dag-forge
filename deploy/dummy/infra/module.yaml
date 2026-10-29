@@ -1,0 +1,18 @@
+name: dummy-infra
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: pause
+resources:
+  dummy-infra:
+    requests:
+      cpu: 10m
+      memory: 8Mi
+    limits:
+      cpu: 50m
+      memory: 16Mi
+readiness:
+  resource: deployment/dummy-infra
+  condition: Available
+profiles: [minimal, dev, full, ci]
