@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/topology/topology.schema.json",
+  "title": "contracts/topology/topology.yaml",
+  "type": "object",
+  "required": ["pool_label", "taint_effect", "pools", "namespaces"],
+  "additionalProperties": false,
+  "properties": {
+    "pool_label": { "type": "string", "pattern": "^[a-z0-9.-]+/[a-z0-9-]+$" },
+    "taint_effect": { "const": "NoSchedule" },
+    "pools": {
+      "type": "object",
+      "additionalProperties": { "enum": ["infra", "obs", "compile", "simulate", "aggregate"] }
+    },
+    "namespaces": {
+      "type": "object",
+      "required": ["wdf-infra", "wdf-control", "wdf-workers", "wdf-obs"],
+      "additionalProperties": false,
+      "properties": {
+        "wdf-infra": { "$ref": "#/$defs/namespace" },
+        "wdf-control": { "$ref": "#/$defs/namespace" },
+        "wdf-workers": { "$ref": "#/$defs/namespace" },
+        "wdf-obs": { "$ref": "#/$defs/namespace" }
+      }
+    }
+  },
+  "$defs": {
+    "namespace": {
+      "type": "object",
+      "required": ["group"],
+      "additionalProperties": false,
+      "properties": { "group": { "enum": ["infra", "control", "workers", "obs"] } }
+    }
+  }
+}

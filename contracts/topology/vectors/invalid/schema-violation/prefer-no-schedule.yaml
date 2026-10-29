@@ -1,0 +1,13 @@
+pool_label: wdf.dev/pool
+taint_effect: PreferNoSchedule
+pools:
+  infra: infra
+  obs: obs
+  compile: compile
+  simulate: simulate
+  aggregate: aggregate
+namespaces:
+  wdf-infra: {group: infra}
+  wdf-control: {group: control}
+  wdf-workers: {group: workers}
+  wdf-obs: {group: obs}

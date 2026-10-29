@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/module/module.schema.json",
+  "title": "deploy/<component>/module.yaml",
+  "type": "object",
+  "required": ["name", "group", "namespace", "artifact", "resources", "readiness", "profiles"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "group": { "enum": ["infra", "control", "workers", "obs"] },
+    "namespace": { "enum": ["wdf-infra", "wdf-control", "wdf-workers", "wdf-obs"] },
+    "artifact": {
+      "type": "object",
+      "required": ["kind", "pin"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["chart", "image"] },
+        "pin": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["requests", "limits"],
+        "additionalProperties": false,
+        "properties": {
+          "requests": { "$ref": "#/$defs/quantities" },
+          "limits": { "$ref": "#/$defs/quantities" }
+        }
+      }
+    },
+    "readiness": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["command"],
+          "additionalProperties": false,
+          "properties": {
+            "command": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["resource", "condition"],
+          "additionalProperties": false,
+          "properties": {
+            "resource": { "type": "string", "pattern": "^[a-z]+/[a-z][a-z0-9-]*$" },
+            "condition": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["minimal", "dev", "full", "ci"] }
+    },
+    "depends_on": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(infra|control|workers|obs)/[a-z][a-z0-9-]*$" }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "group": { "const": "infra" } } }, "then": { "properties": { "namespace": { "const": "wdf-infra" } } } },
+    { "if": { "properties": { "group": { "const": "control" } } }, "then": { "properties": { "namespace": { "const": "wdf-control" } } } },
+    { "if": { "properties": { "group": { "const": "workers" } } }, "then": { "properties": { "namespace": { "const": "wdf-workers" } } } },
+    { "if": { "properties": { "group": { "const": "obs" } } }, "then": { "properties": { "namespace": { "const": "wdf-obs" } } } }
+  ],
+  "$defs": {
+    "quantities": {
+      "type": "object",
+      "required": ["cpu", "memory"],
+      "additionalProperties": false,
+      "properties": {
+        "cpu": { "type": "string", "pattern": "^([0-9]+m|[0-9]+(\\.[0-9]+)?)$" },
+        "memory": { "type": "string", "pattern": "^[0-9]+(Mi|Gi)$" }
+      }
+    }
+  }
+}

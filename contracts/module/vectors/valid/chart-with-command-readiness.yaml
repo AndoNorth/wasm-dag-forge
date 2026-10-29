@@ -1,0 +1,13 @@
+name: vector
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: chart
+  pin: fixture-chart
+resources:
+  vector:
+    requests: {cpu: 50m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 32Mi}
+readiness:
+  command: [kubectl, rollout, status, statefulset/vector]
+profiles: [minimal, dev, full, ci]
