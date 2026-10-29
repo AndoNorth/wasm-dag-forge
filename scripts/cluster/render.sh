@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Renders the ctlptl cluster and registry files and one kubelet patch per node from a preset, without starting anything.
-# Usage: render.sh <preset>. Writes <dir>/<preset>/{cluster.yaml,registry.yaml,limits.yaml,kubelet-<role>-<n>.yaml} and
-# prints the directory. The kind cluster is always named wdf, so every preset renders the same context and container names.
+# Usage: render.sh <preset>. Writes <dir>/<preset>/{cluster.yaml,registry.yaml,limits.yaml,patches/<node>/*.yaml} and
+# prints the directory. WDF_HOST_MEM_KIB and WDF_HOST_CPUS override the host size read from the docker daemon. The kind cluster is always named wdf, so every preset renders the same context and container names.
 # The directory is WDF_RENDER_DIR, or a cache directory outside the tree, because the output holds ctlptl, kubeadm and
 # kubelet documents that the repo's manifest lint has no schema for.
 # Exit 0 rendered, 1 the preset or a table is invalid, 2 usage.
@@ -36,6 +36,11 @@ SYSTEM_RESERVED_CPU=100m
 # kind patches a kubeadm document only when the patch carries the apiVersion kind generated for the node image, and it
 # ignores a mismatch silently. v1beta3 is what kind generates for the pinned node image, and up.sh checks the labels.
 KUBEADM_API=kubeadm.k8s.io/v1beta3
+PATCH_DIR=/etc/wdf-patches
+
+# The kubelet sizes a node from the host that runs the node containers, so the same host figures decide the reservation.
+host_mem_kib=${WDF_HOST_MEM_KIB:-$(docker info --format '{{.MemTotal}}' | awk '{ print int($1 / 1024) }')}
+host_cpus=${WDF_HOST_CPUS:-$(docker info --format '{{.NCPU}}')}
 
 out=${WDF_RENDER_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/wasm-dag-forge/cluster}/$name
 rm -rf "$out"
@@ -43,7 +48,7 @@ mkdir -p "$out"
 
 # Hard limits of every node container, one entry per kind node in kind's own naming order (control-plane, worker,
 # worker2, ...). Memory swap equals memory, so no node can grow past its declared size. kind has no limit setting,
-# so the cluster step applies this file with docker update before the nodes join.
+# so limits.sh applies this file with docker update once the nodes exist.
 limits_head() { printf 'cluster: wdf\nnodes:\n'; }
 limit_entry() { # <kind node name> <role> <cpus> <memory_mib>
     printf '  - container: wdf-%s\n    role: %s\n    cpus: %s\n    memory_mib: %s\n    memory_swap_mib: %s\n' \
@@ -54,28 +59,38 @@ kind_index=0
 
 indent() { sed 's/^/          /'; }
 
-# kubelet_patch <role> <memory_mib>: the kubelet configuration and the kubeadm registration of one node.
-# The eviction threshold follows the rule in contracts/preset/README.md.
+# kubelet_patch <memory_mib> <cpus>: the per-node kubelet configuration, applied by kubeadm as a merge patch because a
+# joining node otherwise takes the control plane's kubelet configuration.
+# The eviction threshold follows the rule in contracts/preset/README.md. The kubelet reads capacity from the host, not
+# from the container limit, so the rest of the host is reserved and allocatable equals the node size minus the threshold.
+# A node larger than the host reserves nothing, because up.sh refuses a preset the host cannot hold.
 kubelet_patch() {
-    local role=$1 mem=$2 reserved=$((256 + ($2 + 15) / 16))
+    local reserved=$((256 + ($1 + 15) / 16))
+    local mem_gap=$((host_mem_kib - $1 * 1024)) cpu_gap
+    cpu_gap=$(awk -v host="$host_cpus" -v node="$2" -v base="${SYSTEM_RESERVED_CPU%m}" \
+        'BEGIN { gap = (host - node) * 1000; if (gap < 0) gap = 0; print gap + base }')
     cat <<PATCH
-apiVersion: kubelet.config.k8s.io/v1beta1
-kind: KubeletConfiguration
 systemReserved:
-  cpu: $SYSTEM_RESERVED_CPU
+  cpu: ${cpu_gap}m
+  memory: $((mem_gap > 0 ? mem_gap : 0))Ki
 evictionHard:
   memory.available: ${reserved}Mi
----
 PATCH
-    if [ "$role" = control-plane ]; then
-        printf 'apiVersion: %s\nkind: InitConfiguration\n' "$KUBEADM_API"
+}
+
+# kubeadm_patch <role>: the kubeadm registration of one node, with the directory holding its kubelet patch.
+kubeadm_patch() {
+    if [ "$1" = control-plane ]; then
+        printf 'apiVersion: %s\nkind: InitConfiguration\npatches:\n  directory: %s\n' "$KUBEADM_API" "$PATCH_DIR"
         return
     fi
     local pool
-    pool=$(yq ".pools.$role" contracts/topology/topology.yaml)
+    pool=$(yq ".pools.$1" contracts/topology/topology.yaml)
     cat <<PATCH
 apiVersion: $KUBEADM_API
 kind: JoinConfiguration
+patches:
+  directory: $PATCH_DIR
 nodeRegistration:
   kubeletExtraArgs:
     node-labels: $pool_label=$pool
@@ -107,7 +122,8 @@ HEAD
                 kind_index=$((kind_index + 1))
             fi
             limit_entry "$kind_name" "$role" "$cpus" "$mem" >>"$out/limits.yaml"
-            kubelet_patch "$role" "$mem" >"$out/kubelet-$role-$n.yaml"
+            mkdir -p "$out/patches/$kind_name"
+            kubelet_patch "$mem" "$cpus" >"$out/patches/$kind_name/kubeletconfiguration+merge.yaml"
             cat <<NODE
     - role: $([ "$role" = control-plane ] && echo control-plane || echo worker)
       image: $image
@@ -118,9 +134,11 @@ NODE
                     yq '.ports[] | "        - containerPort: " + (.node_port | tostring) + "\n          hostPort: " + (.host_port | tostring) + "\n          listenAddress: 127.0.0.1\n          protocol: TCP"' "$ports"
                 }
             fi
+            printf '      extraMounts:\n        - hostPath: %s\n          containerPath: %s\n          readOnly: true\n' \
+                "$out/patches/$kind_name" "$PATCH_DIR"
             echo "      kubeadmConfigPatches:"
             echo "        - |"
-            indent <"$out/kubelet-$role-$n.yaml"
+            kubeadm_patch "$role" | indent
         done
     done < <(yq '.nodes | sort_by(.role == "control-plane" | not) | .[] | .role + " " + .count + " " + .memory_mib + " " + .cpus' "$preset")
 } >"$out/cluster.yaml"

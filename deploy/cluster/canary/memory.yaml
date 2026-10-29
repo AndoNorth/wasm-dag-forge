@@ -1,0 +1,23 @@
+# Allocates without a limit of its own, so only the node's memory limit can stop it.
+# It tolerates memory pressure and carries a request, so it is still admitted in the minutes after an earlier kill.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: canary-memory
+  namespace: wdf-canary
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    wdf.dev/pool: obs
+  tolerations:
+    - key: wdf.dev/pool
+      operator: Exists
+    - key: node.kubernetes.io/memory-pressure
+      operator: Exists
+  containers:
+    - name: hog
+      image: localhost:5001/canary:pinned
+      command: ["tail", "/dev/zero"]
+      resources:
+        requests:
+          memory: 16Mi

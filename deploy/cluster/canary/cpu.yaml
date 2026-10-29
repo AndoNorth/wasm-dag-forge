@@ -1,0 +1,23 @@
+# Two spinners on a half-cpu node, so the node's cpu limit must throttle them.
+# It tolerates memory pressure and carries a request, so it is still admitted in the minutes after the memory canary.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: canary-cpu
+  namespace: wdf-canary
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    wdf.dev/pool: obs
+  tolerations:
+    - key: wdf.dev/pool
+      operator: Exists
+    - key: node.kubernetes.io/memory-pressure
+      operator: Exists
+  containers:
+    - name: spin
+      image: localhost:5001/canary:pinned
+      command: ["sh", "-c", "while :; do :; done & while :; do :; done"]
+      resources:
+        requests:
+          cpu: 10m
