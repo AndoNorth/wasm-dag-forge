@@ -16,7 +16,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "scripts/tilt/fixtures"
 MODULES = ROOT / "deploy/tilt/fixtures/modules"
-VERSIONS = ROOT / "deploy/tilt/fixtures/versions.yaml"
 PROFILES = yaml.safe_load((ROOT / "deploy/tilt/profiles.yaml").read_text())["profiles"]
 
 pytestmark = pytest.mark.skipif(shutil.which("tilt") is None, reason="tilt not on PATH")
@@ -26,7 +25,7 @@ def tiltfile_result(profile="ci", kubeconfig="kubeconfig-wdf.yaml", modules=MODU
     return subprocess.run(
         [
             "tilt", "alpha", "tiltfile-result", "--",
-            "--profile", profile, "--modules_dir", str(modules), "--versions", str(VERSIONS),
+            "--profile", profile, "--modules_dir", str(modules),
         ],
         cwd=ROOT,
         env={**os.environ, "KUBECONFIG": str(FIXTURES / kubeconfig)},

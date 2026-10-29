@@ -3,19 +3,16 @@
 # and a profile from deploy/tilt/profiles.yaml decides which modules are enabled.
 #
 # Tilt treats every kind-* context as local, so the guard below pins the one cluster this repository owns.
-# `register(module)` in each Tiltfile.module creates the module's resources with the module's group as label,
-# and `module['resource_deps']` lists the enabled resources it waits for.
+# Each Tiltfile.module registers its own resources, labelled with the module's group.
 
 CONTEXT = 'kind-wdf'
 
 config.define_string('profile')
 config.define_string('modules_dir')
-config.define_string('versions')
 cfg = config.parse()
 
 profile = cfg.get('profile', 'ci')
 modules_dir = cfg.get('modules_dir', 'deploy')
-versions = cfg.get('versions', 'deploy/versions.yaml')
 
 if k8s_context() != CONTEXT:
     fail('refusing context %s, only %s is allowed' % (k8s_context(), CONTEXT))
@@ -25,17 +22,17 @@ if profile not in profiles:
     fail('unknown profile %s, expected one of %s' % (profile, sorted(profiles.keys())))
 groups = profiles[profile]['groups']
 
-# One level only, so fixtures nested under deploy/tilt are never picked up as components.
+# Components sit at most two levels down (deploy/dummy/<group>), so fixtures under deploy/tilt are skipped.
 root = os.path.abspath(modules_dir) + '/'
 manifests = sorted([
     f for f in listdir(modules_dir, recursive=True)
-    if f.endswith('/module.yaml') and f.startswith(root) and f[len(root):].count('/') == 1
+    if f.endswith('/module.yaml') and f.startswith(root) and f[len(root):].count('/') in [1, 2]
 ])
 
 modules = []
 for path in manifests:
     # The loader exits non-zero with `reason: <code>: <detail>`, which local() reports in the failure.
-    local(['contracts/module/check.sh', path], env={'WDF_VERSIONS': versions}, quiet=True)
+    local(['contracts/module/check.sh', path], quiet=True)
     module = read_yaml(path)
     module['dir'] = path[:-len('/module.yaml')]
     if module['group'] in groups and profile in module['profiles']:
@@ -47,7 +44,6 @@ for module in modules:
     missing = [d for d in deps if d not in enabled]
     if missing:
         fail('module %s depends on %s, which profile %s does not enable' % (module['name'], missing, profile))
-    module['resource_deps'] = deps
-    load_dynamic(module['dir'] + '/Tiltfile.module')['register'](module)
+    load_dynamic(module['dir'] + '/Tiltfile.module')
 
 config.set_enabled_resources(enabled)

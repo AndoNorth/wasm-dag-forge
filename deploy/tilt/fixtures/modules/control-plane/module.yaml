@@ -1,7 +1,7 @@
 name: control-plane
 group: control
 namespace: wdf-control
-artifact: {kind: image, pin: fixture-image}
+artifact: {kind: image, pin: pause}
 resources:
   control-plane:
     requests: {cpu: 50m, memory: 16Mi}

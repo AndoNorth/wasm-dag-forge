@@ -1,7 +1,8 @@
-def register(module):
-    local_resource(
-        module['name'],
-        cmd='true',
-        labels=[module['group']],
-        resource_deps=module["resource_deps"],
-    )
+module = read_yaml('module.yaml')
+
+local_resource(
+    module['name'],
+    cmd='true',
+    labels=[module['group']],
+    resource_deps=[d.split('/')[1] for d in module.get('depends_on', [])],
+)
