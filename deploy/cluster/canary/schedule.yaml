@@ -1,0 +1,23 @@
+# Requests more memory than the obs node can allocate, so the scheduler must leave it Pending.
+# It tolerates memory pressure, which the node reports for minutes after the memory canary, so the reason stays memory.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: canary-schedule
+  namespace: wdf-canary
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    wdf.dev/pool: obs
+  tolerations:
+    - key: wdf.dev/pool
+      operator: Exists
+    - key: node.kubernetes.io/memory-pressure
+      operator: Exists
+  containers:
+    - name: idle
+      image: localhost:5001/canary:pinned
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          memory: 600Mi

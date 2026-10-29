@@ -12,13 +12,20 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 PRESETS = ["ci", "dev", "soak"]
+HOST_MEM_KIB = 8133348
+HOST_CPUS = 6
 
 
 def render(preset, out):
     run = subprocess.run(
         [ROOT / "scripts/cluster/render.sh", preset],
         cwd=ROOT,
-        env={"PATH": os.environ["PATH"], "WDF_RENDER_DIR": str(out)},
+        env={
+            "PATH": os.environ["PATH"],
+            "WDF_RENDER_DIR": str(out),
+            "WDF_HOST_MEM_KIB": str(HOST_MEM_KIB),
+            "WDF_HOST_CPUS": str(HOST_CPUS),
+        },
         capture_output=True,
         text=True,
     )
@@ -27,7 +34,12 @@ def render(preset, out):
 
 
 def tree(path):
-    return {p.name: p.read_text() for p in sorted(path.iterdir())}
+    # The mounts name the output directory, which differs between two renders into different places.
+    return {
+        str(p.relative_to(path)): p.read_text().replace(str(path), "@OUT@")
+        for p in sorted(path.rglob("*"))
+        if p.is_file()
+    }
 
 
 def preset_nodes(preset):
@@ -52,16 +64,44 @@ def test_every_node_is_rendered_from_the_preset(preset, tmp_path):
 
     patches = re.findall(r"kubeadmConfigPatches:\n        - \|\n((?:          .*\n)+)", cluster)
     assert len(patches) == len(want)
-    assert len(list(out.glob("kubelet-*.yaml"))) == len(want)
-    for patch, (role, mem, _) in zip(patches, want, strict=True):
-        assert f"memory.available: {256 + -(-mem // 16)}Mi\n" in patch
-        assert "systemReserved:\n            cpu:" in patch
+    assert len(list(out.glob("patches/*/kubeletconfiguration+merge.yaml"))) == len(want)
+    mounts = re.findall(r"hostPath: (\S+)\n          containerPath: /etc/wdf-patches\n", cluster)
+    assert len(mounts) == len(want)
+    for patch, (role, _, _) in zip(patches, want, strict=True):
+        assert "apiVersion: kubeadm.k8s.io/v1beta3\n" in patch
+        assert "patches:\n            directory: /etc/wdf-patches\n" in patch
         if role == "control-plane":
             assert "kind: InitConfiguration" in patch
         else:
             assert f"node-labels: wdf.dev/pool={role}\n" in patch
-            assert "apiVersion: kubeadm.k8s.io/v1beta3\n" in patch
             assert f"value: {role}\n                effect: NoSchedule" in patch
+
+
+@pytest.mark.parametrize("preset", PRESETS)
+def test_allocatable_is_node_size_minus_the_eviction_threshold(preset, tmp_path):
+    out = render(preset, tmp_path)
+    want = sorted(preset_nodes(preset), key=lambda n: n[0] != "control-plane")
+    kind_names = ["control-plane", "worker"] + [f"worker{i}" for i in range(2, len(want))]
+    for kind_name, (_, mem, cpus) in zip(kind_names, want, strict=True):
+        patch = (out / "patches" / kind_name / "kubeletconfiguration+merge.yaml").read_text()
+        evict = 256 + -(-mem // 16)
+        assert f"memory.available: {evict}Mi\n" in patch
+        reserved_kib = int(re.search(r"memory: (\d+)Ki", patch).group(1))
+        reserved_milli = int(re.search(r"cpu: (\d+)m", patch).group(1))
+        if mem * 1024 <= HOST_MEM_KIB:
+            assert HOST_MEM_KIB - reserved_kib - evict * 1024 == (mem - evict) * 1024
+        else:
+            assert reserved_kib == 0
+        if float(cpus) <= HOST_CPUS:
+            assert HOST_CPUS * 1000 - reserved_milli == float(cpus) * 1000 - 100
+        else:
+            assert reserved_milli == 100
+
+
+def test_the_canary_verdict_never_depends_on_the_oomkilled_reason():
+    lines = (ROOT / "scripts/cluster/canary.sh").read_text().splitlines()
+    code = [line for line in lines if not line.lstrip().startswith("#")]
+    assert [line for line in code if "OOMKilled" in line] == []
 
 
 @pytest.mark.parametrize("preset", PRESETS)

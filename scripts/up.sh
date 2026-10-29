@@ -42,6 +42,7 @@ stopped=$(docker ps -aq --filter label=io.x-k8s.kind.cluster=wdf --filter status
 [ -z "$stopped" ] || { echo "starting stopped node containers: $stopped"; docker start $stopped >/dev/null; }
 
 ctlptl apply -f "$out/registry.yaml" -f "$out/cluster.yaml"
+scripts/cluster/limits.sh "$out/limits.yaml"
 
 want=$(yq '.nodes[].count' "deploy/presets/$preset.yaml" | awk '{ n += $1 } END { print n }')
 kubectl --context "$context" wait --for=condition=Ready node --all --timeout=300s
@@ -57,4 +58,5 @@ labelled=$(kubectl --context "$context" get nodes -l "$pool_label" --no-headers 
 }
 running=$(docker ps -q --filter label=io.x-k8s.kind.cluster=wdf --filter status=running | wc -l)
 [ "$running" -eq "$want" ] || { echo "cluster wdf has $running running node containers, preset $preset has $want" >&2; exit 1; }
+scripts/cluster/allocatable.sh "$out/limits.yaml" || exit 1
 echo "cluster wdf ready: preset $preset, $got nodes"
