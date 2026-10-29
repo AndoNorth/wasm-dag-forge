@@ -1,0 +1,39 @@
+name: kind-smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Setting the repository variable CI_ENABLED to false skips this job.
+  # A commit message containing [skip ci] also skips runs natively.
+  kind-smoke:
+    if: ${{ vars.CI_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WDF_PRESET: ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - name: Runner size
+        run: |
+          nproc
+          grep -E '^(MemTotal|MemAvailable):' /proc/meminfo
+          free -m
+      - run: nix develop -c just up
+      - name: Export cluster logs
+        if: ${{ failure() }}
+        run: nix develop -c kind export logs --name wdf "$RUNNER_TEMP/cluster-logs"
+      - name: Upload cluster logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-logs
+          path: ${{ runner.temp }}/cluster-logs
+          if-no-files-found: ignore
+      - run: nix develop -c just down
