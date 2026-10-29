@@ -1,0 +1,89 @@
+# Namespaces and LimitRanges of the topology contract. The ResourceQuotas are rendered from the preset by
+# scripts/cluster/namespaces.sh, because their numbers follow the node sizes.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wdf-infra
+  labels:
+    wdf.dev/group: infra
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: wdf-infra
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        cpu: 100m
+        memory: 128Mi
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wdf-control
+  labels:
+    wdf.dev/group: control
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: wdf-control
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        cpu: 100m
+        memory: 128Mi
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wdf-workers
+  labels:
+    wdf.dev/group: workers
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: wdf-workers
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        cpu: 100m
+        memory: 128Mi
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wdf-obs
+  labels:
+    wdf.dev/group: obs
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: wdf-obs
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        cpu: 100m
+        memory: 128Mi
