@@ -2,11 +2,12 @@
 # Proves the node limits are real, with the pods in deploy/cluster/canary on the obs node, the smallest one.
 #   memory    a pod that allocates past the node limit exits 137 and the node's memory.events oom_kill rises
 #   schedule  a pod requesting more than allocatable stays Pending with Insufficient memory
+#   pool      a pod selecting the obs pool without the toleration stays Pending on the taint, and one with it runs there
 #   cpu       a spinner on the half-cpu node is throttled, so cpu.stat nr_throttled rises
 # An OOM is detected by exit code 137 and the node's memory.events, never by the OOMKilled reason, which a pod at the
 # limit does not always carry. memory.events max is reported next to oom_kill, because a process stalled at the limit
 # raises max without a kill.
-# Usage: canary.sh [memory|schedule|cpu|all]. Exit 0 every requested canary passed, 1 one failed, 2 usage.
+# Usage: canary.sh [memory|schedule|pool|cpu|all]. Exit 0 every requested canary passed, 1 one failed, 2 usage.
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$root"
@@ -14,7 +15,7 @@ cd "$root"
 source scripts/verify/cluster/lib/tools.sh
 
 which=${1:-all}
-case $which in memory | schedule | cpu | all) ;; *) echo "usage: canary.sh [memory|schedule|cpu|all]" >&2; exit 2 ;; esac
+case $which in memory | schedule | pool | cpu | all) ;; *) echo "usage: canary.sh [memory|schedule|pool|cpu|all]" >&2; exit 2 ;; esac
 context=${WDF_CONTEXT:-kind-wdf}
 ns=wdf-canary
 k() { kubectl --context "$context" "$@"; }
@@ -77,6 +78,26 @@ schedule() {
     k -n "$ns" delete pod canary-schedule --wait=false >/dev/null
 }
 
+pool() {
+    local msg='' phase placed
+    k apply -f deploy/cluster/canary/pool-untolerated.yaml -f deploy/cluster/canary/pool-tolerated.yaml >/dev/null
+    for _ in $(seq 60); do
+        msg=$(k -n "$ns" get events --field-selector involvedObject.name=canary-pool-untolerated,reason=FailedScheduling \
+            -o jsonpath='{.items[0].message}')
+        [ -z "$msg" ] || break
+        sleep 1
+    done
+    phase=$(k -n "$ns" get pod canary-pool-untolerated -o jsonpath='{.status.phase}')
+    echo "scheduler event: ${msg:-none}"
+    verdict pool-untolerated-pending "$([ "$phase" = Pending ] && echo 0 || echo 1)" "pod without the toleration is $phase, expected Pending"
+    verdict pool-untolerated-taint "$([[ $msg == *"untolerated taint"* ]] && echo 0 || echo 1)" "FailedScheduling names the untolerated taint"
+    k -n "$ns" wait --for=condition=Ready pod/canary-pool-tolerated --timeout=120s >/dev/null || true
+    placed=$(k -n "$ns" get pod canary-pool-tolerated -o jsonpath='{.spec.nodeName}')
+    echo "tolerating pod placed on: ${placed:-none}"
+    verdict pool-tolerated-placed "$([ "$placed" = "$node" ] && echo 0 || echo 1)" "pod with the toleration and selector runs on $node"
+    k -n "$ns" delete pod canary-pool-untolerated canary-pool-tolerated --wait=false >/dev/null
+}
+
 cpu() {
     local before after
     before=$(counter cpu.stat nr_throttled)
@@ -90,5 +111,5 @@ cpu() {
 }
 
 # The memory canary runs last: the node then reports memory pressure for several minutes.
-if [ "$which" = all ]; then schedule; cpu; memory; else "$which"; fi
+if [ "$which" = all ]; then schedule; pool; cpu; memory; else "$which"; fi
 exit $fail
