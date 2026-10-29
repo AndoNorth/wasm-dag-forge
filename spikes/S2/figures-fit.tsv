@@ -1,0 +1,9 @@
+# name	namespace	pool	cpu	memory_mib
+# The largest stand-ins the shipped ci nodes can admit: Temporal at its measured steady 686 MiB plus 32 MiB, the infra
+# node allocatable of 2144 MiB shared with the other two, and the compile and aggregate slots cut to the allocatable of
+# their node after the per-node daemon requests (890 MiB and 800m).
+temporal	wdf-infra	infra	1	718
+temporal-postgres	wdf-infra	infra	0.5	1056
+objstore	wdf-infra	infra	0.1	298
+compile	wdf-workers	compile	0.8	890
+aggregate	wdf-workers	aggregate	0.8	890
