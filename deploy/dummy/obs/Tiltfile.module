@@ -1,0 +1,30 @@
+# Dummy obs module: one pause deployment sized from module.yaml, registered as the obs resource group.
+module = read_yaml("module.yaml")
+pin = read_yaml("../../versions.yaml")["images"][module["artifact"]["pin"]]
+name = module["name"]
+res = module["resources"][name]
+labels = {"app": name}
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {"name": name, "namespace": module["namespace"]},
+    "spec": {
+        "replicas": 1,
+        "selector": {"matchLabels": labels},
+        "template": {
+            "metadata": {"labels": labels},
+            "spec": {"containers": [{
+                "name": name,
+                "image": "registry.k8s.io/pause@" + pin["digest"],
+                "resources": res,
+            }]},
+        },
+    },
+}))
+
+k8s_resource(
+    name,
+    labels = [module["group"]],
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])],
+)

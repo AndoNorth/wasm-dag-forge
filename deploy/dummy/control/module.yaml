@@ -1,0 +1,20 @@
+name: dummy-control
+group: control
+namespace: wdf-control
+artifact:
+  kind: image
+  pin: pause
+resources:
+  dummy-control:
+    requests:
+      cpu: 10m
+      memory: 8Mi
+    limits:
+      cpu: 50m
+      memory: 16Mi
+readiness:
+  resource: deployment/dummy-control
+  condition: Available
+profiles: [minimal, dev, full, ci]
+depends_on:
+  - infra/dummy-infra

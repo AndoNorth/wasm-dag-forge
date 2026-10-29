@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[4]
 # Each contract with the real files that must also load: the presets and the pinned table.
 CONTRACTS = {
     "contracts/preset": "deploy/presets/*.yaml",
-    "contracts/module": "deploy/*/module.yaml",
+    "contracts/module": "deploy/**/module.yaml",
     "contracts/topology": "contracts/topology/topology.yaml",
 }
 

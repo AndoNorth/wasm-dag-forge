@@ -1,0 +1,20 @@
+name: dummy-workers
+group: workers
+namespace: wdf-workers
+artifact:
+  kind: image
+  pin: pause
+resources:
+  dummy-workers:
+    requests:
+      cpu: 10m
+      memory: 8Mi
+    limits:
+      cpu: 50m
+      memory: 16Mi
+readiness:
+  resource: deployment/dummy-workers
+  condition: Available
+profiles: [minimal, dev, full, ci]
+depends_on:
+  - control/dummy-control
