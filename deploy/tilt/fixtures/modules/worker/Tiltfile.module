@@ -1,0 +1,7 @@
+def register(module):
+    local_resource(
+        module['name'],
+        cmd='true',
+        labels=[module['group']],
+        resource_deps=module["resource_deps"],
+    )
