@@ -19,3 +19,7 @@ images:
     version: "1.37"
     # yamllint disable-line rule:line-length
     digest: sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+  wheelhouse:
+    version: "1.37"
+    # yamllint disable-line rule:line-length
+    digest: sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec

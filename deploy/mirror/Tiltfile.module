@@ -1,0 +1,74 @@
+# Package mirror module: a static file server for the wheelhouse directory, registered as an infra resource.
+# The compile pool installs from it with --no-index --find-links and --require-hashes, so no pool needs package egress.
+module = read_yaml("module.yaml")
+pin = read_yaml("../versions.yaml")["images"][module["artifact"]["pin"]]
+name = module["name"]
+res = module["resources"][name]
+labels = {"app": name}
+topology = read_yaml("../../contracts/topology/topology.yaml")
+pool = {"key": topology["pool_label"], "value": "infra"}
+
+# Wheels are binary, so each file is base64 encoded into binaryData and the index page stays text.
+watch_file("wheelhouse")
+text = {}
+binary = {}
+for path in listdir("wheelhouse"):
+    file = os.path.basename(path)
+    if file.endswith(".whl"):
+        binary[file] = str(local(["base64", "-w0", path], quiet = True)).strip()
+    else:
+        text[file] = str(read_file(path))
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {"name": name + "-wheelhouse", "namespace": module["namespace"]},
+    "data": text,
+    "binaryData": binary,
+}))
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {"name": name, "namespace": module["namespace"]},
+    "spec": {
+        "replicas": 1,
+        "selector": {"matchLabels": labels},
+        "template": {
+            "metadata": {"labels": labels},
+            "spec": {
+                "nodeSelector": {pool["key"]: pool["value"]},
+                "tolerations": [{
+                    "key": pool["key"],
+                    "operator": "Equal",
+                    "value": pool["value"],
+                    "effect": topology["taint_effect"],
+                }],
+                "containers": [{
+                    "name": name,
+                    "image": "docker.io/library/busybox@" + pin["digest"],
+                    "command": ["httpd", "-f", "-p", "8080", "-h", "/wheelhouse"],
+                    "ports": [{"containerPort": 8080}],
+                    "readinessProbe": {"httpGet": {"path": "/", "port": 8080}},
+                    "resources": res,
+                    "volumeMounts": [{"name": "wheelhouse", "mountPath": "/wheelhouse", "readOnly": True}],
+                }],
+                "volumes": [{"name": "wheelhouse", "configMap": {"name": name + "-wheelhouse"}}],
+            },
+        },
+    },
+}))
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "v1",
+    "kind": "Service",
+    "metadata": {"name": name, "namespace": module["namespace"]},
+    "spec": {"selector": labels, "ports": [{"port": 80, "targetPort": 8080}]},
+}))
+
+k8s_resource(
+    name,
+    objects = [name + "-wheelhouse:configmap:" + module["namespace"]],
+    labels = [module["group"]],
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])],
+)
