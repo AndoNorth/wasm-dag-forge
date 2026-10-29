@@ -1,0 +1,10 @@
+name: store
+group: infra
+namespace: wdf-infra
+artifact: {kind: image, pin: pause}
+resources:
+  store:
+    requests: {cpu: 50m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 32Mi}
+readiness: {command: ['true']}
+profiles: [minimal, dev, full, ci]

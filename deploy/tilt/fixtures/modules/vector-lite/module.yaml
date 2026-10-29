@@ -1,0 +1,10 @@
+name: vector-lite
+group: obs
+namespace: wdf-obs
+artifact: {kind: image, pin: pause}
+resources:
+  vector-lite:
+    requests: {cpu: 50m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 32Mi}
+readiness: {command: ['true']}
+profiles: [ci]
