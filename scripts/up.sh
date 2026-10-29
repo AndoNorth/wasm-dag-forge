@@ -39,7 +39,15 @@ fi
 # A node container that exited is started again, because the API server keeps reporting its node Ready for a while.
 stopped=$(docker ps -aq --filter label=io.x-k8s.kind.cluster=wdf --filter status=exited --filter status=created)
 # shellcheck disable=SC2086
-[ -z "$stopped" ] || { echo "starting stopped node containers: $stopped"; docker start $stopped >/dev/null; }
+# ctlptl recreates a cluster whose API server does not answer, so a restarted cluster is waited for before it is applied.
+if [ -n "$stopped" ]; then
+    echo "starting stopped node containers: $stopped"
+    docker start $stopped >/dev/null
+    for _ in $(seq 120); do
+        kubectl --context "$context" get --raw /readyz >/dev/null 2>&1 && break
+        sleep 1
+    done
+fi
 
 ctlptl apply -f "$out/registry.yaml" -f "$out/cluster.yaml"
 scripts/cluster/limits.sh "$out/limits.yaml"
