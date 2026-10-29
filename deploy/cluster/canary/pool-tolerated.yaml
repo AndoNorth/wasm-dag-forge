@@ -1,0 +1,19 @@
+# Selects the obs pool and tolerates its taint, so the scheduler must place it on the obs node.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: canary-pool-tolerated
+  namespace: wdf-canary
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    wdf.dev/pool: obs
+  tolerations:
+    - key: wdf.dev/pool
+      operator: Equal
+      value: obs
+      effect: NoSchedule
+  containers:
+    - name: idle
+      image: localhost:5001/canary:pinned
+      command: ["sleep", "3600"]

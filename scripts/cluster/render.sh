@@ -19,6 +19,8 @@ preset=deploy/presets/$name.yaml
 contracts/preset/check.sh "$preset" >&2 || exit 1
 contracts/topology/check.sh contracts/topology/topology.yaml >&2 || exit 1
 
+scripts/cluster/slots.sh "$name" >&2 || exit 1
+
 ports=$(yq '.host.ports' "$preset")
 if [ -f "$ports" ]; then
     contracts/preset/check.sh "$ports" >&2 || exit 1
