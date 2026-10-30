@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "ManifestReference": {
+      "additionalProperties": false,
+      "description": "A manifest reference, a subset of contracts/artifact/reference.schema.json.",
+      "properties": {
+        "kind": {
+          "const": "manifest",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-sources/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "ManifestReference",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:job.accepted:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Data of dev.wdf.job.accepted.v1: a pointer to the job and never the job.",
+  "properties": {
+    "batch_id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Batch Id",
+      "type": "string"
+    },
+    "manifest": {
+      "$ref": "#/$defs/ManifestReference"
+    },
+    "submission_key": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Submission Key",
+      "type": "string"
+    }
+  },
+  "required": [
+    "manifest",
+    "batch_id",
+    "submission_key"
+  ],
+  "title": "job.accepted 1.0",
+  "type": "object"
+}

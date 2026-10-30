@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Artifact reference",
+  "description": "A pointer to an object in a bucket. It never holds bytes, and the consumer verifies sha256 and size against the object.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["uri", "sha256", "size", "name", "kind"],
+  "properties": {
+    "uri": {
+      "type": "string",
+      "pattern": "^s3://wdf-(sources|components|results|checkpoints)/.+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^/]+$"
+    },
+    "kind": {
+      "enum": [
+        "manifest",
+        "source",
+        "index",
+        "component",
+        "build-info",
+        "result",
+        "summary",
+        "output",
+        "log-tail",
+        "checkpoint"
+      ]
+    },
+    "producer": {
+      "description": "The attempt that wrote the object, present for the attempt-scoped kinds only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job", "task", "attempt"],
+      "properties": {
+        "job": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "task": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$"
+        },
+        "attempt": {
+          "description": "An attempt identity as the key formulas define it.",
+          "type": "string",
+          "pattern": "^r[0-9]+a[0-9]+$"
+        }
+      }
+    }
+  },
+  "if": {
+    "required": ["kind"],
+    "properties": {
+      "kind": {
+        "enum": ["result", "summary", "output", "log-tail", "checkpoint"]
+      }
+    }
+  },
+  "then": {
+    "required": ["producer"]
+  },
+  "else": {
+    "not": {
+      "required": ["producer"]
+    }
+  }
+}

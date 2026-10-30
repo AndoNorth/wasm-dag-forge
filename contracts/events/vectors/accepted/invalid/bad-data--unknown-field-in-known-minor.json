@@ -1,0 +1,27 @@
+{
+  "data": {
+    "batch_id": "20e38fea-a41a-57cd-b87a-f6711349a05d",
+    "manifest": {
+      "kind": "manifest",
+      "name": "manifest.json",
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "size": 2048,
+      "uri": "s3://wdf-sources/sha256/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    },
+    "submission_key": "sub-1",
+    "unexpected": "x"
+  },
+  "datacontenttype": "application/json",
+  "dataschema": "urn:wdf:schema:job.accepted:1.0",
+  "id": "1a904ce2-1dda-528a-b07a-ce4b518079a7",
+  "jobclass": "simulate",
+  "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "priorityclass": "standard",
+  "source": "/wdf/dispatch",
+  "specversion": "1.0",
+  "subject": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "tenant": "acme",
+  "time": "2026-10-30T12:00:00.000000Z",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "type": "dev.wdf.job.accepted.v1"
+}
