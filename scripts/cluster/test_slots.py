@@ -36,3 +36,16 @@ def test_unequal_requests_are_refused():
         target.write_text(original)
     assert run.returncode == 1
     assert "differs from limit" in run.stderr
+
+
+def test_slot_that_fits_the_allocatable_but_not_after_daemons_is_refused():
+    # 1,160 MiB fits the 1,184 MiB allocatable but not the 1,134 MiB left after daemons.
+    target = ROOT / "deploy/presets/slots/ci.yaml"
+    original = target.read_text()
+    try:
+        target.write_text(original.replace("memory: 1Gi", "memory: 1160Mi"))
+        run = slots("ci")
+    finally:
+        target.write_text(original)
+    assert run.returncode == 1
+    assert "DOES NOT FIT" in run.stdout

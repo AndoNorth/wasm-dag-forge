@@ -1,32 +1,37 @@
+# The developer WSL VM with 16 GiB, total about 10 GiB, with the infra node trimmed to 4 GiB.
+# Node sizes are hard container limits, and a node never exceeds its size.
+# Figures follow docs/spikes/S2-footprint.md: a pool node fits one pod slot of deploy/presets/slots plus the daemons of
+# the node, and the infra node fits its quota. Worker pool sizes are provisional estimates until real components are
+# characterized, and the control plane size is a computed figure, not a measured one.
 name: dev
 fitted: true
-memory_mib: 19456
-cpus: 17
+memory_mib: 10240
+cpus: 13
 nodes:
   - role: control-plane
     count: 1
     cpus: 2
-    memory_mib: 2048
+    memory_mib: 1280
   - role: infra
     count: 1
     cpus: 4
-    memory_mib: 6144
+    memory_mib: 4096
   - role: obs
     count: 1
     cpus: 1
-    memory_mib: 2048
+    memory_mib: 1024
   - role: compile
-    count: 2
-    cpus: 2
-    memory_mib: 2048
-  - role: simulate
-    count: 2
+    count: 1
     cpus: 2
     memory_mib: 1536
+  - role: simulate
+    count: 1
+    cpus: 2
+    memory_mib: 768
   - role: aggregate
     count: 1
     cpus: 2
-    memory_mib: 2048
+    memory_mib: 1536
 host:
   ports: deploy/host/ports.yaml
   data_dir: ~/.local/share/wdf/dev
