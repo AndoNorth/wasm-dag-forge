@@ -1,0 +1,9 @@
+# name	namespace	pool	cpu	memory_mib
+# Stand-ins sized from the figures in the epic: Temporal 1 CPU and 1 GiB, its Postgres 1 GiB, the object store at its
+# post-test 266 MiB, and one compile and one aggregate pod at 1 CPU and 1 GiB. The Postgres and object store CPU is not
+# a measured figure, so a small share is requested.
+temporal	wdf-infra	infra	1	1024
+temporal-postgres	wdf-infra	infra	0.5	1024
+objstore	wdf-infra	infra	0.1	266
+compile	wdf-workers	compile	1	1024
+aggregate	wdf-workers	aggregate	1	1024
