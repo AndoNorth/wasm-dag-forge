@@ -1,5 +1,5 @@
 # One task per pod on the compile and aggregate pools, so requests equal limits and one pod fills one slot.
-# The figures are a starting estimate, to be settled by the footprint spike and characterization.
+# The figures are a provisional estimate until real components are characterized.
 estimate: true
 pools:
   compile:
