@@ -203,4 +203,61 @@ Not provable by this epic: the `dev` and `soak` presets starting on this host, r
 
 ## 8. Closure (filled at close)
 
+Run on 2026-10-30 by a worker who did not write the lanes, on a clean `git archive` export of `main` at `0b8b522`, the merge of the sizing issue.
+Host: WSL2 with 20,002 MiB `MemTotal`, 8 CPUs and `fs.inotify.max_user_instances` 512, shared with 13 containers and a plain kind cluster of the captain that stayed running and untouched.
+Every cluster command ran under `flock /tmp/wdf-cluster.lock`, a watchdog sampled host `MemAvailable` every 5 s and would have removed only the cluster wdf below 1 GiB, and the lowest value sampled over the whole session was 13,769 MiB.
+Real command output is in the pull request that records the run.
+
+The row commands ran as written except row 4, where the command as written exits 2 and the checks it names were run through the scripts that implement them.
+Rows 1 to 10 were run on `ci` as the table says.
+The `dev` and `soak` presets, which the spec could not start on the 7.8 GiB host, were additionally started one at a time on this host and torn down before the next.
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1 | pass | `just doctor` exit 0, `memory-vs-preset` reads `ok` (host 20,002 MiB, preset `ci` 8,832 MiB) |
+| 2 | pass | `ci`, `dev` and `soak` render with nothing started, and two runs into one directory differ by nothing under `diff -r` |
+| 3 | pass | from no wdf container, network or cluster, `just up` took 40 s and the second run 4 s with the same container ids and creation times |
+| 4 | fail as written | `scripts/cluster/limits.sh` needs a rendered `limits.yaml` and exits 2 without one, while `allocatable.sh` and `canary.sh all` pass every expectation of the row |
+| 5 | pass | pool labels and taints as the preset says, four namespaces each with a quota and a limit range, defaults admitted, over-quota rejected |
+| 6 | pass | five profiles listed as the profile table says, the guard refuses the active context `kind-kind`, soak has no live-update step |
+| 7 | pass | `ss -ltn` shows 18080 and 18081 on `127.0.0.1` only, the dummy endpoint answers 200 with Tilt stopped |
+| 8 | pass | marker survived `just down` and `just up`, `just nuke` twice left nothing and the second run exited 0 |
+| 9 | pass | the fixture wheel installs from the mirror with `--require-hashes`, an altered hash is refused |
+| 10 | pass | `just ci` exit 0, also on `main` plus the three fix commits below |
+| 11 | pass | `kind-smoke` run 41115019941 on `main` at `0b8b522`, green, 110 s on a runner with 16,367,524 kB `MemTotal` |
+| 12 | pass | `docs/spikes/S2-footprint.md` states the result (fail on the 7.8 GiB host), holds the host requirement table and records the gate G1 decision |
+
+Presets run for real on this host:
+
+| Preset | Nodes | Node limits sum | `just up` | `just up` again | Canaries | Namespaces | Down and nuke |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `ci` | 6 | 8,832 MiB | 40 s | 4 s, same ids | pass | pass | pass, nuke repeated cleanly |
+| `dev` | 6 | 10,240 MiB | 39 s | 4 s, same ids | pass | pass | pass, nuke repeated cleanly |
+| `soak` | 8 | 15,104 MiB | 43 s | 4 s, same ids | pass | pass | pass, nuke repeated cleanly |
+
+An idle cluster costs about 1.0 GiB of host memory for `ci` and `dev` and about 1.25 GiB for `soak`, by `free` before and after `just up`.
+A 300 s hold on `soak` with `tilt ci` deployed, and a `just up` under that state, changed no container.
+
+Findings and what was done:
+
+- `tilt ci` on `ci` timed out, because the dummy module pods had no node selector or toleration for the tainted pool nodes and stayed Pending.
+  The four dummy modules now select and tolerate their pool, and `tilt ci` reports healthy workloads on `ci`, `dev` and `soak`.
+- `canary.sh` exited on its first event poll when the scheduler had not yet written the event, because `kubectl` jsonpath fails on an empty list.
+  It found the event in time on the first `ci` run and failed on the first `dev` run.
+  The poll is retried now.
+- The schedule canary requested a fixed 600 Mi, which fits the 1 GiB obs node of `dev`, so the pod ran instead of staying Pending.
+  The request is now the live allocatable memory of the node plus 64 Mi.
+- `just up` does not create the four namespaces, so row 5 needs `scripts/cluster/namespaces.sh apply <preset>` first.
+- The `ci` profile with the real dummy modules enables no obs resource, because `dummy-obs` lists only `full` in `profiles`, and the fixture modules show the obs tier of `ci`.
+- The recipes `verify`, `verify-clean` and `cluster-verify` still exit 3 with the stub text.
+
+Not proven:
+
+- Whether the closing of the epic should wait for the row 4 command to be corrected, which is a decision for the captain.
+- Any component at its limit, because no preset was loaded with ballast on this host, so only the idle cluster, the canaries and the dummy workloads ran, and S2 was not repeated on this host.
+- A soak of any length beyond the 300 s hold, because the soak criteria belong to characterization.
+- CPU contention, because `dev` and `soak` ask for 13 and 20 CPUs on an 8 CPU host and only the canary throttle was measured.
+- Egress of the compile pool, which reached `pypi.org` from the probe pod, because a network policy is a non-goal of this epic and the mirror README states intent only.
+- Docker Desktop and non-WSL Linux, and the real Temporal, Postgres and object store footprints.
+
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
