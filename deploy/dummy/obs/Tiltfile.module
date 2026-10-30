@@ -4,6 +4,9 @@ pin = read_yaml("../../versions.yaml")["images"][module["artifact"]["pin"]]
 name = module["name"]
 res = module["resources"][name]
 labels = {"app": name}
+topology = read_yaml("../../../contracts/topology/topology.yaml")
+# The pod runs on the obs pool, whose nodes are tainted against everything that does not tolerate the pool.
+pool = {"key": topology["pool_label"], "value": "obs"}
 
 k8s_yaml(encode_yaml({
     "apiVersion": "apps/v1",
@@ -14,11 +17,20 @@ k8s_yaml(encode_yaml({
         "selector": {"matchLabels": labels},
         "template": {
             "metadata": {"labels": labels},
-            "spec": {"containers": [{
-                "name": name,
-                "image": "registry.k8s.io/pause@" + pin["digest"],
-                "resources": res,
-            }]},
+            "spec": {
+                "nodeSelector": {pool["key"]: pool["value"]},
+                "tolerations": [{
+                    "key": pool["key"],
+                    "operator": "Equal",
+                    "value": pool["value"],
+                    "effect": topology["taint_effect"],
+                }],
+                "containers": [{
+                    "name": name,
+                    "image": "registry.k8s.io/pause@" + pin["digest"],
+                    "resources": res,
+                }],
+            },
         },
     },
 }))
