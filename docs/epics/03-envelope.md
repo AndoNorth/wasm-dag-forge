@@ -19,7 +19,8 @@ Its tests run at tier T0 (host Python, no runtime) and T1 (containers started by
 
 The captain reviewed the open questions of the epic before this spec was written.
 The answers below were recorded on 2026-10-30 and are applied in this spec.
-Everything else in the epic body stands.
+Everything else in the epic body stands, with one stated exception.
+Question 3 of section 0.2 changes the interface rows of the ticket for #6 and #5, because under its default the workflow input becomes the accepted event plus a params block, where the ticket says the accepted event alone.
 
 | # | Decision | Answer | Applied in |
 | --- | --- | --- | --- |
@@ -38,18 +39,36 @@ Everything else in the epic body stands.
 
 The trace backend retention question of the epic stays with the observability epic (#13).
 
+Audit resolutions, applied after the captain reviewed an audit of the first draft:
+
+- A reader resolves an unknown minor of a known major to the highest minor it knows and ignores added optional fields, while strictness (an unknown field is rejected, `dataschema` must map to a file) applies only within a minor the reader knows.
+- Lane Needs across lanes and pins in lanes E, C and S are kept, and section 3 records them as departures from the method with their reasons.
+- A contract-change PR for a generated schema touches `contracts/`, the model under `packages/` and the regenerated file together, and bumps the contract `VERSION`.
+- Option (b) of question 3 needs a contract-change PR and contradicts decision 9, so the default of question 3 is firm unless the captain says otherwise.
+- The `control` stage emits `resumed` for a job that never started, and the projection returns its row to `accepted`.
+- The replay runner fails with a message naming the history and its owner when a history has an owners entry and no class was given, and never skips it.
+- The T1 limit is a counting limit of two containers across the host, implemented as two lock files, a session takes whichever is free and waits with a timeout otherwise.
+- A previous major stays readable for the dead letter retention plus the maximum job duration, 21 days at the placeholders.
+- No job-level `dead.lettered` event is built for a message with no derivable job id, and the broker dead letter queue is the record in that case.
+- The log field for the bare CloudEvents `id` is `cloudevent_id`, and the stored key keeps `event_id`.
+- Every lane's Done gate runs `just ci`, which needs Docker once the T1 tests exist.
+- The T1 port base is 19000, with slots 0 to 9 and `k` below 10, clear of `deploy/host/ports.yaml`.
+- Issue 0.1 owns `contracts/artifact/reference.schema.json` and issue 0.2 owns the rest of `contracts/artifact/`.
+
 ### 0.2 New questions
 
 None of these blocks the start of lane 0.
-Each has a default that applies when there is no answer, and an answer that differs from the default changes only the issues named in the last column.
+Each has a default that applies when there is no answer, and an answer that differs from the default changes only the issues named in the last column, except option (b) of question 3.
 
 | # | Question | Options | Recommendation | Default if no answer | Changes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Is there a lifecycle event for a batch? The dispatch epic (#24) lists `dev.wdf.batch.submitted.v1` as open with this epic. | (a) per-job events only and the batch summary read from rows, (b) one batch event | (a). A batch has no workflow and no single writer of its end, a batch event is a fan-in fact that needs its own dedup rule, and the batch summary already comes from rows. | (a), so the catalogue gets no batch type | E.2, S.1 |
 | 2 | What is the terminal event of a job that ended `partial`? The decision above adds the status and not its event. | (a) a new type `dev.wdf.job.partial.v1`, (b) `dev.wdf.job.succeeded.v1` with a `partial` flag in its data | (a). Every terminal status then has one terminal event and the status projection is a lookup by type. A consumer that filters on `succeeded` can never mistake a run on partial inputs for a complete one, which is the risk the workflow epic (#6) names for the opt-in aggregate. | (a) | 0.2, E.2 |
-| 3 | How do the per-job parameters (seed, parameters, class override) reach the workflow, when the accepted event is a pointer and the workflow never reads Postgres? | (a) admission reads them from the row and passes a `job.params` data block as a second start argument beside the accepted event, (b) the accepted event data carries them, (c) the workflow loads them with an activity | (a). It keeps the event a pointer as decision 9 requires and keeps Postgres reads out of workflow code. The cost is that the epic's interface row "the workflow input is the accepted event" becomes "the accepted event plus the params block", and #6 and #8 confirm it in their specs. | (a) | E.2, T.1 |
+| 3 | How do the per-job parameters (seed, parameters, class override) reach the workflow, when the accepted event is a pointer and the workflow never reads Postgres? | (a) admission reads them from the row and passes a `job.params` data block as a second start argument beside the accepted event, (b) the accepted event data carries them, (c) the workflow loads them with an activity | (a). It keeps the event a pointer as decision 9 requires and keeps Postgres reads out of workflow code. The cost is that the epic's interface row "the workflow input is the accepted event" becomes "the accepted event plus the params block", and #6 and #8 confirm it in their specs. | (a) | E.2, T.1, and for option (b) the pinned accepted schema and the batch interface |
 | 4 | How much of the instrumentation contract does lane 0 pin? The method pulls it forward into this epic's lane 0, and the epic body does not describe it. | (a) the rules only (metric naming, label policy, log field names, trace conventions) plus a `metrics.yaml` that holds only the metrics this epic defines, (b) the full platform catalogue | (a). The full catalogue needs components that do not exist yet, and #13 issue 1 extends the file and owns the contract after the pin. | (a) | 0.3 |
 | 5 | The method lists `build-info.json` under the artifact contract of this epic and under the WIT contract of the toolchain epic (#11). Which lane 0 pins the file? | (a) #11 pins the file, and this epic pins the artifact reference, the bucket layout and the compile cache key, (b) this epic pins the file | (a). The file describes a compile, and #11 owns the compile. The four inputs of the cache key are the only part this epic needs. | (a) | 0.2 |
+
+Option (b) of question 3 needs a contract-change PR on the accepted schema and on the batch interface (consumers #3, #5, #6, #8 and #24) and contradicts decision 9, so the default (a) is firm unless the captain says otherwise.
 
 ## 1. Goal and non-goals
 
@@ -63,7 +82,8 @@ The two are never used for each other.
 
 Non-goals for this pass:
 
-- everything the epic lists under "Does not own": the manifest content and DAG template (#5), workflow retries, versioning and continue-as-new (#6), queue behaviour and AMQP message properties (#7), table columns and the event store (#3), reference semantics and integrity (#12), the checkpoint contract and the checkpoint cadence (#18), the XML result blocks (#11), admission policy (#8) and the placement decision (#9)
+- everything the epic lists under "Does not own": the manifest content and DAG template (#5), workflow retries, versioning and continue-as-new (#6), queue behaviour and AMQP message properties (#7), table columns and the event store (#3), reference semantics and integrity (#12), the checkpoint contract (#18), the XML result blocks (#11), admission policy (#8) and the placement decision (#9)
+- the checkpoint event cadence, an open question of the epic that decision 11 assigns to the checkpoint epic (#18)
 - the broker hop itself: byte identity through RabbitMQ after publish, dead letter and replay was proven by S4 and is re-run by the broker epic (#7), and this epic offers its golden events as payloads for that suite, which #7 confirms in its own spec
 - restart reconstruction tests per stage (proposal 10 of the epic), which belong to the failure scenarios epic (#15) and the stage epics, while this epic ships the poison vectors they use
 - real stage code: the dispatch API, admission, the workflow, placement and the workers are other epics, and this epic proves its contract against fake stages
@@ -87,25 +107,26 @@ Non-goals for this pass:
 The S4 messages used the content type `application/cloudevents+json; charset=UTF-8` and the epic writes `charset=utf-8`.
 The profile pins the lower-case form the epic writes, and a reader compares the media type and the charset case-insensitively, so neither form is rejected.
 The 2 MiB Temporal payload limit comes from the epic text [read], not from the spike.
-No `revisit` child issue is open against the dev environment epic or the cluster epic [ran: `gh-axi issue list --label revisit` shows only the closed recipe table issue].
+No `revisit` child issue is open against the dev environment epic or the cluster epic [ran: `gh-axi issue list --label revisit --state all` shows only the closed recipe table issue].
 
 ### Produces (each pinned precisely)
 
-Names, shapes and versions below are proposals that lane 0 and the lanes pin, and a change after the pin is a contract-change PR with a consumer list.
+Names, shapes and versions below are proposals that lane 0 and the lanes pin, and a change after the pin is a contract-change PR with a consumer list and a bump of the contract's `VERSION`.
+For a generated schema that PR carries the contract file, the model under `packages/` and the regenerated schema together, because the drift check fails otherwise.
 Epic text and notes link to these files and never copy them.
 
 | To | What | Where it lives (path) | Shape (schema file, signature, exit codes, key names) | Version |
 | --- | --- | --- | --- | --- |
-| all epics | Events contract: the profile, one JSON Schema file per type and minor, vectors | `contracts/events/` | `README.md`, `VERSION`, `profile/` (profile schema and the vendored CloudEvents schema with its source commit and SHA-256), `schemas/<type without the dev.wdf prefix and the major>/<major>.<minor>.json`, `vectors/`. `check.sh <event.json>` exits 0 valid, 1 invalid with `reason: <code>: <detail>` on stderr, 2 usage. `dataschema` is `urn:wdf:schema:<type without prefix and major>:<major>.<minor>`, mapped to the schema file by the README. | events v1 |
+| all epics | Events contract: the profile, one JSON Schema file per type and minor, vectors | `contracts/events/` | `README.md`, `VERSION`, `profile/` (profile schema and the vendored CloudEvents schema with its source commit and SHA-256), `schemas/<type without the dev.wdf prefix and the major>/<major>.<minor>.json`, `vectors/`. `check.sh <event.json>` exits 0 valid, 1 invalid with `reason: <code>: <detail>` on stderr, 2 usage. `dataschema` is `urn:wdf:schema:<type without prefix and major>:<major>.<minor>`, mapped to the schema file by the README. Reader rule: an unknown minor of a known major resolves to the highest minor the reader knows and added optional fields are ignored, while an unknown field is rejected and `dataschema` must map to a file only within a minor the reader knows. | events v1 |
 | all epics | Event library: models, canonical serializer, size budget, store mapping, worker-side check | `packages/events/` (import `wdf_events`) | `to_bytes(event) -> bytes`, `from_bytes(data) -> Event`, `to_event_row(event) -> (row_key, event_time, body)` with `row_key` equal to `<source>#<id>` (the event id half of the event store key), while the CloudEvents `id` is never called an event id in code, `check_task_request(data) -> TaskRequest`. Typed errors `UnsupportedMajor`, `SchemaInvalid`, `EventTooLarge`, each with a `reason` string and a `dlq_reason` in the vocabulary of the broker epic. Schema generation `python -m wdf_events.schemagen [--check]`. | library v1 |
-| all epics | Key derivation | `packages/keys/` (import `wdf_keys`) | `job_id(tenant, submission_key)`, `batch_id(tenant, batch_key)`, `workflow_id(job_id)`, `cloudevent_id(job_id, task_key, attempt_identity, kind, sequence)`, `attempt_identity(activity_attempt, resume_counter)`, `compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version)`. The formulas and the vectors are in `contracts/events/vectors/keys.json`. The workflow and the compile worker both import `compile_cache_key` and compute it nowhere else. | keys v1 |
-| #3, #6, #8, #24 | Status contract | `contracts/status/` | `status.yaml` with the ten values `accepted, admitted, running, paused, resume-pending, succeeded, partial, failed, cancelled, terminated`, the terminal set (`succeeded, partial, failed, cancelled, terminated`), the two views `pausing` and `cancelling`, the projection from each job lifecycle event type to the status it sets (`resume.requested` sets `resume-pending`, `resumed` sets `running`, the other request types set none), and the allowed transition matrix. `check.sh` and vectors. The guarded compare-and-set library stays in #3. | status v1 |
-| #3, #10, #11, #12 | Artifact reference and bucket layout | `contracts/artifact/` | `reference.schema.json` (uri, sha256, size, name, kind, and the producer of job, task and attempt for attempt-scoped kinds, with no field that holds bytes), `layout.yaml` (the four buckets, the key template of each and the addressing class of each kind), `check.sh` and vectors. #12 owns the semantics. | artifact v1 |
-| #13 and every emitter | Instrumentation contract | `contracts/instrumentation/` | The rules and a `metrics.yaml` seeded with the metrics of this epic (question 4 of section 0.2). | instrumentation v1 |
+| all epics | Key derivation | `packages/keys/` (import `wdf_keys`) | `job_id(tenant, submission_key)`, `batch_id(tenant, batch_key)`, `workflow_id(job_id)`, `cloudevent_id(job_id, task_key, attempt_identity, kind, sequence)`, `attempt_identity(activity_attempt, resume_counter)`, `compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version)`. The formulas are in the README of `contracts/events/`, and `contracts/events/vectors/keys.json` holds only vectors. The workflow and the compile worker both import `compile_cache_key` and compute it nowhere else. | keys v1 |
+| #3, #6, #8, #24 | Status contract | `contracts/status/` | `status.yaml` with the ten values `accepted, admitted, running, paused, resume-pending, succeeded, partial, failed, cancelled, terminated`, the terminal set (`succeeded, partial, failed, cancelled, terminated`), the two views `pausing` and `cancelling`, the projection from each job lifecycle event type to the status it sets (`resume.requested` sets `resume-pending`, `resumed` sets `running` when the workflow emits it and `accepted` when the `control` stage emits it for a job that never started, the other request types set none), and the allowed transition matrix. `README.md`, `VERSION`, `check.sh` and vectors. The guarded compare-and-set library stays in #3. | status v1 |
+| #3, #10, #11, #12 | Artifact reference and bucket layout | `contracts/artifact/` | `reference.schema.json` (uri, sha256, size, name, kind, and the producer of job, task and attempt for attempt-scoped kinds, with no field that holds bytes), `layout.yaml` (the four buckets, the key template of each and the addressing class of each kind), `README.md`, `VERSION`, `check.sh` and vectors. #12 owns the semantics. | artifact v1 |
+| #13 and every emitter | Instrumentation contract | `contracts/instrumentation/` | `README.md` with the rules, `VERSION`, and a `metrics.yaml` seeded with the metrics of this epic (question 4 of section 0.2) with its schema and a check. | instrumentation v1 |
 | #6, #7, #8, #24 | Compatibility library | `packages/compat/` (import `wdf_compat`) | `read_event(data) -> Event` for the current and the previous major, one upgrade function per major step, `upgrade_for_replay(data) -> bytes`, and the window constants. | compat v1 |
 | #7, #15 | Golden and poison vectors | `contracts/events/vectors/golden/`, `contracts/events/vectors/poison/` | One golden file per type and minor, and one poison file per failure, each with the typed error it must raise. | events v1 |
-| #6, #10, #13 | Temporal helpers and the replay corpus | `packages/temporal/` (import `wdf_temporal`) | A payload converter that keeps the canonical event bytes in the history, a `traceparent` interceptor, `corpus/<release>/<name>.json` and a replay runner. Other epics add their own histories under the append-only rule of section 3. | temporal v1 |
-| #3, #6, #8, #10, #24 | Stage contract and the fake-stage runner | `contracts/stages/`, `packages/stages/` (import `wdf_stages`) | `stages.yaml` (per stage: source, attributes read, data fields read, events emitted) and `run_stage_contract(stage_name, stage_callable)`, which a real stage calls from one test in its own epic. | stages v1 |
+| #6, #10, #13 | Temporal helpers and the replay corpus | `packages/temporal/` (import `wdf_temporal`) | A payload converter that keeps the canonical event bytes in the history, a `traceparent` interceptor, `corpus/<release>/<name>.json` and a replay runner. Other epics add their own histories under the corpus rule of section 3. | temporal v1 |
+| #3, #6, #8, #9, #10, #24 | Stage contract and the fake-stage runner | `contracts/stages/`, `packages/stages/` (import `wdf_stages`) | `stages.yaml` (per stage: source, attributes read, data fields read, events emitted) and `run_stage_contract(stage_name, stage_callable)`, which a real stage calls from one test in its own epic. | stages v1 |
 
 ### The batch manifest interface (shared with #5 and #24)
 
@@ -124,9 +145,20 @@ The validator epic (#5) and the dispatch epic (#24) consume it, and the storage 
 Package names are proposals.
 Lane 0 owns the package it creates until its issues merge, then the owning lane takes over the glob, as the method says for stubs.
 
+Departures from the method, stated so that the captain approves them knowingly:
+
+- Lane Needs run across lanes: E.2 and E.3 feed lanes C, S and T, so lane 0 is not the only barrier.
+  The reason is that no stub is possible for the catalogue before it exists, because a stub of its 24 types would be the catalogue.
+  The sibling cluster spec has cross-lane Needs too (lane N after A.4, lane H after A.2, lane W after A.4).
+- Contracts are pinned in lanes E, C and S as well as lane 0: the catalogue schemas in E, the golden and poison vectors in C, and the stage contract in S.
+  Their content depends on the catalogue, and the method's tranche A for this epic does not name the stage contract.
+- A contract-change PR for a generated schema is not `contracts/` only, because the model and the regenerated file must change with it (see section 2).
+- No `just/<domain>.just` module is added by lane 0, because `just test`, `just itest <domain>` and `just ci` already run every test here.
+- `docs/method.md` is not edited by this spec, and a follow-up edit is needed: its verifier table (line 220) and the tranche A row for E3 (line 245) still list a verifier skill for this epic, and its definition of done points at the exit test as "spec section 7", which is section 6 in this spec and in the cluster spec.
+
 | Lane | Workers | Owns (exclusive) | Issues | Needs |
 | --- | --- | --- | --- | --- |
-| 0 Contracts and skeleton | 1 | `contracts/events/{README.md,VERSION,check.sh}`, `contracts/events/profile/**`, `contracts/events/schemas/job.accepted/**`, `contracts/events/vectors/accepted/**`, `contracts/events/vectors/keys.json`, `contracts/status/**`, `contracts/artifact/**`, `contracts/instrumentation/**`, and until lanes E and K take over `packages/events/**`, `packages/keys/**` and `packages/itest/**` | 0.1, 0.2, 0.3, 0.4 | nothing (barrier) |
+| 0 Contracts and skeleton | 1 | `contracts/events/{README.md,VERSION,check.sh}`, `contracts/events/profile/**`, `contracts/events/schemas/job.accepted/**`, `contracts/events/vectors/accepted/**`, `contracts/events/vectors/keys.json`, `contracts/status/**`, `contracts/artifact/**` (`reference.schema.json` is issue 0.1's and the rest is issue 0.2's), `contracts/instrumentation/**`, and until lanes E and K take over `packages/events/**`, `packages/keys/**` and `packages/itest/**` | 0.1, 0.2, 0.3, 0.4 | nothing (barrier) |
 | E Events | 1 | `packages/events/**`, `contracts/events/schemas/**` for every type except `job.accepted`, `contracts/events/vectors/types/**` | E.1, E.2, E.3 | lane 0, and K.1 for E.2 |
 | K Keys | 1 | `packages/keys/**`, and after lane 0 `packages/itest/**` (the lightest lane takes over the container helper) | K.1, K.2 | lane 0 |
 | C Compatibility | 1 | `packages/compat/**`, `contracts/events/vectors/golden/**`, `contracts/events/vectors/poison/**` | C.1, C.2, C.3 | E.2, and E.3 for C.2 |
@@ -144,9 +176,10 @@ Shared-file rules:
   Lane E adds new `schemas/<type>/` directories under its own glob, and an edit to `schemas/job.accepted/` is a contract-change PR.
 - `contracts/events/vectors/golden/` has a manifest of SHA-256 lines, one per golden file.
   A PR that changes a golden file or its line is a contract-change PR, and the test fails when a file and its line disagree or when a file has no line.
-- `packages/temporal/corpus/` is append-only, one directory per release.
+- `packages/temporal/corpus/` only grows, one directory per release, except for the documented retirement PR of T.3 that deletes a release directory after its window.
   Another epic adds its own recorded histories by its own PR under a `<release>/` directory it creates, and a line in `corpus/owners.yaml` that names the workflow type and its owner epic.
-  Lane T owns the runner, which replays only the workflow classes it is given, and fails on a history whose type has no class and no `owners.yaml` entry, so a history is never skipped silently.
+  Lane T owns the runner, which replays only the workflow classes it is given.
+  It fails, with a message naming the history and its owner, on a history that has an `owners.yaml` entry and no class given to the runner, and on a history with neither, so a history is never skipped silently.
 - The root `pyproject.toml` already declares `packages/*` as workspace members, so no lane edits it, and each package has its own `pyproject.toml` owned by its lane.
 - `justfile`, `just/*.just`, `scripts/*` and `.github/workflows/*` are not touched, and the container helper of 0.4 is a package, not a script.
   No recipe is added, because `just test`, `just itest <domain>` and `just ci` already run every test below, and schema regeneration is `python -m wdf_events.schemagen`.
@@ -159,7 +192,7 @@ One block per issue, in the [lane issue template](../../.github/ISSUE_TEMPLATE/l
 The blocks are replaced by `#NNN` links after filing, and each filed issue copies its Owns line from the lane table.
 Each issue has a Test line naming its test files and tier.
 When filed, the issue uses that line in the template section for the named test and keeps only the `just ci` and Owns checkboxes of Done means.
-Done means, for every issue: `just ci` is green on the branch, the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
+Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker once the T1 tests exist, as section 7 says), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
 Acceptance lines are commands with an observable result, except the README content lines, which the reviewer checks in the PR.
 Proposal numbering from the epic is in brackets.
 
@@ -186,10 +219,12 @@ Proposal numbering from the epic is in brackets.
 
 **0.1 Events profile, accepted event and key vectors** [1, 3] Lane 0, tier T0. Needs: nothing.
 
-- Scope: the profile rules of the epic as `contracts/events/`, the accepted event v1 as Python models with a generated schema, the vendored CloudEvents schema, and the key formulas with vectors and a stub package.
+- Scope: the profile rules of the epic as `contracts/events/`, the accepted event v1 as Python models with a generated schema, the vendored CloudEvents schema, `contracts/artifact/reference.schema.json` (the manifest reference of the accepted event validates against it), and the key formulas with vectors and a stub package.
 - `uv run --frozen pytest packages/events/tests/test_profile.py -q` passes.
   Each file under `vectors/accepted/valid/` passes the vendored CloudEvents schema and the profile schema.
-  Each file under `vectors/accepted/invalid/` fails with its own `reason`: missing `time`, `specversion` other than `1.0`, a type without a major suffix, a `time` that is not UTC with exactly six fractional digits and a `Z` suffix, a `subject` that is not the job id or `<job id>/<task id>` for the event's level, an extension name with a capital letter or over 20 characters, an `id` containing `#`, and a `dataschema` that does not map to a schema file.
+  Each file under `vectors/accepted/invalid/` fails with its own `reason`: missing `time`, `specversion` other than `1.0`, a type without a major suffix, a `time` that is not UTC with exactly six fractional digits and a `Z` suffix, a `subject` that is not the job id or `<job id>/<task id>` for the event's level, an extension name with a capital letter or over 20 characters, an `id` containing `#`, a `traceparent` that is not a valid W3C value, and a `dataschema` that is not a well formed identifier or names a major with no schema file.
+  A `dataschema` of a known major with a minor the reader does not know is valid and resolves to the highest known minor, and a valid vector shows it.
+  These vectors sit only under `vectors/accepted/`.
 - `contracts/events/check.sh` exits 0 for each valid vector, 1 with `reason: <code>: <detail>` for each invalid one, and 2 without an argument.
 - `uv run --frozen python -m wdf_events.schemagen --check` exits 0, and after a field is renamed in the accepted model it exits 1 and names `contracts/events/schemas/job.accepted/1.0.json` (the test `test_schema_drift.py` runs both cases).
 - `to_bytes` and `from_bytes` for the accepted event, with the three typed errors, serialise the accepted vector to the same bytes twice and parse it back to an equal event, and its serialised size is under 2 KiB.
@@ -197,8 +232,9 @@ Proposal numbering from the epic is in brackets.
 - `contracts/events/vectors/keys.json` holds an input and expected output for every function of the key table, including pairs that differ only in where a field boundary falls.
   `uv run --frozen pytest packages/keys/tests/test_vectors.py -q` passes against the stub, whose functions raise `NotImplementedError("not implemented: owned by lane K")`.
   The test accepts that error only for the names in its `STUBBED` list, and a vector match for the rest.
-  The expected values come from the formulas in the README, computed by a scratch script that is not committed, and a vector that K.1 finds wrong is fixed by a contract-change PR.
-- The README states the version, the owner epic, the consumers, the loader, the `time` rule (exactly six fractional digits, zero padded by producers, so that the event store key survives a `timestamptz` round trip), and the case-insensitive content type rule from section 2.
+  The formulas are written in the README of `contracts/events/` and nowhere else.
+  The expected values come from them, computed by a scratch script that is not committed, and a vector that K.1 finds wrong is fixed by a contract-change PR.
+- The README states the formulas, the reader rule for an unknown minor, the version, the owner epic, the consumers, the loader, the `time` rule (exactly six fractional digits, zero padded by producers, so that the event store key survives a `timestamptz` round trip), and the case-insensitive content type rule from section 2.
 - Test: `packages/events/tests/test_profile.py`, `packages/events/tests/test_schema_drift.py`, `packages/keys/tests/test_vectors.py` (T0).
 
 **0.2 Status and artifact reference contracts** [pulled forward] Lane 0, T0. Needs: 0.1. Question 2 and question 5 of section 0.2 apply.
@@ -206,8 +242,11 @@ Proposal numbering from the epic is in brackets.
 - Scope: `contracts/status/` and `contracts/artifact/` as defined in section 2.
 - `contracts/status/check.sh contracts/status/status.yaml` exits 0.
   Its invalid vectors exit 1 with a `reason`: a view stored as a status, a transition out of a terminal status, a job event type projected to two statuses, and an unknown status.
-- The projection maps each of the 16 job types (E.2 lists them) to a status or to none: `resume.requested` sets `resume-pending` and `resumed` sets `running`, while the other three request types, `published` and `dead.lettered` set no status, and the row of a dead lettered job stays `accepted` so that a replay can admit it.
-  A job that never started is cancelled, terminated or paused on the row alone, so the `control` stage also emits `cancelled`, `terminated` and `paused` for it (S.1).
+- The projection maps each of the 16 job types (E.2 lists them) to a status or to none: `resume.requested` sets `resume-pending`, while the other three request types, `published` and `dead.lettered` set no status, and the row of a dead lettered job stays `accepted` so that a replay can admit it.
+  `resumed` sets `running` when the workflow emits it.
+  A job that never started is cancelled, terminated or paused on the row alone, so the `control` stage also emits `cancelled`, `terminated` and `paused` for it, and emits `resumed` when such a paused job is resumed, which returns its row to `accepted` because it was never running (S.1).
+  The projection carries that `when` condition, and the transition matrix has the row-only pair `resume-pending` to `accepted` beside `accepted` to `paused`.
+  `dead.lettered` is emitted only for a message that parses far enough to give a job id, and the broker dead letter queue is the only record of a message that does not.
 - `contracts/artifact/check.sh` exits 0 on valid references and on keys that match their template, and exits 1 for a content-addressed key with the wrong hash prefix, an attempt-scoped key without an attempt segment, and a reference that has a field holding bytes.
   The `layout.yaml` buckets and key templates equal those of the storage epic (#3) [read: `wdf-sources`, `wdf-components`, `wdf-results`, `wdf-checkpoints`].
 - Test: `contracts/status/check.sh` and `contracts/artifact/check.sh` over their vectors, run by `packages/events/tests/test_contract_vectors.py` (T0).
@@ -217,18 +256,23 @@ Proposal numbering from the epic is in brackets.
 - Scope: the rules and the seed `metrics.yaml` of the default in question 4.
 - `contracts/instrumentation/README.md` states the metric naming rule, the label policy, the log field names and the trace conventions.
   The label policy is a denylist of unbounded identifiers (job id, task id, event id, trace id), plus the rule that every label declares its bounded set of values in `metrics.yaml`, as `reason`, `type` and `from_major` do, and the priority class and job class are the context attributes allowed as labels.
-  The log field names reuse the context attribute names (`tenant`, `jobid`, `taskid`, `attempt`, `traceparent`) plus `event_type` and `event_id`, where `event_id` is the CloudEvents `id`.
+  The log field names reuse the context attribute names (`tenant`, `jobid`, `taskid`, `attempt`, `traceparent`) plus `event_type` and `cloudevent_id`, where `cloudevent_id` is the CloudEvents `id`, while the stored key keeps the name `event_id`.
 - `metrics.yaml` holds `wdf_event_bytes`, `wdf_event_size_warnings_total`, `wdf_event_rejected_total` (label `reason`) and `wdf_event_upgraded_total` (labels `type` and `from_major`).
+  `to_bytes` observes `wdf_event_bytes`, `to_bytes` raises the size warning and rejection counters, and `read_event` and `upgrade_for_replay` increment `wdf_event_upgraded_total` on each upgrade, and the tests of E.1, C.1 and C.3 assert each of these.
 - `uv run --frozen pytest packages/events/tests/test_instrumentation.py -q` passes: the file validates against its schema, each name follows the rule, and each label declares its values and is not on the denylist, and a copy with a `jobid` label fails.
 - Test: `packages/events/tests/test_instrumentation.py` (T0).
 
 **0.4 Container helper for T1 tests** Lane 0, T1. Needs: nothing.
 
 - Scope: `packages/itest/` (import `wdf_itest`), the one helper that starts the containers of T1 tests.
-- It takes the worker slot from `WDF_SLOT` (default 0), binds host ports `127.0.0.1:<base + slot * 10 + k>` as in rule 5 of the method, labels every container with the run label of that rule, and removes only containers carrying its own run label, including after a failed or interrupted test.
-- It holds `flock /tmp/wdf-t1.lock` for the life of a test session that starts containers, so at most two T1 containers run on the host at a time whatever the number of workers.
+- It takes the worker slot from `WDF_SLOT` (default 0, slots 0 to 9), binds host ports `127.0.0.1:<19000 + slot * 10 + k>` with `k` below 10 as in rule 5 of the method, which keeps clear of `deploy/host/ports.yaml`, labels every container with the run label of that rule, and removes only containers carrying its own run label, including after a failed or interrupted test.
+- It limits the host to two containers with two lock files, `/tmp/wdf-t1.0.lock` and `/tmp/wdf-t1.1.lock`.
+  A test session that starts containers takes whichever file is free for its whole life, waits when both are held, and fails with a message naming the holders after a wait of 30 minutes.
+  A session starts one container at a time and stops it before the next, so at most two T1 containers run on the host whatever the number of workers.
 - It fails the test, and does not skip it, when Docker is absent.
 - `uv run --frozen pytest packages/itest -m integration -q -rs` passes with at least one test: it starts the `canary` image of `deploy/versions.yaml` on a slot port, sees the label, interrupts a child test process, and finds no container with that run label afterwards.
+  The child takes its own pair of lock files from a scratch directory that the test names in an environment variable, so interrupting it cannot deadlock on the real lock files.
+- The same test file runs the helper with `DOCKER_HOST=unix:///nonexistent` and expects a failure, not a skip.
 - Test: `packages/itest/tests/test_helper.py` (T1, the canary container).
 
 ### Lane E
@@ -239,6 +283,8 @@ Proposal numbering from the epic is in brackets.
 - `uv run --frozen pytest packages/events/tests/test_serializer.py -q` passes: `to_bytes(from_bytes(b)) == b` for every canonical vector and for events generated with a seeded stdlib `random` (no new dependency), and a non-ASCII field is counted in bytes and not in characters.
 - An event of 16 KiB minus one byte serialises with no warning, an event of 16 KiB logs a warning and raises the counter `wdf_event_size_warnings_total`, an event of 64 KiB serialises, and an event of 64 KiB plus one byte raises `EventTooLarge` and raises `wdf_event_rejected_total{reason="oversized"}` (`test_budget.py`).
 - `from_bytes` resolves `dataschema` through a registry of schema files, raises `UnsupportedMajor` for a type whose major it does not know before it opens the data, and `SchemaInvalid` for data that fails the schema named by `dataschema`.
+  The reader rule of the profile applies: an unknown minor of a known major resolves to the highest known minor and ignores added optional fields, and an unknown field within a known minor is rejected.
+  `to_bytes` observes `wdf_event_bytes` (`test_budget.py` asserts it).
 - Test: `packages/events/tests/test_serializer.py`, `packages/events/tests/test_budget.py` (T0).
 
 **E.2 Event type catalogue v1 and the store mapping** [2] Lane E, T0 and T1. Needs: E.1, K.1. Questions 1, 2 and 3 of section 0.2 apply.
@@ -247,8 +293,9 @@ Proposal numbering from the epic is in brackets.
 - The job types are `accepted`, `published`, `admitted`, `started`, `paused`, `pause.requested`, `resume.requested`, `resumed`, `cancel.requested`, `terminate.requested`, `succeeded`, `partial`, `failed`, `cancelled`, `terminated` and `dead.lettered`, under `dev.wdf.job.<name>.v1`.
   The task types are `placed`, `started`, `checkpoint.committed`, `attempt.failed`, `retries.exhausted`, `succeeded`, `failed` and `skipped`, under `dev.wdf.task.<name>.v1`.
   The data of `checkpoint.committed` carries a `sequence` number, which feeds the id.
+  `job.dead.lettered` is built only when the message parses far enough to name a job.
   `job.accepted` is lane 0's, each type records the date its major was introduced for the window test of C.1, and the checkpoint committed event is the only checkpoint event of this epic.
-- `uv run --frozen pytest packages/events/tests/test_catalogue.py -q` passes: every type has a schema directory, one valid and one invalid vector under `vectors/types/`, and a model, and `schemagen --check` is clean.
+- `uv run --frozen pytest packages/events/tests/test_catalogue.py -q` passes: every type has a schema directory, one valid and one invalid vector under `vectors/types/`, and a model, and `schemagen --check` is clean, with `job.accepted` the one exception whose vectors stay under `vectors/accepted/` only.
   The projection in `status.yaml` names only types that exist.
 - A builder takes the facts of the event and calls `wdf_keys.cloudevent_id` for the `id`, so the id of a rebuilt event is equal, and `time` is an argument that the caller takes from the fact (`test_event_ids.py`).
   The time of the T1 case has the form `.123456Z`.
@@ -265,7 +312,8 @@ Proposal numbering from the epic is in brackets.
   Every reference validates against `contracts/artifact/reference.schema.json`.
   The result ready data holds one result reference of kind simulate result or aggregate summary.
 - `uv run --frozen pytest packages/events/tests/test_task_request.py -q` passes.
-  `check_task_request` returns a typed value for the valid vector and raises the named error for each invalid one: wrong major, missing CPU or memory, an unknown task type, a reference with inline bytes, and an unknown field.
+  `check_task_request` returns a typed value for the valid vector and raises the named error for each invalid one: wrong major, missing CPU or memory, an unknown task type, a reference with inline bytes, and an unknown field within a known minor.
+  A task request of a newer minor with one added optional field passes `check_task_request` and the field is ignored.
 - A task request that lists 100,000 result references raises `EventTooLarge`, which is the guard on the aggregate input (the aggregate gets an index reference, #12).
 - Test: `packages/events/tests/test_task_request.py`, `packages/events/tests/test_result_ready.py` (T0).
 
@@ -300,10 +348,11 @@ Proposal numbering from the epic is in brackets.
 - The README of the lane (under `packages/compat/`) states what a minor may change (an added optional field) and what needs a new major (a removal, a rename, a new required field, a narrowed type or enum).
 - `uv run --frozen pytest packages/compat/tests/test_schema_evolution.py -q` passes on the catalogue and fails on two fixtures, a renamed field and a new required field, which are the two changes that wedged open workflows in the earlier replay test [read: epic risks].
 - `uv run --frozen pytest packages/compat/tests/test_read_event.py -q` passes with a test-only type whose v1 and v2 schemas live under `packages/compat/tests/fixtures/` and are passed to `read_event` through a registry argument, and one upgrade function: v2 bytes read directly, v1 bytes read as v2 through the function, v3 bytes raise `UnsupportedMajor`, and v1 bytes raise it once the window constants retire v1.
-  A vector with a newer minor than the reader knows and one added optional field parses, with the field ignored.
-- `window.py` holds `MAX_JOB_DURATION_DAYS = 7` and `DEAD_LETTER_RETENTION_DAYS = 14` and a function that returns the days a previous major stays readable after its last producer, which is the larger of the two, 14 at the placeholders.
+  A vector with a newer minor than the reader knows and one added optional field parses, with the field ignored, which is the reader rule of the profile.
+  `read_event` increments `wdf_event_upgraded_total` on an upgrade, and the test asserts it.
+- `window.py` holds `MAX_JOB_DURATION_DAYS = 7` and `DEAD_LETTER_RETENTION_DAYS = 14` and a function that returns the days a previous major stays readable after its last producer, which is the dead letter retention plus the maximum job duration, 21 at the placeholders, because a message can be dead lettered on the last day, replayed on the last day of its retention and then start a job that runs for the maximum duration.
   The catalogue records the date each major was introduced, and `test_window.py` fails a catalogue that introduces a major within that many days of the previous one, so a reader never meets a major two steps back.
-  Its fixtures are two small catalogues under `packages/compat/tests/fixtures/`, one with majors 3 days apart that must fail and one 15 days apart that must pass.
+  Its fixtures are two small catalogues under `packages/compat/tests/fixtures/`, one with majors 20 days apart that must fail and one 22 days apart that must pass.
 - Test: the three files above (T0).
 
 **C.2 Golden events and poison vectors** [5, 10] Lane C, T0. Needs: E.2, E.3.
@@ -320,6 +369,8 @@ Proposal numbering from the epic is in brackets.
   #7's text says replay republishes the original bytes, so whether replay calls the function or leaves the upgrade to the read path of admission is #7's call, confirmed in its spec, and `read_event` gives the same result either way.
 - `uv run --frozen pytest packages/compat/tests/test_replay_upgrade.py -q` passes: an event of the previous major returns as canonical bytes of the current major with `id`, `source` and `time` unchanged, so the history row still dedups, an event of the current major returns byte-identical, an event two majors back raises `UnsupportedMajor`, and an invalid event raises `SchemaInvalid`.
   No call returns bytes that are partly upgraded.
+  The window of C.1 assumes that a replayed dead letter is upgraded or read by a reader that still knows its major, so replay must call this function or the window covers the old major as C.1 writes it.
+  `upgrade_for_replay` increments `wdf_event_upgraded_total` for an upgrade, and the test asserts it.
 - Each typed error carries a `dlq_reason` in the vocabulary of #7 [read: `UNSUPPORTED_VERSION` for an unsupported major, `MALFORMED` for a schema-invalid or oversized event], and the README maps the `reason` strings to them.
 - The broker side (publish, dead letter and replay on RabbitMQ) is not run here and is #7's regression suite.
 - Test: `packages/compat/tests/test_replay_upgrade.py` (T0).
@@ -351,9 +402,9 @@ Proposal numbering from the epic is in brackets.
 
 - Scope: recorded histories per release, a replay gate, and the rules for adding and retiring entries.
 - `uv run --frozen python -m wdf_temporal.corpus record <release>` (T1) writes `packages/temporal/corpus/<release>/<name>.json` from stand-in runs, each file with the build label that recorded it.
-- `uv run --frozen pytest packages/temporal/tests/test_replay.py -q` passes (T0, no server): every history whose workflow type has a class replays against the current workflow code and payload decoding with `Replayer`, and the run fails on a history whose type has neither a class nor an `owners.yaml` entry.
+- `uv run --frozen pytest packages/temporal/tests/test_replay.py -q` passes (T0, no server): every history whose workflow type has a class replays against the current workflow code and payload decoding with `Replayer`, and the run fails, with a message naming the history and its owner, on a history that has an `owners.yaml` entry and no class given to the runner, and on a history with neither.
 - `uv run --frozen pytest packages/temporal/tests/test_replay_negative.py -q` passes: a recorded history of a workflow whose event model has a renamed field makes the replay fail and name the history file, so the gate is shown able to fail.
-- A release directory is retired by a PR that names it and deletes it after the window of C.1, and the README says so.
+- A release directory is retired by a PR that names it and deletes it after the window of C.1, which is the one exception to a corpus that only grows, and the README says so.
   Worker versioning for activity queues other than the workflow queue is unverified, as the epic says, and is not proven here.
 - Test: `packages/temporal/tests/test_replay.py`, `packages/temporal/tests/test_replay_negative.py` (T0), and the record command (T1).
 
@@ -362,9 +413,9 @@ Proposal numbering from the epic is in brackets.
 **S.1 Stage contract** [8] Lane S, T0. Needs: E.3. Question 1 of section 0.2 applies.
 
 - Scope: `contracts/stages/stages.yaml` and its check.
-- The stages are `dispatch` (source `/wdf/dispatch`, emits accepted and published), `control` (`/wdf/control`, emits the four request types, and `cancelled`, `terminated` and `paused` for a job that never started, each with a `when` field that names that condition), `admission` (`/wdf/admission`, emits admitted and the dead lettered events for messages it rejects), `workflow` (`/wdf/workflow`, emits every other job and task type, and builds the task request without writing it to the event history), `placement` (reads the task type, CPU and memory of the task request, emits nothing) and `worker` (reads the task request, writes references into heartbeat details, emits nothing).
+- The stages are `dispatch` (source `/wdf/dispatch`, emits accepted and published), `control` (`/wdf/control`, emits the four request types, and `cancelled`, `terminated`, `paused` and `resumed` for a job that never started, each with a `when` field that names that condition), `admission` (`/wdf/admission`, emits admitted, and the dead lettered event for a message it rejects when the message parses far enough to name a job, and nothing for one that does not), `workflow` (`/wdf/workflow`, emits every other job and task type, and builds the task request without writing it to the event history), `placement` (reads the task type, CPU and memory of the task request, emits nothing) and `worker` (reads the task request, writes references into heartbeat details, emits nothing).
 - `contracts/stages/check.sh contracts/stages/stages.yaml` exits 0, and exits 1 with a `reason` for a type emitted by two stages without a `when` field, a type other than the task request emitted by no stage, an emitted event whose `source` is not the stage's source, and an attribute or data field that does not exist in the catalogue.
-- Obligations that the stage epics confirm in their own specs, because their texts do not list them yet: #24 emits `published` and `terminate.requested`, and emits `cancelled`, `terminated` and `paused` for a job with no workflow, while a dead letter made by the broker itself (delivery limit, expiry) has no emitter here and stays with the reporter question of #7.
+- Obligations that the stage epics confirm in their own specs, because their texts do not list them yet: #24 emits `published` and `terminate.requested`, and emits `cancelled`, `terminated`, `paused` and `resumed` for a job with no workflow (a `resumed` there returns the row to `accepted`), while a dead letter made by the broker itself (delivery limit, expiry) has no emitter here and stays with the reporter question of #7, as does any message with no derivable job id.
 - Test: `packages/stages/tests/test_stages_contract.py` over the file and its invalid vectors (T0).
 
 **S.2 Fake-stage contract tests** [8] Lane S, T0. Needs: S.1, E.3, K.1.
@@ -383,13 +434,13 @@ Proposal numbering from the epic is in brackets.
 - DAG: lane 0, then (E.1 ‖ K.1, K.2), then E.2, then (E.3 ‖ C.1), then (C.2, C.3 ‖ S.1 ‖ T.1), then (S.2 ‖ T.2, T.3), then the exit test.
   E.2 waits for K.1 as well as E.1, C.2, S.1 and T.1 wait for E.3, T.1 also waits for K.1, and S.2 waits for S.1.
 - Questions 1 to 3 of section 0.2 are answered before E.2 starts, question 4 before 0.3 and questions 2 and 5 before 0.2, or their defaults apply.
-- T1 issues (0.4, E.2, T.1, T.2, T.3 recording) start containers through `wdf_itest`, which takes `/tmp/wdf-t1.lock`, so on this host their containers never exceed two at a time whatever the number of workers.
+- T1 issues (0.4, E.2, T.1, T.2, T.3 recording) start containers through `wdf_itest`, which holds one of two lock files per session and starts one container at a time, so the containers on this host never exceed two whatever the number of workers.
 
 Stubs:
 
 | Stub | What it fakes | How its conformance test runs against the real thing |
 | --- | --- | --- |
-| `packages/keys` functions in 0.1 | `NotImplementedError("not implemented: owned by lane K")` | `test_vectors.py` accepts only that error or a vector match, and K.1 makes it pass the vectors, so the stub and the real functions share one test |
+| `packages/keys` functions in 0.1 | `NotImplementedError("not implemented: owned by lane K")` | `test_vectors.py` accepts that error only for the names in its `STUBBED` list, and a vector match for the rest, and K.1 makes it pass the vectors, so the stub and the real functions share one test |
 | Stand-in workflow in `packages/temporal/` | the job workflow of #6, as three functions | #6 runs `run_stage_contract("workflow", ...)`, adds its own histories to the corpus with an `owners.yaml` entry, and replays them with its own class through the same runner |
 | Fake stages in `packages/stages/` | dispatch, control, admission, workflow, placement and worker | the same contract runner runs against the real stage in its own epic, so a fake cannot drift silently |
 | Scratch table in the E.2 Postgres test | the event table of #3 | the storage epic runs the golden event rows through its hypertable and expects 0 rows on the second insert, with the same two key columns |
@@ -425,12 +476,11 @@ Not provable by this epic: the broker hop through RabbitMQ (#7 re-runs the S4 ch
 
 - Maximum parallel workers: 1 for lane 0, then 2, then 1, then 2, then 3 at the widest point (C.2 or C.3, S.1 and T.1 together), then 2.
 - Host constraints: T0 work needs only `uv` and Python from the dev shell and has no limit.
-  T1 work starts Postgres or the Temporal dev server by `docker run` on `127.0.0.1`, each capped at 1 GiB (S4 ran RabbitMQ and S3b ran Postgres at that cap, and the tests here are small), and the lock of `wdf_itest` keeps at most two containers up on the 7.8 GiB host, while the cluster is never started.
+  T1 work starts Postgres or the Temporal dev server by `docker run` on `127.0.0.1`, each capped at 1 GiB (S4 ran RabbitMQ and S3b ran Postgres at that cap, and the tests here are small), and the two lock files of `wdf_itest` keep at most two containers up on the 7.8 GiB host, while the cluster is never started.
   Their footprint was not measured for this epic.
-- What each lane needs: lane K, C and S need the dev shell only (T0), and lane 0 needs Docker for the 0.4 helper test (T1).
-  Lane E needs Docker for the Postgres image in E.2 (T1).
-  Lane T needs Docker for the Temporal dev server image and network access for `uv` to fetch `temporalio` and OpenTelemetry (T1).
-  `just ci` runs `just itest`, so the T1 tests also run in CI on a runner with Docker.
+- What each lane needs: lane K, C and S write only T0 tests, lane 0 needs Docker for the 0.4 helper test (T1), lane E needs Docker for the Postgres image in E.2 (T1), and lane T needs Docker for the Temporal dev server image and network access for `uv` to fetch `temporalio` and OpenTelemetry (T1).
+  Every lane's Done gate runs `just ci`, which runs `just itest`, so once 0.4, E.2 and T.1 have merged every lane needs Docker for its gate, including lanes K, C and S, and a missing Docker daemon fails the gate.
+  The T1 tests also run in CI on a runner with Docker.
 - Estimates, not measurements: lane 0 (2.5 d), lane E (3.5 d, the longest), lane K (1.5 d), lane C (2 d), lane T (3 d, with a T1 flakiness risk), lane S (2 d), exit test (1 d).
   That is about 10 days elapsed along lane 0, E.1, E.2, E.3, T.1, T.3 and the exit test, and about 16 worker-days of effort, with `uv.lock` rebases and the T1 container runs as the main sources of slip.
 
