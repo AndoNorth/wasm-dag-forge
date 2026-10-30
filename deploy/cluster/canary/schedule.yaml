@@ -1,4 +1,5 @@
 # Requests more memory than the obs node can allocate, so the scheduler must leave it Pending.
+# The figure below is a placeholder that canary.sh replaces with the live allocatable memory of the node plus a margin.
 # It tolerates memory pressure, which the node reports for minutes after the memory canary, so the reason stays memory.
 apiVersion: v1
 kind: Pod
