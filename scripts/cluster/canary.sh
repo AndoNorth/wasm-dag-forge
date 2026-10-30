@@ -65,9 +65,10 @@ memory() {
 schedule() {
     local msg='' phase
     k apply -f deploy/cluster/canary/schedule.yaml >/dev/null
+    # The event does not exist until the scheduler has tried the pod, and jsonpath fails on an empty list, so a poll that finds none is retried.
     for _ in $(seq 60); do
         msg=$(k -n "$ns" get events --field-selector involvedObject.name=canary-schedule,reason=FailedScheduling \
-            -o jsonpath='{.items[0].message}')
+            -o jsonpath='{.items[0].message}' 2>/dev/null || true)
         [ -z "$msg" ] || break
         sleep 1
     done
@@ -83,7 +84,7 @@ pool() {
     k apply -f deploy/cluster/canary/pool-untolerated.yaml -f deploy/cluster/canary/pool-tolerated.yaml >/dev/null
     for _ in $(seq 60); do
         msg=$(k -n "$ns" get events --field-selector involvedObject.name=canary-pool-untolerated,reason=FailedScheduling \
-            -o jsonpath='{.items[0].message}')
+            -o jsonpath='{.items[0].message}' 2>/dev/null || true)
         [ -z "$msg" ] || break
         sleep 1
     done
