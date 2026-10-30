@@ -179,7 +179,7 @@ Each command runs as written, and its real output is pasted in the PR that recor
 | 1 | `nix develop -c just doctor` | exit 0, `memory-vs-preset` for `ci` reads `ok` |
 | 2 | `nix develop -c scripts/cluster/render.sh ci`, `dev` and `soak`, each run twice | all three render without starting anything, the two runs of each differ by nothing under `diff` |
 | 3 | `nix develop -c just up` on `ci`, then again | Ready, then no change on the second run |
-| 4 | `nix develop -c scripts/cluster/limits.sh` | allocatable equals preset minus reservation per node, exit 137 and `oom_kill` above zero for the memory canary, `Insufficient memory` for the over-request, throttle above zero |
+| 4 | `nix develop -c scripts/cluster/allocatable.sh "$(scripts/cluster/render.sh ci)/limits.yaml"` and `nix develop -c scripts/cluster/canary.sh all` | allocatable equals preset minus reservation per node, exit 137 and `oom_kill` above zero for the memory canary, `Insufficient memory` for the over-request, throttle above zero |
 | 5 | `kubectl get nodes -L wdf.dev/pool`, `kubectl get resourcequota,limitrange -A` and a pod that exceeds its namespace quota | pool labels and taints as the preset says, four namespaces with quota and limit range, defaults admitted, over-quota rejected |
 | 6 | `tilt alpha tiltfile-result` for each of the four profiles, then again with a second `kind-*` context present | each profile lists the groups in the lane T table, the context guard refuses the second context, soak mode has no live update |
 | 7 | `ss -ltn` and a `curl` to the dummy endpoint with Tilt stopped | mapped ports bound to 127.0.0.1 only, the endpoint answers |
@@ -208,7 +208,8 @@ Host: WSL2 with 20,002 MiB `MemTotal`, 8 CPUs and `fs.inotify.max_user_instances
 Every cluster command ran under `flock /tmp/wdf-cluster.lock`, a watchdog sampled host `MemAvailable` every 5 s and would have removed only the cluster wdf below 1 GiB, and the lowest value sampled over the whole session was 13,769 MiB.
 Real command output is in the pull request that records the run.
 
-The row commands ran as written except row 4, where the command as written exits 2 and the checks it names were run through the scripts that implement them.
+The row commands ran as written.
+Row 4 first named `scripts/cluster/limits.sh`, which applies limits from a rendered file and exits 2 without one, so the row now names `allocatable.sh` and `canary.sh`, the scripts that check what the row expects.
 Rows 1 to 10 were run on `ci` as the table says.
 The `dev` and `soak` presets, which the spec could not start on the 7.8 GiB host, were additionally started one at a time on this host and torn down before the next.
 
@@ -217,7 +218,7 @@ The `dev` and `soak` presets, which the spec could not start on the 7.8 GiB host
 | 1 | pass | `just doctor` exit 0, `memory-vs-preset` reads `ok` (host 20,002 MiB, preset `ci` 8,832 MiB) |
 | 2 | pass | `ci`, `dev` and `soak` render with nothing started, and two runs into one directory differ by nothing under `diff -r` |
 | 3 | pass | from no wdf container, network or cluster, `just up` took 40 s and the second run 4 s with the same container ids and creation times |
-| 4 | fail as written | `scripts/cluster/limits.sh` needs a rendered `limits.yaml` and exits 2 without one, while `allocatable.sh` and `canary.sh all` pass every expectation of the row |
+| 4 | pass | `allocatable.sh` reports expected equal to actual on every node, and `canary.sh all` shows exit 137 with `oom_kill` raised, `Insufficient memory` for the over-request and `nr_throttled` raised |
 | 5 | pass | pool labels and taints as the preset says, four namespaces each with a quota and a limit range, defaults admitted, over-quota rejected |
 | 6 | pass | five profiles listed as the profile table says, the guard refuses the active context `kind-kind`, soak has no live-update step |
 | 7 | pass | `ss -ltn` shows 18080 and 18081 on `127.0.0.1` only, the dummy endpoint answers 200 with Tilt stopped |
@@ -253,7 +254,6 @@ Findings and what was done:
 
 Not proven:
 
-- Whether the closing of the epic should wait for the row 4 command to be corrected, which is a decision for the captain.
 - Any component at its limit, because no preset was loaded with ballast on this host, so only the idle cluster, the canaries and the dummy workloads ran, and S2 was not repeated on this host.
 - A soak of any length beyond the 300 s hold, because the soak criteria belong to characterization.
 - CPU contention, because `dev` and `soak` ask for 13 and 20 CPUs on an 8 CPU host and only the canary throttle was measured.
