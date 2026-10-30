@@ -241,7 +241,7 @@ Proposal numbering from the epic is in brackets.
 
 - Scope: `contracts/status/` and `contracts/artifact/` as defined in section 2.
 - `contracts/status/check.sh contracts/status/status.yaml` exits 0.
-  Its invalid vectors exit 1 with a `reason`: a view stored as a status, a transition out of a terminal status, a job event type projected to two statuses, and an unknown status.
+  Its invalid vectors exit 1 with a `reason`: a view stored as a status, a transition out of a terminal status, a job event type projected to two statuses without a `when` condition, and an unknown status.
 - The projection maps each of the 16 job types (E.2 lists them) to a status or to none: `resume.requested` sets `resume-pending`, while the other three request types, `published` and `dead.lettered` set no status, and the row of a dead lettered job stays `accepted` so that a replay can admit it.
   `resumed` sets `running` when the workflow emits it.
   A job that never started is cancelled, terminated or paused on the row alone, so the `control` stage also emits `cancelled`, `terminated` and `paused` for it, and emits `resumed` when such a paused job is resumed, which returns its row to `accepted` because it was never running (S.1).
