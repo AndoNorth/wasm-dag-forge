@@ -9,7 +9,9 @@ import yaml
 from jsonschema import Draft202012Validator
 from wdf_events.models import DATA_MODELS, Event
 
-SCHEMA = Path(__file__).resolve().parents[4] / "contracts/stages/stages.schema.json"
+ROOT = Path(__file__).resolve().parents[4]
+SCHEMA = ROOT / "contracts/stages/stages.schema.json"
+TABLE = ROOT / "contracts/stages/stages.yaml"
 # The task request is built by the workflow and handed to an activity, so no event row records it.
 UNRECORDED = "task.requested"
 
