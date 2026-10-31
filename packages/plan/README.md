@@ -43,3 +43,20 @@ The workflow adds the deadline and the input references, and a test builds a `Ta
 
 `class_hint(stats, profile)` returns `short` when the critical path bound is at most the profile threshold and `long` above it.
 The submitter's override on the job row wins over the hint, and that choice is made by the caller.
+
+## Binding per-job values
+
+A job row carries a block with `seed`, `parameters` and an optional `class_override`, passed to both functions as a mapping.
+
+`check_job_params(plan, params, profile)` returns every fault, sorted by path then code:
+
+- `unbound-parameter` for a declared parameter with no value, including `seed` when the template declares it and the row has none.
+- `unknown-parameter` for a name the template does not declare, and for `seed` among the `parameters`.
+- `parameter-type-mismatch` for a value of another type than its declaration.
+- `bad-seed` for a seed below 0 or at least 2^53, which is checked even when the template does not declare `seed`.
+- `unknown-class` for an override that is not a class of the profile.
+- `plan-too-large` when the bound plan is over the profile's byte limit, so a long value cannot push a stored job past the payload budget.
+
+`bind(plan, params, profile)` raises `ParamsInvalid` carrying those issues, and otherwise replaces each placeholder by the job's value as a whole value and changes nothing else.
+The row seed is the value of the reserved parameter `seed`, and a template that does not declare it ignores the row seed.
+The declarations stay in the bound plan, so binding a bound plan again with the same block gives the same plan, and compile tasks never hold a placeholder, so they are byte-identical across a batch.

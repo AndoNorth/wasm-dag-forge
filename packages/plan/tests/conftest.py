@@ -158,3 +158,8 @@ def shapes():
             },
         },
     }
+
+
+@pytest.fixture(scope="session")
+def ci(profile_of):
+    return profile_of("ci")
