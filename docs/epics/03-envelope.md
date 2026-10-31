@@ -291,6 +291,70 @@ Not provable by this epic: the broker hop through RabbitMQ (#7 re-runs the S4 ch
 
 ## 8. Closure (filled at close)
 
-<commit sha, CI run URL, exit test PR, what was learned, what moved, and the refinement of the architecture note>
+Run on 2026-10-31 by a worker who did not write the lanes, on a clean `git archive` export of `origin/main` at `92c76e3`, the merge of the fake stages and the contract runner, which is the last lane merge.
+Host: WSL2 with 20,002 MiB `MemTotal`, shared with 13 containers and a plain kind cluster of the captain that were running before and after and were not touched.
+Docker was running and no cluster was started.
+Real command output is in the pull request that records the run.
+
+The row commands ran as written, from the export root, with the departures listed below.
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1 | pass | `uv sync --frozen` and `uv lock --check` exit 0, and the checksum of `uv.lock` is the same before and after |
+| 2 | pass | `schemagen --check` exits 0 with no output |
+| 3 | pass | renaming `submission_key` in `AcceptedData` gives `drift: contracts/events/schemas/job.accepted/1.0.json` and exit 1, and the restored file exits 0 |
+| 4 | pass | the 3 valid files exit 0, and the 26 invalid files exit 1 with one `reason:` line each |
+| 5 | pass | `status.yaml` and `stages.yaml` exit 0, the 11 valid artifact references exit 0, and the 14 invalid ones exit 1 with a `reason:` line |
+| 6 | pass | 74 passed, no `SKIPPED` line, and `test_attempt_restart_no_collision` is collected |
+| 7 | pass | 384 passed and 1 deselected, no `SKIPPED` line, with the budget, golden, poison and flow tests among them |
+| 8 | pass | with `new_required: str` added to `AcceptedData` the test fails with `data.new_required: new required field`, 57 others pass, and the restored file passes all 58 |
+| 9 | pass | 19 passed and 3 deselected, no `SKIPPED` line, the corpus replay and the negative control among them |
+| 10 | pass | 11 passed in 14 s (7 in `packages/itest`, 1 in `packages/events`, 3 in `packages/temporal`), no `SKIPPED` line, and `docker ps -a --filter label=wdf.dev/verify-run` lists no container |
+| 11 | pass | `just ci` exit 0, with 529 tests in `just test`, 11 integration tests in `just itest` and `nix flake check` passing, after the departure below |
+| 12 | pass | `ci` run [41205020258](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/41205020258) on `main` at `92c76e3`, completed with success |
+
+Departures from the method:
+
+- The first export sat under `/tmp`, and rows 1 to 10 ran there.
+  Row 11 failed there with 6 failures out of 529 tests, all with `error: opening Git repository "/tmp"` from `nix shell --inputs-from` in `scripts/verify/cluster/lib/tools.sh`.
+  An empty `/tmp/.git` directory had appeared at 13:29:21, and the process list shows a `bwrap` sandbox of another agent session on the host that mounts a tmpfs on `/tmp/.git`.
+  The directory was gone again a few minutes later, so the cause is inferred from the process list and not proven.
+  Row 11 was run again on a second export of the same commit under `~/.cache`, outside any git repository, and passed.
+  Rows 1 to 10 were not run again on the second export.
+- Row 5 lists the invalid artifact vectors by directory, one directory per reason, so the loop took every file under `invalid/`.
+- Row 6 names no test in its output, so the presence of `test_attempt_restart_no_collision` was read from a separate `--collect-only` run.
+  The same was done for the coverage named by row 7 and for the corpus and negative control of row 9, and for the packages of row 10.
+- Row 12 needed no `workflow_dispatch`, because the run for the final lane merge was green.
+
+Findings:
+
+- `contracts/stages/check.sh` prints `RuntimeWarning: 'wdf_stages.check' found in sys.modules after import of package 'wdf_stages'` to stderr and still exits 0, because the package imports the module that `python -m` then runs.
+- Every stale reference to the verifier and to "spec section 7" that section 3 named is still present in `docs/method.md` at lines 112, 220 and 245 on `92c76e3`.
+- Row 10 ran with the default lock directory and slot 0 while no other T1 session was active, so the two-container limit and the lock wait were not exercised by this run.
+
+Not proven:
+
+- The broker hop through RabbitMQ, because #7 re-runs the S4 checks with the golden events, and whether the broker epic wires `upgrade_for_replay` at replay.
+- Real stages emitting these events, because each stage epic calls `run_stage_contract`, and the read lists of admission, workflow and worker are first guesses that the stage epics confirm.
+- Worker versioning on activity queues other than the workflow queue, a multi-day trace and restart reconstruction (#15).
+- Any cluster behaviour.
+- Replay across releases, because the corpus holds two stand-in histories of one release.
+- The footprint of the T1 containers, which was not measured, and the host-wide limit of two containers under concurrent sessions.
+- The Temporal behaviour of the 1.32.1 server of S3, because the lane recorded that its T1 test ran the embedded 1.32.0 server of a CLI image.
+- A run with no cached container images, because the T1 images were present on the host.
+
+Follow-ups recorded by the lanes and by this run, none of which blocks closure:
+
+- Edit `docs/method.md` to drop the verifier rows for this epic (lines 220 and 245) and to point the exit test at section 6 (line 112), as section 3 recorded.
+- Refine `docs/architecture/13-state-envelope-artifacts.drawio` with what the lanes learned, and set the `Status` line of this spec.
+- Replace the placeholders of decision 12 (7 days and 14 days) and the single `INTRODUCED` date of the catalogue with real values, which changes `readable_days()` and may fail `check_catalogue`.
+- Confirm in the specs of #6 and #8 that the workflow input is the accepted event plus the params block.
+- Have the stage epics adapt real stages to the callable signature of `run_stage_contract`, supply the event sequence after a resume, and call `stage_span` themselves, because the workflow-side spans have zero duration.
+- Have the observability epic take over `contracts/instrumentation/metrics.yaml`, with emitters that use its exact names and labels.
+- Have the storage epic (#3) run the golden event rows through its hypertable and expect 0 rows on the second insert.
+- Fix the `RuntimeWarning` of `contracts/stages/check.sh`.
+- Treat the move matrix of the status contract as a first reading that the workflow epic may extend by a contract-change PR.
+- Remove by label the container of a T1 session killed with SIGKILL, which cannot clean up after itself.
+- Make `wdf_events.metrics` readable from a package installed outside the repository, which it is not because it reads the contract by repository path.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
