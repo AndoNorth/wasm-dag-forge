@@ -188,13 +188,13 @@ Departures from the method, stated so that the captain approves them knowingly:
 
 | Lane | Workers | Owns (exclusive) | Issues | Needs |
 | --- | --- | --- | --- | --- |
-| 0 Contracts and skeleton | 1 | `contracts/job/{README.md,VERSION,check.sh,errors.yaml,errors.schema.json,limits.yaml,limits.schema.json,registry.json}`, `contracts/job/schemas/**`, `contracts/job/vectors/invalid/schema/**`, `contracts/job/vectors/slots-fixture/**`, `packages/jobdoc/**`, `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**` for issue 0.4 only, the root `pyproject.toml` edit and `uv.lock`, and until lanes V, P, H, F and L take over `packages/jobdoc/**` (lane P), `packages/jobcheck/**`, `packages/plan/**`, `packages/jobpatch/**`, `packages/jobexamples/**` and `packages/jobtools/**` | 0.1, 0.2, 0.3, 0.4 | R.1 (barrier) |
-| V Validation | 1 | `packages/jobcheck/**`, `contracts/job/vectors/invalid/{graph,reference,bundle,resource,limit}/**`, `contracts/job/vectors/resolver.json` | V.1, V.2, V.3, V.4 | lane 0, V.1, P.1 and P.2 for V.3, and V.1 to V.3 for V.4 |
-| P Plan | 1 | `packages/plan/**`, `packages/jobdoc/**` after lane 0, `contracts/job/vectors/job-params/invalid/**` | P.1, P.2, P.3, P.4 | lane 0, P.1 for P.2 and P.3, and P.1 and F.2 for P.4 |
-| H Patch | 1 | `packages/jobpatch/**`, `contracts/job/vectors/patch/**` | H.1 | P.1 and P.3 |
-| F Fixtures | 1 | `packages/jobexamples/**`, `contracts/job/vectors/valid/**`, `contracts/job/vectors/job-params/valid/**`, `contracts/job/vectors/plans/**` | F.1, F.2 | V.4, P.1 and P.3 for F.1, and F.1, P.3 and H.1 for F.2 |
-| R Revisit | 1 | `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py`, `docs/epics/02-cluster.md` (one closure addendum line only) | R.1 | nothing (merges before lane 0) |
-| L Tools | 1 | `packages/jobtools/**` | L.1, L.2 | V.4, P.1, P.2, P.3 and H.1 for L.1, and L.1 for L.2 |
+| 0 Contracts and skeleton | 1 | `contracts/job/{README.md,VERSION,check.sh,errors.yaml,errors.schema.json,limits.yaml,limits.schema.json,registry.json}`, `contracts/job/schemas/**`, `contracts/job/vectors/invalid/schema/**`, `contracts/job/vectors/slots-fixture/**`, `packages/jobdoc/**`, `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**` for issue 0.4 only, the root `pyproject.toml` edit and `uv.lock`, and until lanes V, P, H, F and L take over `packages/jobdoc/**` (lane P), `packages/jobcheck/**`, `packages/plan/**`, `packages/jobpatch/**`, `packages/jobexamples/**` and `packages/jobtools/**` | [#125](https://github.com/AndoNorth/wasm-dag-forge/issues/125), [#126](https://github.com/AndoNorth/wasm-dag-forge/issues/126), [#127](https://github.com/AndoNorth/wasm-dag-forge/issues/127), [#128](https://github.com/AndoNorth/wasm-dag-forge/issues/128) | R.1 (barrier) |
+| V Validation | 1 | `packages/jobcheck/**`, `contracts/job/vectors/invalid/{graph,reference,bundle,resource,limit}/**`, `contracts/job/vectors/resolver.json` | [#129](https://github.com/AndoNorth/wasm-dag-forge/issues/129), [#130](https://github.com/AndoNorth/wasm-dag-forge/issues/130), [#131](https://github.com/AndoNorth/wasm-dag-forge/issues/131), [#132](https://github.com/AndoNorth/wasm-dag-forge/issues/132) | lane 0, V.1, P.1 and P.2 for V.3, and V.1 to V.3 for V.4 |
+| P Plan | 1 | `packages/plan/**`, `packages/jobdoc/**` after lane 0, `contracts/job/vectors/job-params/invalid/**` | [#133](https://github.com/AndoNorth/wasm-dag-forge/issues/133), [#134](https://github.com/AndoNorth/wasm-dag-forge/issues/134), [#135](https://github.com/AndoNorth/wasm-dag-forge/issues/135), [#136](https://github.com/AndoNorth/wasm-dag-forge/issues/136) | lane 0, P.1 for P.2 and P.3, and P.1 and F.2 for P.4 |
+| H Patch | 1 | `packages/jobpatch/**`, `contracts/job/vectors/patch/**` | [#137](https://github.com/AndoNorth/wasm-dag-forge/issues/137) | P.1 and P.3 |
+| F Fixtures | 1 | `packages/jobexamples/**`, `contracts/job/vectors/valid/**`, `contracts/job/vectors/job-params/valid/**`, `contracts/job/vectors/plans/**` | [#138](https://github.com/AndoNorth/wasm-dag-forge/issues/138), [#139](https://github.com/AndoNorth/wasm-dag-forge/issues/139) | V.4, P.1 and P.3 for F.1, and F.1, P.3 and H.1 for F.2 |
+| R Revisit | 1 | `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py`, `docs/epics/02-cluster.md` (one closure addendum line only) | [#124](https://github.com/AndoNorth/wasm-dag-forge/issues/124) | nothing (merges before lane 0) |
+| L Tools | 1 | `packages/jobtools/**` | [#140](https://github.com/AndoNorth/wasm-dag-forge/issues/140), [#141](https://github.com/AndoNorth/wasm-dag-forge/issues/141) | V.4, P.1, P.2, P.3 and H.1 for L.1, and L.1 for L.2 |
 
 Shared-file rules:
 
@@ -215,7 +215,7 @@ Shared-file rules:
 
 ## 4. Issues
 
-Each issue below becomes a GitHub issue after approval, filed from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md) as a sub-issue of #5 and replaced by a `#NNN` link in this section.
+Each lane issue below was filed on 2026-10-31 from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #5 (R.1 as a `revisit` sub-issue of #2), and its body holds the scope, owns, acceptance criteria, verifier and needs.
 Each issue copies its Owns line from the lane table, uses its Test line as the Verifier section, and keeps only the `just ci` and Owns checkboxes of Done means.
 Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker as the envelope spec says), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
 Acceptance lines are commands with an observable result, except the README content lines and the lines that say a result is pasted in the PR or in Closure, which the reviewer checks in the PR.
@@ -239,395 +239,24 @@ Commands are written without the `nix develop -c uv run --frozen` prefix that ev
 | 11 Batch validation performance | L.2 |
 | not in the epic's list: per-job binding with placeholders, the validator entry point, the package skeletons, the cache key entry input, the simulate slot entry | P.3 (with 0.1 and V.2 for the placeholder checks), V.4, 0.3, 0.4, R.1 |
 
-### 0.1 Document models, strict loader and error table [1]
-
-Lane 0, tier T0.
-Needs: R.1.
-
-Scope: the document model with tasks keyed by id, the closed set of three task types, the `parameters` declarations and the placeholder object (codes `bad-parameter-declaration`, `placeholder-malformed` and `placeholder-in-compile`), strict fields, id rules, resource units, `allow_partial`, the simulate-only `checkpoint` flag (a boolean, default false), the strict loader with the size limit passed as `max_bytes` (code `document-too-large`, class `schema`), the error table and the schema export.
-`parse_document` raises `DocumentInvalid` carrying the issues, and `Issue` is defined here, so `jobdoc` never imports `jobcheck`.
-Nothing here needs the limits profile, which 0.2 adds.
-The template parameters of section 0.3 shape the seed field and the arguments, and the numbers of section 0.3 apply.
-
-Owns: `contracts/job/{README.md,VERSION,errors.yaml,errors.schema.json}`, `contracts/job/schemas/job/**`, `contracts/job/vectors/invalid/schema/**`, `packages/jobdoc/**`.
-
-Consumes and produces: artifact contract v1 (task id pattern, reference shape), events contract v1 (identifier style); produces the document schema `schemas/job/1.0.json` and `errors.yaml` listing every code of every class with its class.
-
-Acceptance criteria:
-
-- [ ] `python -m wdf_jobdoc.schemagen --check` exits 0, and renaming a field of a model makes it exit 1 naming the file under `contracts/job/schemas/`.
-- [ ] `pytest packages/jobdoc -q -rs` passes with no skip, and covers duplicate keys, `NaN`, a float outside `cpu`, a `cpu` with four decimals, an unknown field, a task type outside the closed set, a field not allowed for its type (for example `cpu` on a compile task), a placeholder with a second key, a placeholder as a list element or a key, and a placeholder in a compile task.
-- [ ] `pytest packages/jobdoc -q -rs -k vectors` loads every file under `vectors/invalid/schema/<code>/` through `parse_document` and checks that the first issue has the code of its directory name, with `max_bytes` set to the `ci` document limit of section 0.3.
-- [ ] `errors.yaml` validates against `errors.schema.json`, and the README lists the classes `schema`, `graph`, `reference`, `bundle`, `resource`, `limit`, `params` and `patch`.
-
-Test: `packages/jobdoc/tests/test_loader.py`, `test_models.py`, `test_schema_drift.py`, `test_error_table.py` and `test_vectors.py`.
-
-### 0.2 Registries and the limits profile [4]
-
-Lane 0, T0.
-Needs: 0.1.
-Decisions 8 and 9 of section 0.1 apply, and R.1 has merged, so the live slots files hold all three pools.
-
-Scope: the task type registry (a pool derived from the type, accepted kinds of in-job input references, declared outputs), the aggregation registry with its argument models and their types, the limits profile model, `limits.yaml` with the numbers of section 0.3 and the `permissive` profile, the pool table model with its three pools and `load_profile`, and a fixed copy of the slots file in the shape of `deploy/presets/slots/ci.yaml`, with a simulate entry of 250 millicores and 384 MiB, under `contracts/job/vectors/slots-fixture/`, which tests read through `slots_dir`.
-The compile source bundle is `params.source` and never an entry of `inputs`, which holds only logical references between tasks of the job.
-
-Owns: `contracts/job/{limits.yaml,limits.schema.json,registry.json}`, `contracts/job/vectors/slots-fixture/**` and `packages/jobdoc/**`.
-
-Consumes and produces: topology v1 (pool names), the shape of `deploy/presets/slots/<preset>.yaml`; produces the registry export and the limits file.
-The pool table tests read the slots fixture, so they stay stable, and one test reads the live slots files.
-
-Acceptance criteria:
-
-- [ ] `pytest packages/jobdoc -q -rs` passes, including `test_registry_pools_exist_in_topology` and `test_registry_kinds_exist_in_artifact_layout`.
-- [ ] `load_profile("ci", root, slots_dir=<slots-fixture>)` returns the compile, simulate and aggregate budgets of the fixture as millicores and MiB (1 CPU and 1 Gi read as 1000 and 1024, 250m as 250), shown by `test_pool_table_from_slots`.
-- [ ] `test_live_slots_files_are_complete` loads `ci`, `dev` and `soak` through `load_profile(preset, root)` without `SlotsIncomplete`.
-- [ ] `test_missing_pool_is_refused` shows a slots file without a simulate entry raises `SlotsIncomplete` naming `simulate`, and the loader holds no stand-in budget.
-- [ ] `test_max_job_duration_matches_compat` fails when `max_job_duration_days` differs from `wdf_compat.window.MAX_JOB_DURATION_DAYS`.
-- [ ] A task type or aggregation outside the registry is rejected with `unknown-task-type` or `unknown-aggregation`, and a seed in an aggregate task with `unknown-field`, shown by `test_vectors.py` over `vectors/invalid/schema/`.
-
-Test: `packages/jobdoc/tests/test_registry.py`, `test_limits.py`, `test_pool_table.py`.
-
-### 0.3 Plan model, package skeletons and stubs
-
-Lane 0, T0.
-Needs: 0.2.
-
-Scope: the plan and stats models with their schema files, the five other packages with their `pyproject.toml`, the root `pyproject.toml` and `uv.lock` edit, a stub for every cross-lane entry point, and the purity guard.
-
-Owns: `contracts/job/check.sh`, `contracts/job/schemas/{plan,stats}/**`, the new packages until the owning lane takes over, and the root `pyproject.toml` edit.
-
-Consumes and produces: nothing new; produces the plan and stats schemas, `check.sh` (which runs `python -m wdf_jobcheck.check`), and stubs that raise `NotImplementedError("not implemented: owned by lane V")` (or P, H, F, L) for `validate` beyond the schema and registry passes, `compile_plan`, `bind`, `patch_check`, `examples` and the CLI commands, which exit 3 with the same text.
-
-Acceptance criteria:
-
-- [ ] `uv sync --frozen` and `uv lock --check` exit 0 with the new members, and `python -m wdf_jobdoc.schemagen --check` exits 0.
-- [ ] Every file under `contracts/job/vectors/invalid/schema/*/` exits 1 through `contracts/job/check.sh` with `reason: <code>:` for its directory name, and a valid document exits 3 with `not implemented: owned by lane V` until V.4 replaces the stub.
-- [ ] `pytest packages/jobdoc -q -rs -k "no_io_imports"` passes, and fails for a fixture module that imports `os`, `sys`, `socket`, `subprocess`, `pathlib`, `tempfile`, `urllib`, `time`, `datetime`, `random`, `secrets`, `uuid`, `logging` or `wdf_events`, or calls `open` or `print`, with the three tool modules of section 3 exempt by name.
-- [ ] `pytest packages/jobcheck packages/plan packages/jobpatch -q -rs -k vectors` accepts the stub error only for the names in each test's `STUBBED` list, and a real match for the rest.
-
-Test: `packages/jobdoc/tests/test_purity.py`, `test_check_stub.py` and `packages/*/tests/test_vectors.py`.
-
-### 0.4 Compile cache key entry input (contract change)
-
-Lane 0, tier T0.
-Needs: R.1.
-Decision 10 of section 0.1 applies.
-This issue merges with lane 0, so no consumer ever sees the four-input key.
-
-Scope: add the entry module as a fifth input of `compile_cache_key` and its vectors, with the consumer list.
-This is a contract-change PR on the envelope contract, so it touches the contract, the package and its tests together and bumps the contract `VERSION`.
-Consumers: #6 (the workflow computes the key), #11 (the compile worker re-checks it) and this epic.
-
-Owns: `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**`, for this issue only.
-
-Acceptance criteria:
-
-- [ ] `pytest packages/keys -q -rs` passes, and `test_compile_key_entry` shows two entries over one bundle give two keys and one entry gives one.
-- [ ] The formula in `contracts/events/README.md` and the vectors in `keys.json` name the entry, and `contracts/events/VERSION` is bumped.
-- [ ] `pytest packages/events packages/compat -q -rs -m "not integration"` still passes.
-
-Test: `packages/keys/tests/test_compile_key.py`, `test_vectors.py`.
-
-### R.1 Simulate entry in the slots files (revisit of the cluster epic) [4]
-
-Lane R, tier T0.
-Needs: nothing.
-It merges before lane 0 starts.
-Decision 9 of section 0.1 applies.
-
-This is a `revisit` child issue of the cluster epic (#2), filed as [the method](../method.md#revisiting-a-closed-epic) says.
-It links this epic (#5) and lane 0 as the work that exposed the gap, lists the consumers #5, #9 and #10, names the cluster slot checks `scripts/cluster/slots.sh` and `scripts/cluster/test_slots.py` (run by `just ci`) as the verifier it touches, and blocks lane 0 until it merges.
-It is a contract-change style PR, so its description carries the consumer list.
-
-Scope: a `simulate` entry in each slots file with requests equal to limits at 250 millicores and 384 MiB, under the existing `estimate: true`, the file comment updated to name the three pools, the slot test asserting the simulate slot as well, and one dated addendum line in the closure of `docs/epics/02-cluster.md`.
-`slots.sh` already checks every pool of a slots file against its preset node and needs no change [ran: a scratch copy with the entry added printed `fits` for `ci`, `dev` and `soak`].
-The figure is the largest round one that fits the simulate node of every preset after its daemons, 300 millicores and 414 MiB on `ci`, and #10 replaces it when it characterizes the pool.
-
-Owns: `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py` and `docs/epics/02-cluster.md` (the addendum line only).
-
-Consumes and produces: the preset node sizes of `deploy/presets/{ci,dev,soak}.yaml`, read and not edited; produces the simulate entry that `load_profile` reads.
-
-Acceptance criteria:
-
-- [ ] `for p in ci dev soak; do scripts/cluster/slots.sh $p | grep '^slot simulate:'; done` prints three lines, each naming `250m/384Mi` and ending `fits`.
-- [ ] `pytest scripts/cluster/test_slots.py -q -rs` passes, and its first test asserts `slot simulate:` in the output.
-- [ ] `for p in ci dev soak; do yq '.estimate' deploy/presets/slots/$p.yaml; done` prints `true` three times.
-- [ ] The consumer list and the link to the cluster epic are in the PR description, which the reviewer checks.
-
-Test: `scripts/cluster/test_slots.py`.
-
-### V.1 Graph validation [2]
-
-Lane V, T0.
-Needs: lane 0.
-
-Scope: unknown dependencies, self dependencies and cycles reported with the path, over the union of `depends_on` and the edges derived from input references.
-
-Owns: `packages/jobcheck/**` (the graph module) and `contracts/job/vectors/invalid/graph/**`.
-
-Acceptance criteria:
-
-- [ ] A document naming a missing task in `depends_on` exits 1 with `unknown-dependency` and a pointer to that entry, and a task listing itself with `self-dependency`.
-- [ ] A three task cycle exits 1 with `dependency-cycle`, and the message lists the tasks in order and repeats the first at the end.
-- [ ] `pytest packages/jobcheck -q -rs -k "property"` passes `test_cycle_path_is_a_real_cycle` (every reported path is a walk of real edges that returns to its start, on generated graphs with an injected back edge) and `test_acyclic_documents_are_accepted` (generated acyclic graphs never report a cycle).
-
-Test: `packages/jobcheck/tests/test_graph.py`, `test_graph_properties.py`.
-
-### V.2 Artifact reference and bundle validation [3]
-
-Lane V, T0.
-Needs: lane 0.
-
-Scope: the reference checks of a task (producer exists, output declared by its type, kind accepted by the consumer, input counts per type, the aggregate-only form), the placeholder checks (a placeholder names a declared parameter, and the type of that parameter is the type of its position) and the resolver interface with its contract function.
-
-Owns: `packages/jobcheck/**` (the references and resolver modules) and `contracts/job/vectors/invalid/{reference,bundle}/**`.
-
-Consumes and produces: artifact contract v1; produces `SourceResolver`, `BundleInfo`, `BundleNotFound`, `resolver_contract(resolver)`, a `StaticResolver` test double that loads `contracts/job/vectors/resolver.json` (the CLI loads the same shape from any file), and that table, which every valid and bundle vector refers to by SHA-256.
-The table holds one good bundle with a lockfile and the entry modules `echo` and `sim`, which F.1 uses and never edits, and one entry per bundle failure.
-
-Acceptance criteria:
-
-- [ ] Each of `unknown-producer`, `undeclared-output`, `input-kind-not-accepted`, `missing-required-input`, `too-many-inputs`, `duplicate-input`, `index-and-inputs`, `aggregate-without-input`, `index-job-not-alone`, `unknown-placeholder` and `placeholder-type-mismatch` (a `seed` placeholder in an aggregate argument, or a `string` parameter where `blocks` wants a `string-list`) has a vector that exits 1 with that code.
-- [ ] A compile task that consumes a simulate output fails with `input-kind-not-accepted`, and a simulate task with no component input with `missing-required-input`.
-- [ ] A bundle the resolver cannot find, one with another hash, one with no lockfile and an entry module the bundle lacks fail with `bundle-unresolved`, `bundle-hash-mismatch`, `bundle-without-lockfile` and `entry-not-in-bundle`, and an index object that does not exist with `index-unresolved`.
-- [ ] `resolver_contract(StaticResolver(...))` passes, and fails for a resolver that returns a bundle with the wrong hash.
-
-Test: `packages/jobcheck/tests/test_references.py`, `test_resolver.py`.
-
-### V.3 Limits and resource sanity [4]
-
-Lane V, T0.
-Needs: lane 0, V.1, P.1 and P.2.
-
-Scope: resource checks against the per-type slot budget on the document, and the size and count limits, where the plan size, critical path bound and history estimate come from `compile_plan`, `canonical_bytes` and `stats` of the plan library, so submit and placement share one number.
-`pool_budget` is the one function the placement epic reads.
-
-Owns: `packages/jobcheck/**` (the limits module) and `contracts/job/vectors/invalid/{resource,limit}/**`.
-
-Consumes and produces: the `ci` profile and the permissive profile of 0.2; produces `pool_budget`.
-
-Acceptance criteria:
-
-- [ ] A simulate or aggregate task above its pool budget exits 1 with `cpu-exceeds-slot` or `memory-exceeds-slot`, and the same task passes under the `permissive` profile.
-- [ ] Vectors exist for `too-many-tasks`, `max-parallel-exceeded`, `plan-too-large`, `run-timeout-too-long`, `retries-too-many`, `critical-path-too-long` and `history-budget-exceeded`, each exiting 1 with its code, and a boundary vector for each limit that exits 0 exactly at the limit.
-- [ ] `pool_budget(profile, t)` equals the slot of `deploy/presets/slots/ci.yaml` for each of `compile`, `simulate` and `aggregate`, shown by `test_pool_budget_matches_slots`.
-
-Test: `packages/jobcheck/tests/test_resources.py`, `test_limits.py`.
-
-### V.4 The validate entry point
-
-Lane V, T0.
-Needs: V.1, V.2 and V.3.
-
-Scope: `validate` composing the checks in a fixed order (schema, registry, graph, references, resources, limits, bundles), collecting every issue up to the cap, and `python -m wdf_jobcheck.check` behind `contracts/job/check.sh`.
-
-Owns: `packages/jobcheck/**`.
-
-Acceptance criteria:
-
-- [ ] `for f in contracts/job/vectors/invalid/*/*/*.json; do want=$(basename "$(dirname "$f")"); contracts/job/check.sh "$f" 2>&1 | grep -q "^reason: $want:" || echo "MISMATCH $f"; done` prints nothing.
-- [ ] A document with a cycle, an unknown output and a task above its slot budget reports all three in one call, sorted by path then code, and a document with a bad field reports only the schema pass, because the later passes need a typed document: graph, references, resources and bundles (when a resolver is given) run on it independently, and the plan checks (plan size, critical path, history) run only when graph and references found nothing.
-- [ ] `test_validate_is_deterministic` shows two runs give equal reports, and `test_pass_gating` shows the order above, including that a document with a cycle and an unresolved bundle reports both.
-- [ ] `STUBBED` is empty in `packages/jobcheck/tests/test_vectors.py`.
-- [ ] `pytest packages/jobcheck -q -rs` passes with no skip.
-
-Test: `packages/jobcheck/tests/test_validate.py`, `test_vectors.py`.
-
-### P.1 Plan compiler, canonical form and manifest [5, 6]
-
-Lane P, T0.
-Needs: lane 0.
-
-Scope: topological order with ties broken by task id, resolved defaults (compile resources, timeout and retries, default `max_parallel`), derived pools, derived edges, the `parameters` declarations carried into the plan, placeholders kept in the `params` of a template plan, the canonical bytes, `plan_hash` and `manifest_reference`.
-
-Owns: `packages/plan/**`.
-
-Consumes and produces: artifact contract v1 (`layout.yaml` key rule); produces the compiler and the plan identity of section 0.3.
-
-Acceptance criteria:
-
-- [ ] `pytest packages/plan -q -rs -k "property"` passes `test_hash_ignores_key_order_and_whitespace` (a document with its keys shuffled and its whitespace changed compiles to the same bytes and hash) and `test_order_is_topological_and_stable` (every task follows its dependencies and equal inputs give equal order).
-- [ ] `manifest_reference(plan)` passes `contracts/artifact/check.sh` for kind `manifest`, and `test_reference_matches_layout` compares its key rule with `layout.yaml`.
-- [ ] A document that omits compile resources compiles with the compile slot budget, 600 s and 1 retry, shown by `test_compile_defaults`, and `test_permissive_keeps_compile_defaults` shows the same document compiles to the same compile resources under `permissive`.
-- [ ] `task_request_fields(task)` returns `task_type`, `cpu_cores` (millicores over 1,000) and `memory_mib` of a plan task, and `test_plan_task_maps_to_task_request` validates them, with a deadline and the input references added, against `wdf_events.models.TaskRequestData` for every task of every example, so the plan and the task request cannot drift.
-- [ ] `test_template_plan_keeps_placeholders` shows a document with a `{"param": "seed"}` seed compiles to a plan that holds the same marker and the declaration, with the manifest hash unchanged by any job value.
-- [ ] `test_plan_has_no_floats` fails for a plan whose canonical bytes contain a decimal point outside a string.
-
-Test: `packages/plan/tests/test_compile.py`, `test_canonical.py`, `test_manifest.py`, `test_properties.py`.
-
-### P.2 Plan stats and the class hint [5]
-
-Lane P, T0.
-Needs: P.1.
-Decision 8 of section 0.1 applies.
-
-Scope: the plan stats for neighbours and the class hint, with `max_width` as the widest topological level, a plain bound that `packages/plan/README.md` says is not the exact antichain, and `critical_path_timeout_bound_s` as a bound along one path that the README says is not a wall-clock bound, because a job wider than `max_parallel` also waits, so the class hint has the same limit.
-`chain_count` is the number of compile tasks, and the chain of a compile task is the set of simulate tasks that name its `component` output in their `inputs`.
-
-Owns: `packages/plan/**`.
-
-Acceptance criteria:
-
-- [ ] `pytest packages/plan -q -rs -k stats` passes against golden stats for a single chain, a fan-out of 8, a fan-in of 8 chains, an aggregate-only job and a document where a simulate task lists a second compile task in `depends_on` only (so `chain_count` and the chains follow data edges), including `critical_path_timeout_bound_s` as the longest path of `run_timeout_s` times one plus `retries`.
-- [ ] `estimated_history_events` equals 10 plus, per task, 8 plus 6 times its retries, shown by `test_history_estimate`.
-- [ ] `class_hint` returns `short` at the threshold and `long` one second above it, shown by `test_class_hint_boundary`.
-
-Test: `packages/plan/tests/test_stats.py`, `test_class_hint.py`.
-
-### P.3 Per-job values and binding
-
-Lane P, T0.
-Needs: P.1.
-Decision 7 of section 0.1 applies.
-
-Scope: `check_job_params` and `bind`, and the invalid job parameter vectors.
-Both functions take the row's block (`seed`, `parameters`, `class_override`) as a mapping.
-`check_job_params` reports `unbound-parameter` (a declared parameter with no value), `unknown-parameter` (a name the template does not declare, or `seed` inside `parameters`), `parameter-type-mismatch`, `bad-seed` and `unknown-class` itself, and `plan-too-large`.
-`bind` replaces each placeholder of the template plan with the job's value by whole value, and changes nothing else.
-
-Owns: `packages/plan/**` and `contracts/job/vectors/job-params/invalid/**`.
-
-Consumes and produces: nothing new; produces the invalid vectors `vectors/job-params/invalid/<code>/<name>.template.json` and `<name>.params.json`, each pair self-contained, where the params file is a bare job parameter block.
-The valid parameter blocks are named `<example>.<case>.json`, belong to lane F (F.1) and are bare blocks bound to the example of that name.
-`check_job_params` reports `plan-too-large` when the bound plan exceeds the profile limit, so a long parameter string cannot push a stored job past the payload budget.
-
-Acceptance criteria:
-
-- [ ] `unbound-parameter`, `unknown-parameter`, `parameter-type-mismatch`, `bad-seed` (negative or at least 2^53) and `unknown-class` each have a vector under `vectors/job-params/invalid/<code>/<name>.params.json` next to its template, and `pytest packages/plan -q -rs -k params_vectors` shows `check_job_params` reports that code for each.
-- [ ] `pytest packages/plan -q -rs -k "bind"` passes `test_bind_is_idempotent` (binding twice with the same block gives equal plans), `test_bind_replaces_only_placeholders` (every byte of the bound plan outside the replaced values equals the template plan) and `test_row_seed_binds_the_reserved_parameter`.
-- [ ] The compile tasks of 1,000 jobs bound from one template are byte-identical, so `wdf_keys.compile_cache_key` gives one value, shown by `test_batch_shares_one_cache_key`, which uses the key with the entry module of decision 10.
-
-Test: `packages/plan/tests/test_bind.py`, `test_batch_cache_key.py`.
-
-### P.4 Versioning policy and compatibility tests [10]
-
-Lane P, T0.
-Needs: P.1 and F.2.
-
-Scope: the additive-only rule for the document minors and the plan version, `read_plan` (version 1 only, with no hook for another version), and the evolution test.
-The evolution test compares the committed schema with the regenerated one through a walker in `packages/plan` that follows `properties`, `items`, `additionalProperties`, `$ref`, `oneOf` and `anyOf`, because `wdf_compat.breaking_changes` stops at `properties` and `items` and tasks are a map of models.
-
-Owns: `packages/plan/**`.
-
-Consumes and produces: nothing from `wdf_compat` beyond the rule it states; produces `read_plan` and the rule in `packages/plan/README.md` that the PR introducing plan version N+1 adds the branch that reads version N, with `contracts/job/vectors/plans/N/` as its test, and keeps it for the same window as an event major.
-
-Acceptance criteria:
-
-- [ ] `pytest packages/plan -q -rs -k "evolution"` fails and names the field when a required field is added to a task model without a new version, and passes on the committed models.
-- [ ] `test_walker_descends` shows the walker reports a new required field in a hand-built schema pair for each of the shapes `additionalProperties` with `$ref`, `oneOf` of `$ref` and `items`.
-- [ ] `read_plan` reads every golden plan under `contracts/job/vectors/plans/1/`, and `test_read_plan_rejects_other_versions` shows another version raises `UnsupportedPlanVersion`.
-- [ ] `test_golden_plans_still_compile` recompiles every example against the slots fixture to the committed bytes, so a change to defaults, ordering or canonical form fails and needs a contract-change PR.
-
-Test: `packages/plan/tests/test_schema_evolution.py`, `test_evolution_walker.py`, `test_read_plan.py`, `test_golden_plans.py`.
-
-### H.1 Patch compatibility check [7]
-
-Lane H, T0.
-Needs: P.1 and P.3.
-
-Scope: `patch_check(old, new, completed)` over two bound plans (the CLI compiles and binds both documents), with this rule.
-Resources, timeout and retries of a compile task come from the profile, and every plan task holds its resolved values, so they are compared like any other field: two plans compiled under different slots files differ and are `frozen-field-changed`.
-The chain of a compile task is the set of simulate tasks that name its `component` output in their `inputs`, and `depends_on` alone never puts a task in a chain.
-Whether a paused task with a committed checkpoint can resume under changed code is the checkpoint epic's contract (#18) and is not decided here: the report lists every changed task so that #18 and #24 can apply it.
-
-| Difference between the plans | Verdict |
-| --- | --- |
-| a different `plan_version`, `max_parallel`, parameter declarations, task id set, type, `depends_on`, `inputs`, resource, timeout, retry budget, `checkpoint` or `allow_partial` | `frozen-field-changed` |
-| any difference in a completed simulate or aggregate task | `completed-task-changed` |
-| a compile task whose `source` or `entry` differs, with no completed simulate in its chain | compatible, listed in `recompile` |
-| a compile task whose `source` or `entry` differs, with a completed simulate in its chain | `build-changed-after-result` |
-| a not yet completed simulate whose `workload` or `args` differ (whatever its `checkpoint`), or whose `seed` differs with `checkpoint` false, or an aggregate whose `aggregation` or `args` differ | compatible, listed in `changed` |
-| a not yet completed simulate with `checkpoint` true whose `seed` differs, because a checkpoint written under the old seed would be resumed under another | `seed-changed-on-checkpoint-task` |
-| a completed id that is not a task of the plan | `unknown-completed-task` |
-| any other difference, including a compile argument, the pool and the aggregate-only index reference | `frozen-field-changed` |
-
-Owns: `packages/jobpatch/**` and `contracts/job/vectors/patch/**`.
-
-Acceptance criteria:
-
-- [ ] `contracts/job/vectors/patch/<verdict>/<case>/` holds `old.json` and `new.json` (documents), `params.json`, an optional `new-params.json`, `completed.json` and `expected.json`, where `<verdict>` is `ok` or a code, and `pytest packages/jobpatch -q -rs` compiles and binds both sides, runs every case and compares the codes, `recompile` and `changed` with `expected.json`.
-- [ ] `test_every_row_has_a_case` fails unless `vectors/patch/` holds a directory for every code of class `patch` and the `ok` cases `bundle-changed`, `args-changed`, `aggregate-changed` and `checkpoint-args-changed` (a checkpoint simulate with the same seed) and `depends-only-compile-changed` (a completed simulate lists a second compile task in `depends_on` only, that compile's bundle changes, and the patch stays compatible because the simulate is not in its chain), and two `frozen-field-changed` cases, one where a patch adds a task and one where it changes a dependency.
-- [ ] `test_patch_check_is_pure` shows the same inputs give the same report, and that the inputs are not mutated.
-
-Test: `packages/jobpatch/tests/test_patch_cases.py`, `test_purity.py`.
-
-### F.1 Example library and generator [9]
-
-Lane F, T0.
-Needs: V.4, P.1 and P.3.
-
-Scope: the example library on the workload ladder of #11, as the documents `vectors/valid/<name>.json` named `level0-echo` (level 0 functional chain), `level1-simulate` (level 1 simulation chain with XML result blocks), `fan-out-8`, `level2-aggregate` (the chain and aggregate job), `aggregate-only` (with an index reference), `aggregate-partial` (an aggregate that opts into partial results) and `batch-template`, one bare parameter block `vectors/job-params/valid/<name>.seed-7.json` for each, and the seed list `vectors/job-params/valid/batch-template.seeds.ndjson`, plus a deterministic generator for large fan-out and fan-in jobs and for seed lists.
-
-`level2-aggregate` and `batch-template` declare a `seed` parameter and use `{"param": "seed"}` as the seed of their simulate tasks, `batch-template` also declares an `integer` parameter that a simulate argument uses, and every other example writes literal seeds.
-The seed 7 block of an example is `{"seed": 7}` plus the values that its declarations need.
-
-Owns: `packages/jobexamples/**`, `contracts/job/vectors/valid/**` and `contracts/job/vectors/job-params/valid/**`.
-Every example refers to the one good bundle of `vectors/resolver.json` and to its modules.
-
-Acceptance criteria:
-
-- [ ] Every file under `vectors/valid/` exits 0 through `contracts/job/check.sh`, and `examples()` lists the same names without the extension, shown by `test_examples_are_valid_vectors`.
-- [ ] `contracts/job/check.sh contracts/job/vectors/valid/level0-echo.json` exits 0, and `test_level0_is_the_smoke_job` shows its task types are one compile and one simulate and no aggregate, which is the smoke job of the method.
-- [ ] `generate("fan-out", 100)` and `generate("fan-in", 100)` validate under the `ci` profile with the generator's default of 0 retries, `generate("fan-out", 600)` validates under `permissive` and fails under `ci` with `too-many-tasks` among its issues, and two calls give equal bytes.
-- [ ] `test_generator_rejects_over_permissive` shows `generate("fan-out", 51201)` raises `ValueError` whose message names the request and the `permissive` limit of 51,200 tasks.
-- [ ] `test_seed_list_binds_to_the_batch_template` binds every line of `job-params/valid/batch-template.seeds.ndjson` to `batch-template.json` with `check_job_params` and `bind`, gets one distinct `plan_hash` per line and one `plan_hash` of the template plan, and `seed_list(5)` gives equal bytes twice.
-
-Test: `packages/jobexamples/tests/test_examples.py`, `test_generator.py`.
-
-### F.2 Golden plans and the fixture gate [9]
-
-Lane F, T0.
-Needs: F.1, P.3 and H.1.
-
-Scope: the canonical manifest of each example and the bound plan of each example under its `job-params/valid/<example>.seed-7.json`, compiled against the slots fixture of 0.2, with a SHA-256 line each, and a gate that every code of `errors.yaml` has a fixture.
-The gate looks for `vectors/invalid/<class>/<code>/` for the classes `schema`, `graph`, `reference`, `bundle`, `resource` and `limit`, `vectors/job-params/invalid/<code>/` for `params`, and `vectors/patch/<code>/` for `patch`.
-
-Owns: `packages/jobexamples/**` and `contracts/job/vectors/plans/**`.
-
-Acceptance criteria:
-
-- [ ] `pytest packages/jobexamples -q -rs -k golden` recompiles every example against the slots fixture and compares bytes and hashes with `vectors/plans/1/`, and fails when a file and its `HASHES` line disagree or a file has no line.
-- [ ] `test_every_code_has_a_fixture` fails when a code of class `schema`, `graph`, `reference`, `bundle`, `resource`, `limit`, `params` or `patch` has no file under its directory in `vectors/`, and reports the code.
-- [ ] `test_plan_hash_is_deterministic` compiles and binds every example twice in separate processes and compares the hashes.
-Test: `packages/jobexamples/tests/test_golden.py`, `test_fixture_gate.py`.
-
-### L.1 Validate and plan CLI [8]
-
-Lane L, T0.
-Needs: V.4, P.1, P.2, P.3 and H.1.
-
-Scope: the three commands with path-qualified errors, JSON output and exit codes, the profile, slots directory and resolver flags (the resolver file loaded through `StaticResolver`), and the `plan_hash` of `null` when `--params` is omitted.
-
-Owns: `packages/jobtools/**`.
-
-Acceptance criteria:
-
-- [ ] `python -m wdf_jobtools validate contracts/job/vectors/valid/level2-aggregate.json` exits 0, and the same on `invalid/graph/dependency-cycle/three-task-cycle.json --json` exits 1 with an `issues` entry whose `code` is `dependency-cycle` and whose `path` is a JSON Pointer.
-- [ ] `plan contracts/job/vectors/valid/level2-aggregate.json --params contracts/job/vectors/job-params/valid/level2-aggregate.seed-7.json --out DIR` writes `manifest.json` and prints `manifest_hash`, `plan_hash`, stats and the class hint, and a second run prints the same bytes.
-- [ ] `plan contracts/job/vectors/valid/level2-aggregate.json --json` with no `--params` exits 0 and prints `"plan_hash": null` and a non-null `manifest_hash`, shown by `test_plan_without_params`.
-- [ ] `patch-check` on the case files of `vectors/patch/ok/bundle-changed/` exits 0 and prints `recompile`, and on a `completed-task-changed` case exits 1 with that code.
-- [ ] A missing file, an unknown profile and a bad flag exit 2 with a one line message.
-- [ ] `validate <a bundle vector> --resolver contracts/job/vectors/resolver.json --json` exits 1 with the code of the vector's directory, and the same document without `--resolver` exits 0 with a line saying the bundle and index checks were skipped.
-
-Test: `packages/jobtools/tests/test_cli.py`.
-
-### L.2 Batch validation performance [11]
-
-Lane L, T0.
-Needs: P.3 and L.1.
-
-Scope: validate one template once, then check and bind the parameters of a large number of jobs, and measure it.
-
-Owns: `packages/jobtools/**`.
-
-Acceptance criteria:
-
-- [ ] `python -m wdf_jobtools.bench --jobs 100000` exits 0 and prints `template_validations: 1`, `jobs: 100000` and `seconds: <n>` with `<n>` below 60, the pass line, which is a regression guard and not a contract (a prototype of bind and hash over 100,000 jobs of 8 tasks took 2.4 s [ran]).
-- [ ] `python -m wdf_jobtools.bench --tasks 512 --jobs 1000` prints the same fields for the largest template with no pass line, so that the cost of a plan at the limit is recorded, and whether the dispatch API hashes every bound plan or only the manifest is its own call (#24).
-- [ ] `test_template_is_validated_once` runs 2,000 jobs and shows `validate` is called once, counted by the test and not timed.
-- [ ] The `seconds` line of the first command is pasted in the PR and in Closure.
-
-Test: `packages/jobtools/tests/test_bench.py`.
+- [#125](https://github.com/AndoNorth/wasm-dag-forge/issues/125) **0.1 Document models, strict loader and error table** [1] Lane 0, tier T0. Needs: R.1.
+- [#126](https://github.com/AndoNorth/wasm-dag-forge/issues/126) **0.2 Registries and the limits profile** [4] Lane 0, tier T0. Needs: 0.1. Decisions 8 and 9 of section 0.1 apply, and R.1 has merged, so the live slots files hold all three pools.
+- [#127](https://github.com/AndoNorth/wasm-dag-forge/issues/127) **0.3 Plan model, package skeletons and stubs** Lane 0, tier T0. Needs: 0.2.
+- [#128](https://github.com/AndoNorth/wasm-dag-forge/issues/128) **0.4 Compile cache key entry input (contract change)** Lane 0, tier T0. Needs: R.1. Decision 10 of section 0.1 applies. This issue merges with lane 0, so no consumer ever sees the four-input key.
+- [#124](https://github.com/AndoNorth/wasm-dag-forge/issues/124) **R.1 Simulate entry in the slots files (revisit of the cluster epic)** [4] Lane R, tier T0. Needs: nothing. A `revisit` child of #2. It merges before lane 0 starts. Decision 9 of section 0.1 applies.
+- [#129](https://github.com/AndoNorth/wasm-dag-forge/issues/129) **V.1 Graph validation** [2] Lane V, tier T0. Needs: lane 0.
+- [#130](https://github.com/AndoNorth/wasm-dag-forge/issues/130) **V.2 Artifact reference and bundle validation** [3] Lane V, tier T0. Needs: lane 0.
+- [#131](https://github.com/AndoNorth/wasm-dag-forge/issues/131) **V.3 Limits and resource sanity** [4] Lane V, tier T0. Needs: lane 0, V.1, P.1 and P.2.
+- [#132](https://github.com/AndoNorth/wasm-dag-forge/issues/132) **V.4 The validate entry point** Lane V, tier T0. Needs: V.1, V.2 and V.3.
+- [#133](https://github.com/AndoNorth/wasm-dag-forge/issues/133) **P.1 Plan compiler, canonical form and manifest** [5, 6] Lane P, tier T0. Needs: lane 0.
+- [#134](https://github.com/AndoNorth/wasm-dag-forge/issues/134) **P.2 Plan stats and the class hint** [5] Lane P, tier T0. Needs: P.1. Decision 8 of section 0.1 applies.
+- [#135](https://github.com/AndoNorth/wasm-dag-forge/issues/135) **P.3 Per-job values and binding** Lane P, tier T0. Needs: P.1. Decision 7 of section 0.1 applies.
+- [#136](https://github.com/AndoNorth/wasm-dag-forge/issues/136) **P.4 Versioning policy and compatibility tests** [10] Lane P, tier T0. Needs: P.1 and F.2.
+- [#137](https://github.com/AndoNorth/wasm-dag-forge/issues/137) **H.1 Patch compatibility check** [7] Lane H, tier T0. Needs: P.1 and P.3.
+- [#138](https://github.com/AndoNorth/wasm-dag-forge/issues/138) **F.1 Example library and generator** [9] Lane F, tier T0. Needs: V.4, P.1 and P.3.
+- [#139](https://github.com/AndoNorth/wasm-dag-forge/issues/139) **F.2 Golden plans and the fixture gate** [9] Lane F, tier T0. Needs: F.1, P.3 and H.1.
+- [#140](https://github.com/AndoNorth/wasm-dag-forge/issues/140) **L.1 Validate and plan CLI** [8] Lane L, tier T0. Needs: V.4, P.1, P.2, P.3 and H.1.
+- [#141](https://github.com/AndoNorth/wasm-dag-forge/issues/141) **L.2 Batch validation performance** [11] Lane L, tier T0. Needs: P.3 and L.1.
 
 ## 5. Order, stubs and spikes
 
