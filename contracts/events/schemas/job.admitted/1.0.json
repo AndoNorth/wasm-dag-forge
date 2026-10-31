@@ -1,0 +1,17 @@
+{
+  "$id": "urn:wdf:schema:job.admitted:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "workflow_id": {
+      "pattern": "^job-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Workflow Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "workflow_id"
+  ],
+  "title": "job.admitted 1.0",
+  "type": "object"
+}

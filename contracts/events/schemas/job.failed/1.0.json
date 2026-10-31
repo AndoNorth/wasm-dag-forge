@@ -1,0 +1,19 @@
+{
+  "$id": "urn:wdf:schema:job.failed:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Data of an event that records why something happened.",
+  "properties": {
+    "reason": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "reason"
+  ],
+  "title": "job.failed 1.0",
+  "type": "object"
+}

@@ -1,0 +1,24 @@
+{
+  "$id": "urn:wdf:schema:task.retries.exhausted:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "attempts": {
+      "minimum": 1,
+      "title": "Attempts",
+      "type": "integer"
+    },
+    "reason": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "attempts",
+    "reason"
+  ],
+  "title": "task.retries.exhausted 1.0",
+  "type": "object"
+}
