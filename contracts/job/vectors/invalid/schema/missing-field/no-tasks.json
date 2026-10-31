@@ -1,0 +1,6 @@
+{
+  "schema": "urn:wdf:schema:job:1.0",
+  "parameters": {
+    "seed": "seed"
+  }
+}

@@ -8,6 +8,7 @@ members = [
     "wdf-compat",
     "wdf-events",
     "wdf-itest",
+    "wdf-jobdoc",
     "wdf-keys",
     "wdf-stages",
     "wdf-temporal",
@@ -450,6 +451,7 @@ dev = [
     { name = "wdf-compat" },
     { name = "wdf-events" },
     { name = "wdf-itest" },
+    { name = "wdf-jobdoc" },
     { name = "wdf-keys" },
     { name = "wdf-stages" },
     { name = "wdf-temporal" },
@@ -464,6 +466,7 @@ dev = [
     { name = "wdf-compat", editable = "packages/compat" },
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-itest", editable = "packages/itest" },
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
     { name = "wdf-keys", editable = "packages/keys" },
     { name = "wdf-stages", editable = "packages/stages" },
     { name = "wdf-temporal", editable = "packages/temporal" },
@@ -513,6 +516,23 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pytest" },
+    { name = "pyyaml" },
+]
+
+[[package]]
+name = "wdf-jobdoc"
+version = "0.0.0"
+source = { editable = "packages/jobdoc" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema" },
+    { name = "pydantic" },
     { name = "pyyaml" },
 ]
 
