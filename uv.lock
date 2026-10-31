@@ -8,8 +8,13 @@ members = [
     "wdf-compat",
     "wdf-events",
     "wdf-itest",
+    "wdf-jobcheck",
     "wdf-jobdoc",
+    "wdf-jobexamples",
+    "wdf-jobpatch",
+    "wdf-jobtools",
     "wdf-keys",
+    "wdf-plan",
     "wdf-stages",
     "wdf-temporal",
 ]
@@ -451,8 +456,13 @@ dev = [
     { name = "wdf-compat" },
     { name = "wdf-events" },
     { name = "wdf-itest" },
+    { name = "wdf-jobcheck" },
     { name = "wdf-jobdoc" },
+    { name = "wdf-jobexamples" },
+    { name = "wdf-jobpatch" },
+    { name = "wdf-jobtools" },
     { name = "wdf-keys" },
+    { name = "wdf-plan" },
     { name = "wdf-stages" },
     { name = "wdf-temporal" },
 ]
@@ -466,8 +476,13 @@ dev = [
     { name = "wdf-compat", editable = "packages/compat" },
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-itest", editable = "packages/itest" },
+    { name = "wdf-jobcheck", editable = "packages/jobcheck" },
     { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-jobexamples", editable = "packages/jobexamples" },
+    { name = "wdf-jobpatch", editable = "packages/jobpatch" },
+    { name = "wdf-jobtools", editable = "packages/jobtools" },
     { name = "wdf-keys", editable = "packages/keys" },
+    { name = "wdf-plan", editable = "packages/plan" },
     { name = "wdf-stages", editable = "packages/stages" },
     { name = "wdf-temporal", editable = "packages/temporal" },
 ]
@@ -520,6 +535,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "wdf-jobcheck"
+version = "0.0.0"
+source = { editable = "packages/jobcheck" }
+dependencies = [
+    { name = "wdf-jobdoc" },
+    { name = "wdf-plan" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-plan", editable = "packages/plan" },
+]
+
+[[package]]
 name = "wdf-jobdoc"
 version = "0.0.0"
 source = { editable = "packages/jobdoc" }
@@ -537,9 +567,73 @@ requires-dist = [
 ]
 
 [[package]]
+name = "wdf-jobexamples"
+version = "0.0.0"
+source = { editable = "packages/jobexamples" }
+dependencies = [
+    { name = "wdf-jobcheck" },
+    { name = "wdf-jobdoc" },
+    { name = "wdf-plan" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "wdf-jobcheck", editable = "packages/jobcheck" },
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-plan", editable = "packages/plan" },
+]
+
+[[package]]
+name = "wdf-jobpatch"
+version = "0.0.0"
+source = { editable = "packages/jobpatch" }
+dependencies = [
+    { name = "wdf-jobdoc" },
+    { name = "wdf-plan" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-plan", editable = "packages/plan" },
+]
+
+[[package]]
+name = "wdf-jobtools"
+version = "0.0.0"
+source = { editable = "packages/jobtools" }
+dependencies = [
+    { name = "wdf-jobcheck" },
+    { name = "wdf-jobdoc" },
+    { name = "wdf-jobexamples" },
+    { name = "wdf-jobpatch" },
+    { name = "wdf-plan" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "wdf-jobcheck", editable = "packages/jobcheck" },
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-jobexamples", editable = "packages/jobexamples" },
+    { name = "wdf-jobpatch", editable = "packages/jobpatch" },
+    { name = "wdf-plan", editable = "packages/plan" },
+]
+
+[[package]]
 name = "wdf-keys"
 version = "0.0.0"
 source = { editable = "packages/keys" }
+
+[[package]]
+name = "wdf-plan"
+version = "0.0.0"
+source = { editable = "packages/plan" }
+dependencies = [
+    { name = "wdf-jobdoc" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "wdf-jobdoc", editable = "packages/jobdoc" }]
 
 [[package]]
 name = "wdf-stages"

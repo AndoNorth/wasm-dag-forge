@@ -99,3 +99,12 @@ def test_the_other_generated_files_are_checked_too(tmp_path, root, name):
     result = run("--check", "--root", str(tmp_path))
     assert result.returncode == 1
     assert f"contracts/job/{name}" in result.stderr
+
+
+@pytest.mark.parametrize("name", ["plan/1.json", "stats/1.json"])
+def test_the_plan_and_stats_schemas_are_valid_and_checked(tree, contract, name):
+    Draft202012Validator.check_schema(json.loads((contract / "schemas" / name).read_text()))
+    (tree / "contracts/job/schemas" / name).write_text("{}\n")
+    result = run("--check", "--root", str(tree))
+    assert result.returncode == 1
+    assert f"schemas/{name}" in result.stderr

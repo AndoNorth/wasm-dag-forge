@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "TypeCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregate": {
+          "minimum": 0,
+          "title": "Aggregate",
+          "type": "integer"
+        },
+        "compile": {
+          "minimum": 0,
+          "title": "Compile",
+          "type": "integer"
+        },
+        "simulate": {
+          "minimum": 0,
+          "title": "Simulate",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "compile",
+        "simulate",
+        "aggregate"
+      ],
+      "title": "TypeCounts",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:stats:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What admission and placement read from the job row instead of parsing the plan.",
+  "properties": {
+    "chain_count": {
+      "minimum": 0,
+      "title": "Chain Count",
+      "type": "integer"
+    },
+    "checkpoint_tasks": {
+      "minimum": 0,
+      "title": "Checkpoint Tasks",
+      "type": "integer"
+    },
+    "counts": {
+      "$ref": "#/$defs/TypeCounts"
+    },
+    "critical_path_timeout_bound_s": {
+      "minimum": 0,
+      "title": "Critical Path Timeout Bound S",
+      "type": "integer"
+    },
+    "estimated_history_events": {
+      "minimum": 0,
+      "title": "Estimated History Events",
+      "type": "integer"
+    },
+    "largest_cpu_milli": {
+      "minimum": 0,
+      "title": "Largest Cpu Milli",
+      "type": "integer"
+    },
+    "largest_memory_mib": {
+      "minimum": 0,
+      "title": "Largest Memory Mib",
+      "type": "integer"
+    },
+    "max_width": {
+      "minimum": 0,
+      "title": "Max Width",
+      "type": "integer"
+    },
+    "peak_cpu_milli": {
+      "minimum": 0,
+      "title": "Peak Cpu Milli",
+      "type": "integer"
+    },
+    "peak_memory_mib": {
+      "minimum": 0,
+      "title": "Peak Memory Mib",
+      "type": "integer"
+    },
+    "task_count": {
+      "minimum": 0,
+      "title": "Task Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "task_count",
+    "counts",
+    "chain_count",
+    "max_width",
+    "critical_path_timeout_bound_s",
+    "peak_cpu_milli",
+    "peak_memory_mib",
+    "largest_cpu_milli",
+    "largest_memory_mib",
+    "checkpoint_tasks",
+    "estimated_history_events"
+  ],
+  "title": "stats 1",
+  "type": "object"
+}
