@@ -17,7 +17,7 @@ fail() {
 }
 
 # A reference holds no field beyond the schema's, so no field can hold bytes.
-mapfile -t allowed < <(yq -p json '.properties | keys | .[]' "$schema")
+mapfile -t allowed < <(yq -p json -o yaml '.properties | keys | .[]' "$schema")
 while read -r field; do
     [[ " ${allowed[*]} " == *" $field "* ]] || fail unknown-field "$field is not a field of a reference"
 done < <(yq 'keys | .[]' "$file")
