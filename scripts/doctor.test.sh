@@ -5,7 +5,7 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 doctor="$here/doctor.sh"
 bash_bin=$(command -v bash)
-tools=(kind ctlptl kubectl helm tilt just uv python3 ruff yamllint shellcheck actionlint kubeconform nixfmt)
+tools=(kind ctlptl kubectl helm tilt just uv python3 ruff yamllint shellcheck actionlint kubeconform nixfmt yq wasmtime wasm-tools)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -49,6 +49,9 @@ build inotify;       echo 128 > "$work/inotify/proc/sys/fs/inotify/max_user_inst
 build shadow-helm;   mkdir -p "$work/shadow"; fake "$work/shadow/helm" 'exit 0'
 PATHPREFIX="$work/shadow:" run shadow-helm; check shadow-helm path-provenance
 grep -q "which -a: $work/shadow/helm" <<<"$out" || { echo "FAIL shadow-helm: which -a not printed"; exit 1; }
+build shadow-yq;     mkdir -p "$work/shadow-yq"; fake "$work/shadow-yq/yq" 'exit 0'
+PATHPREFIX="$work/shadow-yq:" run shadow-yq; check shadow-yq path-provenance
+grep -q "outside /nix/store.*yq (which -a: $work/shadow-yq/yq" <<<"$out" || { echo "FAIL shadow-yq: offender not named"; exit 1; }
 build no-flakes;     fake "$work/no-flakes/bin/nix" 'case "$*" in --version) echo "nix (Nix) 2.35.2";; "config show experimental-features") echo "nix-command";; esac'; run no-flakes; check no-flakes nix-flakes
 build low-mem;       printf 'MemTotal:        2000000 kB\n' > "$work/low-mem/proc/meminfo"; run low-mem; check low-mem memory-vs-preset
 

@@ -17,6 +17,7 @@
             kind
             ctlptl
             kubectl
+            yq-go
             kubernetes-helm
             tilt
             just

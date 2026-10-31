@@ -8,7 +8,8 @@ REPO="${WDF_DOCTOR_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PRESET="${WDF_PRESET:-ci}"
 MIN_INOTIFY=512
 MIN_DOCKER_MAJOR=24
-TOOLS=(kind ctlptl kubectl helm tilt just uv python3 ruff yamllint shellcheck actionlint kubeconform nixfmt)
+TOOLS=(kind ctlptl kubectl helm tilt just uv python3 ruff yamllint shellcheck actionlint kubeconform nixfmt yq wasmtime wasm-tools)
+# docker stays a host prerequisite, checked by docker-engine, so it is not in TOOLS.
 
 json=0
 case "${1:-}" in
@@ -135,7 +136,7 @@ done
 if [ ${#bad[@]} -eq 0 ]; then
   emit ok path-provenance "${#TOOLS[@]} tools resolve first to the flake"
 else
-  emit fail path-provenance "not first from the flake: ${bad[*]}"
+  emit fail path-provenance "resolves outside /nix/store, only the flake may provide: ${bad[*]}"
 fi
 
 finish

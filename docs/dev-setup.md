@@ -27,7 +27,7 @@ The Nix installation, flakes setting and Docker installation are the steps that 
 nix develop
 ```
 
-This realises the 14 flake tools plus `wasmtime` and `wasm-tools`, then sources `scripts/env.sh`.
+This realises the 15 flake tools plus `wasmtime` and `wasm-tools`, then sources `scripts/env.sh`.
 A one-off command runs without an interactive shell:
 
 ```sh
@@ -124,7 +124,7 @@ Outside the flake shell the only result is `fail in-dev-shell`, because host cop
 | `repo-on-ext4` | the repo is not under `/mnt/<drive>/` and not on a 9p, drvfs, cifs or nfs mount | move the clone under the WSL home directory, a `warn` means a non-ext4 local filesystem |
 | `inotify-instances` | `fs.inotify.max_user_instances` is at least 512 | `sudo sysctl fs.inotify.max_user_instances=512`, persisted in `/etc/sysctl.d/` |
 | `memory-vs-preset` | host memory covers `memory_mib` in `deploy/presets/$WDF_PRESET.yaml` (default preset `ci`) | give WSL2 more memory in `.wslconfig`, a `warn` with `no preset file yet` is expected until cluster presets exist |
-| `path-provenance` | for all 14 tools the first match on PATH is a `/nix/store` path, not `~/.nix-profile` or `/nix/var/nix/profiles` | the detail prints `which -a` for each offender, so a profile copy ahead of the flake can be removed or PATH reordered |
+| `path-provenance` | for all 17 tools (including `yq`, `wasmtime` and `wasm-tools`) the first match on PATH is a `/nix/store` path, not `~/.nix-profile` or `/nix/var/nix/profiles` | the detail prints `which -a` for each offender, so a profile copy ahead of the flake can be removed or PATH reordered |
 
 `scripts/doctor.test.sh` is the fault-injection self-test.
 It builds fixture trees and breaks one condition at a time (no docker, cgroup v1, repo under `/mnt/c`, low inotify, shadowing `helm`, flakes disabled, low memory, outside the shell).
@@ -181,7 +181,7 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 | Symptom | Cause and fix |
 | --- | --- |
 | `fail in-dev-shell` | the command ran outside the shell, use `nix develop -c just doctor` |
-| `fail path-provenance` naming `kind`, `kubectl` or `helm` | a copy in `~/.nix-profile` is ahead of the flake, remove it with `nix profile remove` or run inside `nix develop` |
+| `fail path-provenance` naming `kind`, `kubectl`, `helm` or `yq` | a copy in `~/.nix-profile` is ahead of the flake, remove it with `nix profile remove` or run inside `nix develop` |
 | `fail docker-engine` | daemon is down or unreachable, start Docker and confirm `docker info` works outside the shell |
 | `fail cgroup-v2` or `fail wsl-systemd` | WSL2 configuration, see the table above, then `wsl --shutdown` |
 | `fail repo-on-ext4` | the clone is on a Windows drive, clone again under the WSL home directory |
@@ -194,7 +194,7 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 
 On a clean checkout, with the host prerequisites in place:
 
-- [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 14 tools resolve first to the flake`.
+- [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 17 tools resolve first to the flake`.
   Only `warn memory-vs-preset: no preset file yet` is acceptable until cluster presets exist.
 - [ ] `nix develop -c just --list` prints exactly 17 recipe names.
 - [ ] `nix develop -c just ci` exits 0, ending with `all checks passed!` from `nix flake check`.
