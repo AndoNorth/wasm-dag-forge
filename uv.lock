@@ -525,8 +525,10 @@ source = { editable = "packages/temporal" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
+    { name = "pyyaml" },
     { name = "temporalio" },
     { name = "wdf-events" },
+    { name = "wdf-itest" },
     { name = "wdf-keys" },
 ]
 
@@ -534,7 +536,9 @@ dependencies = [
 requires-dist = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
+    { name = "pyyaml" },
     { name = "temporalio" },
     { name = "wdf-events", editable = "packages/events" },
+    { name = "wdf-itest", editable = "packages/itest" },
     { name = "wdf-keys", editable = "packages/keys" },
 ]
