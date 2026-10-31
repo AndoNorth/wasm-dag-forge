@@ -261,3 +261,5 @@ Not proven:
 - Docker Desktop and non-WSL Linux, and the real Temporal, Postgres and object store footprints.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+
+- 2026-10-31: the slots files of `ci`, `dev` and `soak` gained a `simulate` pool entry at 250m and 384Mi, still marked `estimate: true`, as a `revisit` child of this epic.
