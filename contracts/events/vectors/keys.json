@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "functions": {
     "job_id": [
       {"args": ["acme", "sub-1"], "expect": "3a9617fa-df7c-5760-a644-42d559e0f433"},
@@ -44,12 +44,16 @@
       {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "t", "", "k", -1], "raises": "ValueError"}
     ],
     "compile_cache_key": [
-      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0"], "expect": "ab760da6dcef87c3b67b3db0c8c0da7a294d1621513dcf60405189b0be0931ec"},
-      {"args": ["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "1.2.3", "0.1.0"], "expect": "5001100b1b0230b8ca2e15654f33dcf030a6289cfb691981d7abdb1588e76302"},
-      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.4", "0.1.0"], "expect": "487c16c4e00ec41dd49373776db84fd7936973d609c543d97979b98a11d35f72"},
-      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.2.0"], "expect": "0ce2ca2384be88921f123eb6dfdbcf8b6a84bab08117ad0b22d1e1af9f179d49"},
-      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2", ".3.0.1.0"], "expect": "e7c3e95719846e84e1745c4485b2ecbaeb535f2e7a8d25d5b24b519ca3fde264", "group": "boundary-versions"},
-      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.", "3.0.1.0"], "expect": "6c79c7e6a555ca8a4d50b03f1bde6229d35b70486a6668552b0818e743f331f7", "group": "boundary-versions"}
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0", "sim"], "expect": "55c4c6502bdbca7696a21bea1dc3aa6c0f66f066ad22e9ad166572685f9f6cd5"},
+      {"args": ["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "1.2.3", "0.1.0", "sim"], "expect": "a78ad80e6044efdc5f2d704a60c088484ca779228b1cc8561edc3d67a1d94d2f"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.4", "0.1.0", "sim"], "expect": "17d4d6f83f11d19ccebe55a24abc4f3832e00dcc4ea985fa1ea102a45038f302"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.2.0", "sim"], "expect": "8e7ec62f1af182486a1aab3dab6abfaed304240e128bc3050e0ca8245b94eb4b"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0", "echo"], "expect": "5f177fbbffa8d7b37bf05b8a18816db78263b7cfe8d305abef66ddf849a9dec3"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2", ".3.0.1.0", "sim"], "expect": "9f7d805fdb588c9914359ebeb0d49937a42487f57bcd0211c6b6ca3952a5aef5", "group": "boundary-versions"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.", "3.0.1.0", "sim"], "expect": "422541cc39e072c02b9093d7721bdb10cfa2ee98407b55924c51826e8a8128e3", "group": "boundary-versions"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0", "sim"], "expect": "55c4c6502bdbca7696a21bea1dc3aa6c0f66f066ad22e9ad166572685f9f6cd5", "group": "boundary-entry"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0s", "im"], "expect": "dbfb9a61af6cb721dd90604032659db61f4a38c9bf81de8fc1a98de7908220ec", "group": "boundary-entry"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0", ""], "raises": "ValueError"}
     ]
   }
 }

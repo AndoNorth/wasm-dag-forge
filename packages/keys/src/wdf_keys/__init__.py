@@ -54,9 +54,13 @@ def attempt_identity(activity_attempt, resume_counter):
     return f"r{resume_counter}a{activity_attempt}"
 
 
-def compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version):
+def compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version, entry):
     for name, value in (("source_hash", source_hash), ("lockfile_hash", lockfile_hash)):
         if not re.fullmatch(r"[0-9a-f]{64}", value):
             raise ValueError(f"{name} must be 64 lower-case hex digits, got {value!r}")
-    framed = _frame("compile", source_hash, lockfile_hash, componentize_py_version, wit_version)
+    if not entry:
+        raise ValueError("entry must name the module the compile task builds")
+    framed = _frame(
+        "compile", source_hash, lockfile_hash, componentize_py_version, wit_version, entry
+    )
     return hashlib.sha256(framed).hexdigest()
