@@ -32,7 +32,7 @@ The calls below were made for earlier epics, in the brief that asked for this sp
 | 6 | Epic 4 is merged, so this spec consumes its real contracts, library names and versions as pinned in section 2 | the brief | section 2 |
 | 7 | A batch binds its per-job values through placeholders in the template (option b of the former question 1), not through a fixed binding rule. The shape is narrow so that it stays data: a placeholder is the closed one-key object `{"param": "<name>"}`, it stands only as the whole value of an `args` key of a simulate or aggregate task or of the `seed` of a simulate task, and it never reaches a compile task. Substitution replaces that one value and never concatenates, formats, computes or branches. This departs from the epic body's non-goal of templating, and the departure is bounded by exactly that shape | the captain, 2026-10-31, on former question 1 | 0.3 (template parameters), sections 1, 2 and 4 (0.1, V.2, P.1, P.3, H.1, F.1) |
 | 8 | The job class hint is derived from the critical path bound against a profile threshold of 3,600 s, over the classes `short` and `long`, and the submitter's override on the row wins | the captain, 2026-10-31, on former question 2 | 0.3 (job class), P.2 |
-| 9 | The simulate slot comes from the slots files and not from a stand-in: a `revisit` child of the cluster epic (#2) adds a simulate entry to `deploy/presets/slots/{ci,dev,soak}.yaml`, as issue R.1 of a lane of its own, and V.3 waits for it | the captain, 2026-10-31, on former question 3 | section 3 (lane R), R.1, 0.2, V.3, section 5 |
+| 9 | The simulate slot comes from the slots files and not from a stand-in: a `revisit` child of the cluster epic (#2) adds a simulate entry to `deploy/presets/slots/{ci,dev,soak}.yaml`, as issue R.1 of a lane of its own, which merges before lane 0 starts | the captain, 2026-10-31, on former question 3 | section 3 (lane R), R.1, 0.2, section 5 |
 | 10 | The entry module becomes a fifth input of `wdf_keys.compile_cache_key` and of its vectors, by the contract-change PR of issue 0.4, which merges with lane 0 before any consumer exists | the captain, 2026-10-31, on former question 4 | 0.4, section 2 (Consumes and the batch interface) |
 
 ### 0.2 Open questions
@@ -82,7 +82,8 @@ They are not questions, and none blocks a lane.
 - `critical_path_timeout_bound_s` and the class hint stay path bounds and the README says so (alternative: a width-aware duration bound along the lines of path plus the remaining work over `max_parallel`), because a duration bound is a new stat and limit, and #6 measures real durations.
 - P.4 carries its own schema walker, tested on the shapes a task map takes (alternative: extend `wdf_compat`), because `wdf_compat` belongs to a closed epic.
 - Golden plans and patch vectors compile against a fixed slots fixture, and `plan` takes `--slots-dir` (alternative: let the plan record a budget name), so an edit of `deploy/presets/` never changes a golden byte, and patch compares compile resources like every other field.
-  The fixture holds a simulate entry, so lane 0 tests the pool table without waiting for R.1, and only the tests of the live slots files wait.
+  The fixture holds a simulate entry and stays after R.1, so a change to the live slots files never changes a golden byte.
+- R.1 merges before lane 0 starts (alternative: R.1 only before V.3, with `check.sh` reading the slots fixture or tolerating `SlotsIncomplete`), because `check.sh` loads the live slots files from lane 0 on, and a live file without a simulate entry would fail every input.
 - The chain of a compile task is the simulate tasks that name its `component` output in their `inputs` (alternative: also those that list it in `depends_on`), because only data edges mean a result came from that build.
 - `plan_hash` is `null` when `--params` is omitted (alternative: the hash of the template plan, which is `manifest_hash` already), so the two keys never hold the same value.
 - Under `permissive` only the check ceilings are lifted, and compile defaults still come from the slot table (alternative: lift both), so a default compile task never asks for 1,000 cores.
@@ -130,7 +131,7 @@ Non-goals for this pass:
 | Envelope | Compile cache key inputs: `wdf_keys.compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version)`, which has no entry module | `packages/keys/` keys v1, changed by issue 0.4 (decision 10) | none, exists [read] |
 | Envelope | The placeholder `MAX_JOB_DURATION_DAYS` of 7, and `wdf_compat.breaking_changes(old, new)`, which walks only `properties` and `items` and so cannot see a task model held under `additionalProperties`, `$ref` or `oneOf`, which is why P.4 carries its own walker | `packages/compat/` compat v1 | none, exists [ran: both import, and the walk gap shown on hand-built schemas] |
 | Envelope | The pool names `compile`, `simulate`, `aggregate`, `infra` and `obs` | `contracts/topology/topology.yaml` topology v1 | none, exists [read] |
-| Cluster | Per-slot budgets of the compile and aggregate pools, one task per pod, marked `estimate: true`, with no simulate entry until issue R.1 adds one, and the slot check `scripts/cluster/slots.sh` with its tests `scripts/cluster/test_slots.py` | `deploy/presets/slots/<preset>.yaml` for `ci`, `dev` and `soak` at `b6e11ff`, and after R.1 with a simulate entry | the slots fixture of 0.2, which holds a simulate entry, until R.1 merges |
+| Cluster | Per-slot budgets of the compile and aggregate pools, one task per pod, marked `estimate: true`, with no simulate entry until issue R.1 adds one before lane 0 starts, and the slot check `scripts/cluster/slots.sh` with its tests `scripts/cluster/test_slots.py` | `deploy/presets/slots/<preset>.yaml` for `ci`, `dev` and `soak` at `b6e11ff`, and after R.1 with a simulate entry | none, R.1 merges before lane 0 starts |
 | Envelope | The batch manifest interface: one template manifest per batch stored by hash, per-job parameters on the row, and the contract-change rule if it changes | `docs/epics/03-envelope.md` section 2 | none |
 | Epic and Temporal | The 253 ms per 1,000 tasks validation measure [read: epic text], the 2 MiB Temporal payload limit [read: the envelope spec, from the epic text], and the 10,240 event history warning [read: Temporal documentation, not in the repo and not re-checked] | no pin, the spikes do not cover them | the estimate constants of 0.3 |
 
@@ -171,7 +172,7 @@ Lane 0 owns every package it creates until the owning lane takes over the glob, 
 
 Departures from the method, stated so that the captain approves them knowingly:
 
-- Lane Needs run across lanes: V.3 waits for P.1, P.2 and R.1 (the validator checks the compiled plan, so `wdf_jobcheck` imports `wdf_plan` and never the reverse), H.1 for P.1 and P.3, F.1 for V.4, P.1 and P.3, F.2 for F.1, P.3 and H.1, P.4 for F.2, and the CLI lane for V.4, P.1 to P.3 and H.1.
+- Lane Needs run across lanes: lane 0 waits for R.1 (which edits closed-epic files and has to land first, because `check.sh` loads the live slots files), V.3 waits for P.1 and P.2 (the validator checks the compiled plan, so `wdf_jobcheck` imports `wdf_plan` and never the reverse), H.1 for P.1 and P.3, F.1 for V.4, P.1 and P.3, F.2 for F.1, P.3 and H.1, P.4 for F.2, and the CLI lane for V.4, P.1 to P.3 and H.1.
   The reason is that a fixture, a golden plan or a CLI test over a stub would only assert `NotImplementedError`.
   The envelope spec records the same departure.
 - Vectors are added under a class directory by the lane that owns the check, and golden plans by lane F, after lane 0 has pinned the contract.
@@ -187,12 +188,12 @@ Departures from the method, stated so that the captain approves them knowingly:
 
 | Lane | Workers | Owns (exclusive) | Issues | Needs |
 | --- | --- | --- | --- | --- |
-| 0 Contracts and skeleton | 1 | `contracts/job/{README.md,VERSION,check.sh,errors.yaml,errors.schema.json,limits.yaml,limits.schema.json,registry.json}`, `contracts/job/schemas/**`, `contracts/job/vectors/invalid/schema/**`, `contracts/job/vectors/slots-fixture/**`, `packages/jobdoc/**`, `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**` for issue 0.4 only, the root `pyproject.toml` edit and `uv.lock`, and until lanes V, P, H, F and L take over `packages/jobdoc/**` (lane P), `packages/jobcheck/**`, `packages/plan/**`, `packages/jobpatch/**`, `packages/jobexamples/**` and `packages/jobtools/**` | 0.1, 0.2, 0.3, 0.4 | nothing (barrier) |
-| V Validation | 1 | `packages/jobcheck/**`, `contracts/job/vectors/invalid/{graph,reference,bundle,resource,limit}/**`, `contracts/job/vectors/resolver.json` | V.1, V.2, V.3, V.4 | lane 0, V.1, P.1, P.2 and R.1 for V.3, and V.1 to V.3 for V.4 |
+| 0 Contracts and skeleton | 1 | `contracts/job/{README.md,VERSION,check.sh,errors.yaml,errors.schema.json,limits.yaml,limits.schema.json,registry.json}`, `contracts/job/schemas/**`, `contracts/job/vectors/invalid/schema/**`, `contracts/job/vectors/slots-fixture/**`, `packages/jobdoc/**`, `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**` for issue 0.4 only, the root `pyproject.toml` edit and `uv.lock`, and until lanes V, P, H, F and L take over `packages/jobdoc/**` (lane P), `packages/jobcheck/**`, `packages/plan/**`, `packages/jobpatch/**`, `packages/jobexamples/**` and `packages/jobtools/**` | 0.1, 0.2, 0.3, 0.4 | R.1 (barrier) |
+| V Validation | 1 | `packages/jobcheck/**`, `contracts/job/vectors/invalid/{graph,reference,bundle,resource,limit}/**`, `contracts/job/vectors/resolver.json` | V.1, V.2, V.3, V.4 | lane 0, V.1, P.1 and P.2 for V.3, and V.1 to V.3 for V.4 |
 | P Plan | 1 | `packages/plan/**`, `packages/jobdoc/**` after lane 0, `contracts/job/vectors/job-params/invalid/**` | P.1, P.2, P.3, P.4 | lane 0, P.1 for P.2 and P.3, and P.1 and F.2 for P.4 |
 | H Patch | 1 | `packages/jobpatch/**`, `contracts/job/vectors/patch/**` | H.1 | P.1 and P.3 |
 | F Fixtures | 1 | `packages/jobexamples/**`, `contracts/job/vectors/valid/**`, `contracts/job/vectors/job-params/valid/**`, `contracts/job/vectors/plans/**` | F.1, F.2 | V.4, P.1 and P.3 for F.1, and F.1, P.3 and H.1 for F.2 |
-| R Revisit | 1 | `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py`, `docs/epics/02-cluster.md` (one closure addendum line only) | R.1 | nothing |
+| R Revisit | 1 | `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py`, `docs/epics/02-cluster.md` (one closure addendum line only) | R.1 | nothing (merges before lane 0) |
 | L Tools | 1 | `packages/jobtools/**` | L.1, L.2 | V.4, P.1, P.2, P.3 and H.1 for L.1, and L.1 for L.2 |
 
 Shared-file rules:
@@ -241,7 +242,7 @@ Commands are written without the `nix develop -c uv run --frozen` prefix that ev
 ### 0.1 Document models, strict loader and error table [1]
 
 Lane 0, tier T0.
-Needs: nothing.
+Needs: R.1.
 
 Scope: the document model with tasks keyed by id, the closed set of three task types, the `parameters` declarations and the placeholder object (codes `bad-parameter-declaration`, `placeholder-malformed` and `placeholder-in-compile`), strict fields, id rules, resource units, `allow_partial`, the simulate-only `checkpoint` flag (a boolean, default false), the strict loader with the size limit passed as `max_bytes` (code `document-too-large`, class `schema`), the error table and the schema export.
 `parse_document` raises `DocumentInvalid` carrying the issues, and `Issue` is defined here, so `jobdoc` never imports `jobcheck`.
@@ -265,7 +266,7 @@ Test: `packages/jobdoc/tests/test_loader.py`, `test_models.py`, `test_schema_dri
 
 Lane 0, T0.
 Needs: 0.1.
-Decision 8 of section 0.1 applies, and decision 9 shapes the pool table without making this issue wait for R.1.
+Decisions 8 and 9 of section 0.1 apply, and R.1 has merged, so the live slots files hold all three pools.
 
 Scope: the task type registry (a pool derived from the type, accepted kinds of in-job input references, declared outputs), the aggregation registry with its argument models and their types, the limits profile model, `limits.yaml` with the numbers of section 0.3 and the `permissive` profile, the pool table model with its three pools and `load_profile`, and a fixed copy of the slots file in the shape of `deploy/presets/slots/ci.yaml`, with a simulate entry of 250 millicores and 384 MiB, under `contracts/job/vectors/slots-fixture/`, which tests read through `slots_dir`.
 The compile source bundle is `params.source` and never an entry of `inputs`, which holds only logical references between tasks of the job.
@@ -273,12 +274,13 @@ The compile source bundle is `params.source` and never an entry of `inputs`, whi
 Owns: `contracts/job/{limits.yaml,limits.schema.json,registry.json}`, `contracts/job/vectors/slots-fixture/**` and `packages/jobdoc/**`.
 
 Consumes and produces: topology v1 (pool names), the shape of `deploy/presets/slots/<preset>.yaml`; produces the registry export and the limits file.
-Every test of this issue reads the slots fixture, so none depends on R.1, and the tests of the live slots files are in V.3.
+The pool table tests read the slots fixture, so they stay stable, and one test reads the live slots files.
 
 Acceptance criteria:
 
 - [ ] `pytest packages/jobdoc -q -rs` passes, including `test_registry_pools_exist_in_topology` and `test_registry_kinds_exist_in_artifact_layout`.
 - [ ] `load_profile("ci", root, slots_dir=<slots-fixture>)` returns the compile, simulate and aggregate budgets of the fixture as millicores and MiB (1 CPU and 1 Gi read as 1000 and 1024, 250m as 250), shown by `test_pool_table_from_slots`.
+- [ ] `test_live_slots_files_are_complete` loads `ci`, `dev` and `soak` through `load_profile(preset, root)` without `SlotsIncomplete`.
 - [ ] `test_missing_pool_is_refused` shows a slots file without a simulate entry raises `SlotsIncomplete` naming `simulate`, and the loader holds no stand-in budget.
 - [ ] `test_max_job_duration_matches_compat` fails when `max_job_duration_days` differs from `wdf_compat.window.MAX_JOB_DURATION_DAYS`.
 - [ ] A task type or aggregation outside the registry is rejected with `unknown-task-type` or `unknown-aggregation`, and a seed in an aggregate task with `unknown-field`, shown by `test_vectors.py` over `vectors/invalid/schema/`.
@@ -308,7 +310,7 @@ Test: `packages/jobdoc/tests/test_purity.py`, `test_check_stub.py` and `packages
 ### 0.4 Compile cache key entry input (contract change)
 
 Lane 0, tier T0.
-Needs: nothing.
+Needs: R.1.
 Decision 10 of section 0.1 applies.
 This issue merges with lane 0, so no consumer ever sees the four-input key.
 
@@ -330,13 +332,15 @@ Test: `packages/keys/tests/test_compile_key.py`, `test_vectors.py`.
 
 Lane R, tier T0.
 Needs: nothing.
+It merges before lane 0 starts.
 Decision 9 of section 0.1 applies.
 
 This is a `revisit` child issue of the cluster epic (#2), filed as [the method](../method.md#revisiting-a-closed-epic) says.
-It links this epic (#5) and V.3 as the work that exposed the gap, lists the consumers #5, #9 and #10, names the cluster slot checks `scripts/cluster/slots.sh` and `scripts/cluster/test_slots.py` (run by `just ci`) as the verifier it touches, and blocks V.3 until it merges.
+It links this epic (#5) and lane 0 as the work that exposed the gap, lists the consumers #5, #9 and #10, names the cluster slot checks `scripts/cluster/slots.sh` and `scripts/cluster/test_slots.py` (run by `just ci`) as the verifier it touches, and blocks lane 0 until it merges.
 It is a contract-change style PR, so its description carries the consumer list.
 
 Scope: a `simulate` entry in each slots file with requests equal to limits at 250 millicores and 384 MiB, under the existing `estimate: true`, the file comment updated to name the three pools, the slot test asserting the simulate slot as well, and one dated addendum line in the closure of `docs/epics/02-cluster.md`.
+`slots.sh` already checks every pool of a slots file against its preset node and needs no change [ran: a scratch copy with the entry added printed `fits` for `ci`, `dev` and `soak`].
 The figure is the largest round one that fits the simulate node of every preset after its daemons, 300 millicores and 414 MiB on `ci`, and #10 replaces it when it characterizes the pool.
 
 Owns: `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py` and `docs/epics/02-cluster.md` (the addendum line only).
@@ -393,7 +397,7 @@ Test: `packages/jobcheck/tests/test_references.py`, `test_resolver.py`.
 ### V.3 Limits and resource sanity [4]
 
 Lane V, T0.
-Needs: lane 0, V.1, P.1, P.2 and R.1.
+Needs: lane 0, V.1, P.1 and P.2.
 
 Scope: resource checks against the per-type slot budget on the document, and the size and count limits, where the plan size, critical path bound and history estimate come from `compile_plan`, `canonical_bytes` and `stats` of the plan library, so submit and placement share one number.
 `pool_budget` is the one function the placement epic reads.
@@ -406,7 +410,7 @@ Acceptance criteria:
 
 - [ ] A simulate or aggregate task above its pool budget exits 1 with `cpu-exceeds-slot` or `memory-exceeds-slot`, and the same task passes under the `permissive` profile.
 - [ ] Vectors exist for `too-many-tasks`, `max-parallel-exceeded`, `plan-too-large`, `run-timeout-too-long`, `retries-too-many`, `critical-path-too-long` and `history-budget-exceeded`, each exiting 1 with its code, and a boundary vector for each limit that exits 0 exactly at the limit.
-- [ ] `pool_budget(profile, t)` equals the slot of `deploy/presets/slots/ci.yaml` for each of `compile`, `simulate` and `aggregate`, shown by `test_pool_budget_matches_slots`, and `test_live_slots_files_are_complete` loads `ci`, `dev` and `soak` through `load_profile` without `SlotsIncomplete`.
+- [ ] `pool_budget(profile, t)` equals the slot of `deploy/presets/slots/ci.yaml` for each of `compile`, `simulate` and `aggregate`, shown by `test_pool_budget_matches_slots`.
 
 Test: `packages/jobcheck/tests/test_resources.py`, `test_limits.py`.
 
@@ -627,12 +631,12 @@ Test: `packages/jobtools/tests/test_bench.py`.
 
 ## 5. Order, stubs and spikes
 
-- Barrier: lane 0 (0.1, then 0.2, then 0.3, with 0.4 beside them), one worker, merged alone.
+- First: R.1, one worker, filed as a `revisit` child of #2 and merged alone before lane 0 starts, because `check.sh` of lane 0 loads the live slots files.
+  It edits only closed-epic files, and the estimate is half a day.
+- Barrier: lane 0 after R.1 (0.1, then 0.2, then 0.3, with 0.4 beside them), one worker, merged alone.
   The estimate is three days.
-- Beside lane 0: R.1, one worker, filed as a `revisit` child of #2 and merged before V.3 starts.
-  It edits only closed-epic files, so no other lane waits for it.
 - After lane 0: V.1 and P.1 start together, each in its own lane, and none needs a container.
-- DAG: lane 0 (with R.1 beside it), then (V.1, V.2 ‖ P.1, then P.2 and P.3), then V.3 after P.2 and R.1, then (V.4 ‖ H.1 after P.3), then (F.1 after V.4, P.1 and P.3, then F.2 after F.1, P.3 and H.1 ‖ L.1 after V.4, P.2, P.3 and H.1), then (P.4 after F.2 ‖ L.2 after L.1), then the exit test.
+- DAG: R.1, then lane 0, then (V.1, V.2 ‖ P.1, then P.2 and P.3), then V.3 after P.2, then (V.4 ‖ H.1 after P.3), then (F.1 after V.4, P.1 and P.3, then F.2 after F.1, P.3 and H.1 ‖ L.1 after V.4, P.2, P.3 and H.1), then (P.4 after F.2 ‖ L.2 after L.1), then the exit test.
 - All four questions of the first draft are answered (decisions 7 to 10), so no default is pending, and a later change to any of them is a contract-change PR.
 
 Stubs:
@@ -640,7 +644,6 @@ Stubs:
 | Stub | What it fakes | How its conformance test runs against the real thing |
 | --- | --- | --- |
 | `validate`, `compile_plan`, `bind`, `patch_check`, `examples` and the CLI commands in 0.3 | `NotImplementedError("not implemented: owned by lane V")` and the same for lanes P, H, F and L | each package's `test_vectors.py` accepts that error only for the names in its `STUBBED` list and a real match for the rest, and the owning issue empties the list |
-| Simulate entry of the slots fixture | the simulate entry that R.1 adds to the live slots files, until it merges | the pool table tests of 0.2 read the fixture, and `test_live_slots_files_are_complete` of V.3 loads the live files through the same loader |
 | `StaticResolver` | the resolver the dispatch epic (#24) builds on the artifact client | `resolver_contract(resolver)` runs against the double and, in #24, the real one, in one test of that epic |
 
 Spikes: none.
@@ -651,6 +654,7 @@ The history event constants and the batch timing are estimates and a guard, reco
 Run by a worker who did not write the lanes, on a clean `git archive` export of `main`, on this host with no cluster started, and with Docker running only for row 14.
 Each command runs from the export root as written, its real output is pasted in the PR that records the run, and it is summarised in Closure.
 The steps that change a file do so in the scratch export and restore it afterwards.
+The export is of `main` after every lane has merged, in the order of section 5 with R.1 first, which rows 4, 5 and 16 depend on.
 
 | # | Command | Expected |
 | --- | --- | --- |
@@ -706,12 +710,12 @@ Not provable by this epic: the wall-clock duration of a job wider than `max_para
 
 ## 7. Parallelism and cost
 
-- Maximum parallel workers: 2 for lane 0 beside R.1, then 2 (V.1 and P.1), then 3 at the widest point (V, P and H), then 2 (F.2 beside L.1, then P.4 beside L.1 or L.2), then 1 for the exit test.
+- Maximum parallel workers: 1 for R.1, then 1 for lane 0, then 2 (V.1 and P.1), then 3 at the widest point (V, P and H), then 2 (F.2 beside L.1, then P.4 beside L.1 or L.2), then 1 for the exit test.
 - Host constraints: every issue is T0 and needs only `uv` and Python from the dev shell, so there is no limit on a worker beyond CPU.
   Every lane's Done gate runs `just ci`, which runs `just itest`, so each gate needs Docker for the envelope integration tests that already exist on `main`.
   The new packages start no container.
-- Estimates, not measurements: lane 0 (3 d), lane V (3.5 d), lane P (3.5 d, P.4 waits for F.2), lane H (1.5 d), lane F (2 d), lane L (2 d), lane R (0.5 d, beside lane 0), exit test (1 d).
-  That is about 10 days elapsed along lane 0, V.1 to V.4, F.1, F.2, P.4 and the exit test, and about 16.5 worker-days of effort, with `uv.lock` rebases and the cross-lane Needs as the main sources of slip.
+- Estimates, not measurements: lane 0 (3 d), lane V (3.5 d), lane P (3.5 d, P.4 waits for F.2), lane H (1.5 d), lane F (2 d), lane L (2 d), lane R (0.5 d, before lane 0), exit test (1 d).
+  That is about 10.5 days elapsed along R.1, lane 0, V.1 to V.4, F.1, F.2, P.4 and the exit test, and about 16.5 worker-days of effort, with `uv.lock` rebases and the cross-lane Needs as the main sources of slip.
 
 ## 8. Closure (filled at close)
 
