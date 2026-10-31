@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Job error table",
+  "description": "Every code a pass of the job validator can report, with its class and a one line meaning.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["codes"],
+  "properties": {
+    "codes": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["class", "meaning"],
+        "properties": {
+          "class": {"enum": ["schema", "graph", "reference", "bundle", "resource", "limit", "params", "patch"]},
+          "meaning": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      }
+    }
+  }
+}

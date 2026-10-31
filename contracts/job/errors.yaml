@@ -1,0 +1,69 @@
+---
+# Every code that a pass of the job validator reports, by class. Schema: errors.schema.json.
+# A code is the directory name of its fixtures under vectors/, and a class is the pass that reports it.
+codes:
+  # schema: the loader and the document models
+  not-json: {class: schema, meaning: "the bytes are not UTF-8 JSON, or exceed what the parser accepts"}
+  document-too-large: {class: schema, meaning: "the document is over the byte limit, which is checked before parsing"}
+  duplicate-key: {class: schema, meaning: "an object repeats a key"}
+  non-finite-number: {class: schema, meaning: "NaN or an infinity, which JSON does not define"}
+  float-not-allowed: {class: schema, meaning: "a decimal number outside cpu"}
+  not-nfc: {class: schema, meaning: "a string or a key is not in Unicode normalization form NFC"}
+  lone-surrogate: {class: schema, meaning: "a string or a key holds a lone surrogate"}
+  unsupported-schema-version: {class: schema, meaning: "the schema member is a version this reader does not read"}
+  unknown-field: {class: schema, meaning: "a field the model lacks, or one the task type does not allow"}
+  missing-field: {class: schema, meaning: "a required field is absent"}
+  bad-type: {class: schema, meaning: "a value has the wrong JSON type"}
+  bad-value: {class: schema, meaning: "a value is of the right type and outside its range or pattern"}
+  bad-task-id: {class: schema, meaning: "a task id does not match the artifact contract task pattern"}
+  unknown-task-type: {class: schema, meaning: "the task type is not one of compile, simulate and aggregate"}
+  unknown-aggregation: {class: schema, meaning: "the aggregation is not in the registry"}
+  bad-parameter-declaration: {class: schema, meaning: "a parameter name or type is not allowed, or seed is not a seed"}
+  placeholder-malformed: {class: schema, meaning: "a placeholder is not exactly one key param naming a parameter"}
+  placeholder-misplaced: {class: schema, meaning: "a placeholder is not the whole value of an arg or a simulate seed"}
+  placeholder-in-compile: {class: schema, meaning: "a compile task holds a placeholder"}
+  # graph: dependencies
+  unknown-dependency: {class: graph, meaning: "depends_on names a task that is not in the document"}
+  self-dependency: {class: graph, meaning: "a task depends on itself"}
+  dependency-cycle: {class: graph, meaning: "the dependencies and data edges contain a cycle"}
+  # reference: inputs and placeholders against the registry
+  unknown-producer: {class: reference, meaning: "an input names a task that is not in the document"}
+  undeclared-output: {class: reference, meaning: "an input names an output that the producer type does not declare"}
+  input-kind-not-accepted: {class: reference, meaning: "the kind of the output is not one the consumer type accepts"}
+  missing-required-input: {class: reference, meaning: "a task lacks an input its type requires"}
+  too-many-inputs: {class: reference, meaning: "a task has more inputs than its type accepts"}
+  duplicate-input: {class: reference, meaning: "a task lists the same input twice"}
+  index-and-inputs: {class: reference, meaning: "an aggregate task has both an index reference and inputs"}
+  aggregate-without-input: {class: reference, meaning: "an aggregate task has neither an input nor an index reference"}
+  index-job-not-alone: {class: reference, meaning: "an index reference stands in a job with more than one task"}
+  unknown-placeholder: {class: reference, meaning: "a placeholder names a parameter the document does not declare"}
+  placeholder-type-mismatch: {class: reference, meaning: "a placeholder has another type than its position"}
+  # bundle: what the caller's resolver returns
+  bundle-unresolved: {class: bundle, meaning: "the resolver cannot find the source bundle"}
+  bundle-hash-mismatch: {class: bundle, meaning: "the bundle the resolver returns has another hash"}
+  bundle-without-lockfile: {class: bundle, meaning: "the bundle has no lockfile"}
+  entry-not-in-bundle: {class: bundle, meaning: "the entry module is not a module of the bundle"}
+  index-unresolved: {class: bundle, meaning: "the resolver cannot find the aggregate index object"}
+  # resource: the slot budget of each pool
+  cpu-exceeds-slot: {class: resource, meaning: "a task asks for more cpu than the slot of its pool"}
+  memory-exceeds-slot: {class: resource, meaning: "a task asks for more memory than the slot of its pool"}
+  # limit: the limits profile
+  too-many-tasks: {class: limit, meaning: "the document has more tasks than the profile allows"}
+  max-parallel-exceeded: {class: limit, meaning: "max_parallel is above the profile ceiling"}
+  plan-too-large: {class: limit, meaning: "the plan is larger in canonical bytes than the profile allows"}
+  run-timeout-too-long: {class: limit, meaning: "a run timeout is above the profile ceiling"}
+  retries-too-many: {class: limit, meaning: "a retry budget is above the profile ceiling"}
+  critical-path-too-long: {class: limit, meaning: "the timeout bound of the longest path is above the profile ceiling"}
+  history-budget-exceeded: {class: limit, meaning: "the estimated history events are above the profile ceiling"}
+  # params: the per-job values of a batch
+  unbound-parameter: {class: params, meaning: "a declared parameter has no value"}
+  unknown-parameter: {class: params, meaning: "a value for an undeclared name, or seed among the parameters"}
+  parameter-type-mismatch: {class: params, meaning: "a value has another type than its declaration"}
+  bad-seed: {class: params, meaning: "the seed is negative or at least 2**53"}
+  unknown-class: {class: params, meaning: "the class override is not a class of the profile"}
+  # patch: a changed plan of a paused job
+  frozen-field-changed: {class: patch, meaning: "the patch changes something a patch may not"}
+  completed-task-changed: {class: patch, meaning: "the patch changes a completed simulate or aggregate task"}
+  build-changed-after-result: {class: patch, meaning: "a build changes under a simulate task that already completed"}
+  seed-changed-on-checkpoint-task: {class: patch, meaning: "the seed of a checkpointing simulate task changes"}
+  unknown-completed-task: {class: patch, meaning: "a completed id is not a task of the plan"}

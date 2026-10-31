@@ -12,6 +12,7 @@ members = ["packages/*"]
 wdf-compat = { workspace = true }
 wdf-events = { workspace = true }
 wdf-itest = { workspace = true }
+wdf-jobdoc = { workspace = true }
 wdf-keys = { workspace = true }
 wdf-stages = { workspace = true }
 wdf-temporal = { workspace = true }
@@ -23,6 +24,7 @@ dev = [
     "wdf-compat",
     "wdf-events",
     "wdf-itest",
+    "wdf-jobdoc",
     "wdf-keys",
     "wdf-stages",
     "wdf-temporal",
