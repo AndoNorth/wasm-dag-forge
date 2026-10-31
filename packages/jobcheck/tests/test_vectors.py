@@ -11,7 +11,7 @@ VECTORS = ROOT / "contracts/job/vectors/invalid"
 PROFILE = load_profile("ci", ROOT)
 
 # Vector classes whose pass is still a stub, by class directory name.
-STUBBED = {"graph", "reference", "bundle"}
+STUBBED = {"graph", "reference", "bundle", "resource", "limit"}
 
 FILES = sorted(VECTORS.glob("*/*/*.json"))
 

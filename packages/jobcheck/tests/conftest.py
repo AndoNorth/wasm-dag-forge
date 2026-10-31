@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from wdf_jobdoc import parse_document
+from wdf_jobdoc.profile_files import load_profile
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = ROOT / "contracts/job/vectors"
@@ -52,3 +53,10 @@ def good():
 def parse():
     """The Document of a dict, through the strict loader."""
     return lambda raw: parse_document(json.dumps(raw).encode(), 1 << 20)
+
+
+@pytest.fixture(scope="session")
+def profiles():
+    """The limits profiles by name, with the pool table of the slots fixture."""
+    fixture = VECTORS / "slots-fixture"
+    return {name: load_profile(name, ROOT, fixture) for name in ("ci", "permissive")}

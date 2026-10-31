@@ -11,8 +11,10 @@ from .resolver import (
     StaticResolver,
     resolver_contract,
 )
+from .resources import pool_budget
 
 __all__ = [
+    "pool_budget",
     "BundleInfo",
     "BundleNotFound",
     "Report",
