@@ -19,7 +19,8 @@ def slots(preset):
 def test_slots_have_requests_equal_to_limits(preset):
     run = slots(preset)
     assert run.returncode == 0, run.stdout + run.stderr
-    assert "slot compile:" in run.stdout and "slot aggregate:" in run.stdout
+    for pool in ("compile", "simulate", "aggregate"):
+        assert f"slot {pool}:" in run.stdout
 
 
 def test_unequal_requests_are_refused():
