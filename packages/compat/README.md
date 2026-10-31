@@ -55,3 +55,14 @@ A message can be dead lettered on the last day, replayed on the last day of its 
 
 The window is 21 days at the placeholders.
 `INTRODUCED` in `wdf_events.models` records the date each major was introduced, and `check_catalogue` fails a catalogue that introduces a major no more than a window after the previous one, so a reader never meets a major two steps back.
+
+## Golden and poison vectors
+
+`contracts/events/vectors/golden/<type>/<major>.<minor>.json` holds one golden event per type and minor, in canonical bytes, built by `wdf_events.build_event` from the facts of the contract's valid vector of that type.
+`golden/MANIFEST.sha256` has one `<sha256>  <path>` line per golden file, and `check_manifest` fails on a file without a line, a line without a file and a hash that differs.
+A change to a golden file or its line is a contract-change PR.
+
+`contracts/events/vectors/poison/<case>.json` holds one input per failure, and `<case>.expect.json` names the typed error and `reason` that `read_event` must raise for it.
+The cases are a wrong major, schema-invalid data, a missing `time`, an `id` with `#`, bytes that are not JSON, truncated JSON, a `datacontenttype` other than `application/json` and an event over 64 KiB.
+
+`python -m wdf_compat.vectors` rewrites every one of these files, and `--check` fails when a committed file differs from what the builders write.
