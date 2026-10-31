@@ -5,13 +5,12 @@ from pathlib import Path
 import pytest
 import yaml
 from wdf_jobdoc import DocumentInvalid, parse_document
+from wdf_jobdoc.profile_files import load_profile
 
 CONTRACT = Path(__file__).resolve().parents[3] / "contracts/job"
 VECTORS = CONTRACT / "vectors/invalid/schema"
-# The `ci` document limit of the limits profile, 1 MiB.
-CI_DOCUMENT_LIMIT = 1024 * 1024
-# Codes of class schema whose fixtures arrive with the registry that raises them.
-WITHOUT_VECTORS = {"unknown-aggregation"}
+ROOT = CONTRACT.parents[1]
+CI_DOCUMENT_LIMIT = load_profile("ci", ROOT, CONTRACT / "vectors/slots-fixture").max_document_bytes
 
 FILES = sorted(VECTORS.glob("*/*.json"))
 
@@ -32,7 +31,7 @@ def test_every_vector_directory_is_a_code_of_class_schema():
 def test_every_schema_code_has_a_vector():
     codes = yaml.safe_load((CONTRACT / "errors.yaml").read_text())["codes"]
     schema = {code for code, entry in codes.items() if entry["class"] == "schema"}
-    assert schema - WITHOUT_VECTORS <= {p.parent.name for p in FILES}
+    assert schema <= {p.parent.name for p in FILES}
 
 
 def test_the_size_vector_is_just_over_the_limit():

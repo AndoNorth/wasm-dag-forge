@@ -1,0 +1,164 @@
+{
+  "$defs": {
+    "Limits": {
+      "additionalProperties": false,
+      "description": "The numbers of one profile, as limits.yaml holds them.",
+      "properties": {
+        "ceiling_cpu_milli": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ceiling Cpu Milli"
+        },
+        "ceiling_memory_mib": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ceiling Memory Mib"
+        },
+        "class_threshold_s": {
+          "minimum": 1,
+          "title": "Class Threshold S",
+          "type": "integer"
+        },
+        "classes": {
+          "items": {
+            "enum": [
+              "short",
+              "long"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Classes",
+          "type": "array"
+        },
+        "compile_retries": {
+          "minimum": 0,
+          "title": "Compile Retries",
+          "type": "integer"
+        },
+        "compile_run_timeout_s": {
+          "minimum": 1,
+          "title": "Compile Run Timeout S",
+          "type": "integer"
+        },
+        "default_max_parallel": {
+          "minimum": 1,
+          "title": "Default Max Parallel",
+          "type": "integer"
+        },
+        "history_events_per_job": {
+          "minimum": 0,
+          "title": "History Events Per Job",
+          "type": "integer"
+        },
+        "history_events_per_retry": {
+          "minimum": 0,
+          "title": "History Events Per Retry",
+          "type": "integer"
+        },
+        "history_events_per_task": {
+          "minimum": 0,
+          "title": "History Events Per Task",
+          "type": "integer"
+        },
+        "max_document_bytes": {
+          "minimum": 1,
+          "title": "Max Document Bytes",
+          "type": "integer"
+        },
+        "max_history_events": {
+          "minimum": 1,
+          "title": "Max History Events",
+          "type": "integer"
+        },
+        "max_job_duration_days": {
+          "minimum": 1,
+          "title": "Max Job Duration Days",
+          "type": "integer"
+        },
+        "max_parallel": {
+          "minimum": 1,
+          "title": "Max Parallel",
+          "type": "integer"
+        },
+        "max_plan_bytes": {
+          "minimum": 1,
+          "title": "Max Plan Bytes",
+          "type": "integer"
+        },
+        "max_retries": {
+          "minimum": 0,
+          "title": "Max Retries",
+          "type": "integer"
+        },
+        "max_run_timeout_s": {
+          "minimum": 1,
+          "title": "Max Run Timeout S",
+          "type": "integer"
+        },
+        "max_tasks": {
+          "minimum": 1,
+          "title": "Max Tasks",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_tasks",
+        "max_parallel",
+        "default_max_parallel",
+        "max_document_bytes",
+        "max_plan_bytes",
+        "max_retries",
+        "max_run_timeout_s",
+        "max_job_duration_days",
+        "max_history_events",
+        "history_events_per_job",
+        "history_events_per_task",
+        "history_events_per_retry",
+        "compile_run_timeout_s",
+        "compile_retries",
+        "classes",
+        "class_threshold_s"
+      ],
+      "title": "Limits",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:job-limits:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "limits.yaml: the numbers of every profile.",
+  "properties": {
+    "profiles": {
+      "patternProperties": {
+        "^[a-z]+$": {
+          "$ref": "#/$defs/Limits"
+        }
+      },
+      "title": "Profiles",
+      "type": "object"
+    }
+  },
+  "required": [
+    "profiles"
+  ],
+  "title": "job limits 1",
+  "type": "object"
+}

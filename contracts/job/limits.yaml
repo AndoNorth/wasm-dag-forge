@@ -1,0 +1,44 @@
+---
+# The limits profiles. Schema: limits.schema.json, generated from the models.
+# The dev and soak profiles use the ci numbers and differ only in the slots file their pool table is read from.
+# The permissive profile lifts every number about a hundredfold for failure tests, and sets the ceilings that replace
+# the slot of every pool.
+profiles:
+  ci: &numbers
+    max_tasks: 512
+    max_parallel: 32
+    default_max_parallel: 8
+    max_document_bytes: 1048576
+    max_plan_bytes: 262144
+    max_retries: 3
+    max_run_timeout_s: 172800
+    max_job_duration_days: 7
+    max_history_events: 10000
+    history_events_per_job: 10
+    history_events_per_task: 8
+    history_events_per_retry: 6
+    compile_run_timeout_s: 600
+    compile_retries: 1
+    classes: [short, long]
+    class_threshold_s: 3600
+  dev: *numbers
+  soak: *numbers
+  permissive:
+    max_tasks: 51200
+    max_parallel: 3200
+    default_max_parallel: 8
+    max_document_bytes: 104857600
+    max_plan_bytes: 26214400
+    max_retries: 300
+    max_run_timeout_s: 17280000
+    max_job_duration_days: 700
+    max_history_events: 1000000
+    history_events_per_job: 10
+    history_events_per_task: 8
+    history_events_per_retry: 6
+    compile_run_timeout_s: 600
+    compile_retries: 1
+    classes: [short, long]
+    class_threshold_s: 3600
+    ceiling_cpu_milli: 1000000
+    ceiling_memory_mib: 1048576

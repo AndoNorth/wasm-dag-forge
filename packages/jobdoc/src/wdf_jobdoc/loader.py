@@ -13,8 +13,15 @@ from pydantic import ValidationError
 
 from .issues import DocumentInvalid, Issue, pointer
 from .models import TASK_ID_PATTERN, Document
+from .registry import AGGREGATIONS
 
 _TASK_TYPES = ("compile", "simulate", "aggregate")
+_TAG_CODES = {
+    ("union_tag_not_found", "type"): "missing-field",
+    ("union_tag_not_found", "aggregation"): "missing-field",
+    ("union_tag_invalid", "type"): "unknown-task-type",
+    ("union_tag_invalid", "aggregation"): "unknown-aggregation",
+}
 _PLACEHOLDER_MESSAGES = {
     "placeholder-in-compile": "a compile task holds no placeholder, so a batch shares one build",
     "placeholder-misplaced": "a placeholder is only the whole value of an arg or a simulate seed",
@@ -126,8 +133,13 @@ def _string_issues(text: str, path, what: str) -> list[Issue]:
 def _map_errors(exc: ValidationError, raw) -> list[Issue]:
     issues = []
     for error in exc.errors(include_url=False):
-        loc = _clean_loc(error["loc"])
+        loc = _clean_loc(error["loc"], raw)
         kind = error["type"]
+        tag = None
+        if kind in ("union_tag_not_found", "union_tag_invalid"):
+            # The tagged unions: a task by its type, and aggregate params by their aggregation.
+            tag = "aggregation" if loc[-1:] == ("params",) else "type"
+            loc = (*loc, tag)
         if kind in _OWN_CODES:
             issues.append(Issue(kind, pointer(loc), error["msg"]))
         elif loc and loc[0] == "parameters":
@@ -136,9 +148,8 @@ def _map_errors(exc: ValidationError, raw) -> list[Issue]:
             code = "placeholder-in-compile" if _in_compile(site, raw) else "placeholder-misplaced"
             issues.append(Issue(code, pointer(site), _PLACEHOLDER_MESSAGES[code]))
         else:
-            if kind in ("union_tag_not_found", "union_tag_invalid"):
-                loc = (*loc, "type")
-            issues.append(Issue(_code(error, loc), pointer(loc), error["msg"]))
+            code = _TAG_CODES[kind, tag] if tag else _code(error, loc)
+            issues.append(Issue(code, pointer(loc), error["msg"]))
     return issues
 
 
@@ -159,22 +170,24 @@ def _placeholder_site(loc, raw):
     return None
 
 
-def _clean_loc(loc) -> tuple:
-    """The location without the tag a tagged union adds after the task id, and without `[key]`."""
+def _clean_loc(loc, raw) -> tuple:
+    """The location without the tags that tagged unions add, and without `[key]`."""
     parts = [p for p in loc if p != "[key]"]
     if len(parts) >= 3 and parts[0] == "tasks" and parts[2] in _TASK_TYPES:
         del parts[2]
+        # The aggregate params are a union tagged by the aggregation, which sits after `params`.
+        is_aggregate = parts[2] == "params" and _task_type(parts, raw) == "aggregate"
+        if len(parts) >= 4 and is_aggregate and parts[3] in AGGREGATIONS:
+            del parts[3]
     return tuple(parts)
 
 
 def _code(error, loc) -> str:
     kind = error["type"]
-    if kind in ("missing", "union_tag_not_found"):
+    if kind == "missing":
         return "missing-field"
     if kind == "extra_forbidden":
         return "unknown-field"
-    if kind == "union_tag_invalid":
-        return "unknown-task-type"
     if kind == "literal_error" and loc == ("schema",):
         return "unsupported-schema-version"
     if kind == "string_pattern_mismatch" and error["ctx"]["pattern"] == TASK_ID_PATTERN:
@@ -184,11 +197,15 @@ def _code(error, loc) -> str:
     return "bad-value"
 
 
-def _in_compile(loc, raw) -> bool:
+def _task_type(loc, raw):
     try:
-        return raw["tasks"][loc[1]]["type"] == "compile"
+        return raw["tasks"][loc[1]]["type"]
     except (KeyError, IndexError, TypeError):
-        return False
+        return None
+
+
+def _in_compile(loc, raw) -> bool:
+    return _task_type(loc, raw) == "compile"
 
 
 # Codes that the models raise themselves as custom errors.

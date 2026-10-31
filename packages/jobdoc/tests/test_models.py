@@ -25,7 +25,7 @@ def test_a_placeholder_may_be_a_simulate_or_aggregate_argument(load, good):
     good["tasks"]["agg"]["params"]["args"] = {"columns": {"param": "cols"}}
     document = load(good)
     assert document.tasks["sim"].params.args["n"] == Placeholder(param="n")
-    assert document.tasks["agg"].params.args["columns"] == Placeholder(param="cols")
+    assert document.tasks["agg"].params.args.columns == Placeholder(param="cols")
 
 
 def test_arguments_hold_scalars_and_lists_of_them(load, good):

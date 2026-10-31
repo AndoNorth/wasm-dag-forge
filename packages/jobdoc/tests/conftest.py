@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 import yaml
 from wdf_jobdoc import DocumentInvalid, parse_document
+from wdf_jobdoc.profile_files import load_profile
 
 ROOT = Path(__file__).resolve().parents[3]
 CONTRACT = ROOT / "contracts/job"
-# The `ci` document limit of the limits profile, 1 MiB.
-CI_DOCUMENT_LIMIT = 1024 * 1024
+CI_DOCUMENT_LIMIT = load_profile("ci", ROOT, CONTRACT / "vectors/slots-fixture").max_document_bytes
 
 HASH = "a" * 64
 SOURCE = {

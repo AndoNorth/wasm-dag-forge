@@ -1,0 +1,70 @@
+{
+  "aggregations": {
+    "digest_list": {
+      "args": {},
+      "reads": "result",
+      "writes": "summary"
+    },
+    "summary_stats": {
+      "args": {
+        "blocks": {
+          "required": false,
+          "type": "string-list"
+        },
+        "columns": {
+          "required": false,
+          "type": "string-list"
+        }
+      },
+      "reads": "result",
+      "writes": "summary"
+    }
+  },
+  "parameter_types": [
+    "integer",
+    "string",
+    "boolean",
+    "seed",
+    "string-list"
+  ],
+  "task_types": {
+    "aggregate": {
+      "inputs": {
+        "accepts": [
+          "result"
+        ],
+        "max": null,
+        "min": 0
+      },
+      "outputs": {
+        "summary": "summary"
+      },
+      "pool": "aggregate"
+    },
+    "compile": {
+      "inputs": {
+        "accepts": [],
+        "max": 0,
+        "min": 0
+      },
+      "outputs": {
+        "build-info": "build-info",
+        "component": "component"
+      },
+      "pool": "compile"
+    },
+    "simulate": {
+      "inputs": {
+        "accepts": [
+          "component"
+        ],
+        "max": 1,
+        "min": 1
+      },
+      "outputs": {
+        "result": "result"
+      },
+      "pool": "simulate"
+    }
+  }
+}
