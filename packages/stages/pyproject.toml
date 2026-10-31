@@ -2,10 +2,11 @@
 name = "wdf-stages"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = ["wdf-events", "jsonschema", "pyyaml"]
+dependencies = ["wdf-events", "wdf-keys", "jsonschema", "pyyaml"]
 
 [tool.uv.sources]
 wdf-events = { workspace = true }
+wdf-keys = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

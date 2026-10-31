@@ -529,6 +529,7 @@ dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "wdf-events" },
+    { name = "wdf-keys" },
 ]
 
 [package.metadata]
@@ -536,6 +537,7 @@ requires-dist = [
     { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "wdf-events", editable = "packages/events" },
+    { name = "wdf-keys", editable = "packages/keys" },
 ]
 
 [[package]]
