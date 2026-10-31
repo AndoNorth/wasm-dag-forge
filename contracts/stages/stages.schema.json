@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/stages/stages.schema.json",
+  "title": "contracts/stages/stages.yaml",
+  "type": "object",
+  "required": ["stages"],
+  "additionalProperties": false,
+  "properties": {
+    "stages": {
+      "type": "object",
+      "required": ["dispatch", "control", "admission", "workflow", "placement", "worker"],
+      "additionalProperties": false,
+      "properties": {
+        "dispatch": { "$ref": "#/$defs/stage" },
+        "control": { "$ref": "#/$defs/stage" },
+        "admission": { "$ref": "#/$defs/stage" },
+        "workflow": { "$ref": "#/$defs/stage" },
+        "placement": { "$ref": "#/$defs/stage" },
+        "worker": { "$ref": "#/$defs/stage" }
+      }
+    }
+  },
+  "$defs": {
+    "type": { "type": "string", "pattern": "^(job|task)(\\.[a-z0-9]+)+$" },
+    "stage": {
+      "type": "object",
+      "required": ["source", "reads", "emits"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "pattern": "^/wdf/[a-z][a-z0-9-]*$" },
+        "reads": {
+          "type": "object",
+          "required": ["attributes", "data"],
+          "additionalProperties": false,
+          "properties": {
+            "attributes": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^[a-z0-9]+$" }
+            },
+            "data": {
+              "type": "object",
+              "propertyNames": { "$ref": "#/$defs/type" },
+              "additionalProperties": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+              }
+            }
+          }
+        },
+        "emits": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "required": ["type", "source"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "allOf": [{ "$ref": "#/$defs/type" }, { "not": { "const": "task.requested" } }] },
+              "source": { "type": "string", "pattern": "^/wdf/[a-z][a-z0-9-]*$" },
+              "when": { "type": "string", "minLength": 1, "maxLength": 200 }
+            }
+          }
+        },
+        "builds": {
+          "type": "array",
+          "items": { "const": "task.requested" },
+          "maxItems": 1
+        },
+        "writes": {
+          "type": "array",
+          "items": { "const": "heartbeat-details" },
+          "maxItems": 1
+        }
+      }
+    }
+  }
+}

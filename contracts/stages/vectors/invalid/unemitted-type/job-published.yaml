@@ -1,0 +1,79 @@
+---
+# Stage contract. Schema: stages.schema.json.
+# Event types are named without the dev.wdf prefix and the major, as the schema directories are.
+# A type that two stages emit says in a when condition which case each one covers.
+stages:
+  dispatch:
+    source: /wdf/dispatch
+    reads: {attributes: [], data: {}}
+    emits:
+      - {type: job.accepted, source: /wdf/dispatch}
+
+  control:
+    source: /wdf/control
+    reads: {attributes: [], data: {}}
+    emits:
+      - {type: job.pause.requested, source: /wdf/control}
+      - {type: job.resume.requested, source: /wdf/control}
+      - {type: job.cancel.requested, source: /wdf/control}
+      - {type: job.terminate.requested, source: /wdf/control}
+      # A job that never started has no workflow, so the control stage records these moves itself.
+      - {type: job.paused, source: /wdf/control, when: the job has no workflow because it never started}
+      - {type: job.resumed, source: /wdf/control, when: the job has no workflow because it never started}
+      - {type: job.cancelled, source: /wdf/control, when: the job has no workflow because it never started}
+      - {type: job.terminated, source: /wdf/control, when: the job has no workflow because it never started}
+
+  admission:
+    source: /wdf/admission
+    reads:
+      attributes: [id, tenant, jobid, priorityclass, jobclass, traceparent]
+      data:
+        job.accepted: [manifest, batch_id, submission_key]
+    emits:
+      - {type: job.admitted, source: /wdf/admission}
+      # Nothing is emitted for a message that does not parse far enough to name a job.
+      - {type: job.dead.lettered, source: /wdf/admission, when: the rejected message names a job}
+
+  workflow:
+    source: /wdf/workflow
+    reads:
+      attributes: [tenant, jobid, priorityclass, jobclass, traceparent]
+      data:
+        job.accepted: [manifest, batch_id, submission_key]
+    emits:
+      - {type: job.started, source: /wdf/workflow}
+      - {type: job.paused, source: /wdf/workflow, when: the job has a workflow}
+      - {type: job.resumed, source: /wdf/workflow, when: the job has a workflow}
+      - {type: job.succeeded, source: /wdf/workflow}
+      - {type: job.partial, source: /wdf/workflow}
+      - {type: job.failed, source: /wdf/workflow}
+      - {type: job.cancelled, source: /wdf/workflow, when: the job has a workflow}
+      - {type: job.terminated, source: /wdf/workflow, when: the job has a workflow}
+      - {type: task.placed, source: /wdf/workflow}
+      - {type: task.started, source: /wdf/workflow}
+      - {type: task.checkpoint.committed, source: /wdf/workflow}
+      - {type: task.attempt.failed, source: /wdf/workflow}
+      - {type: task.retries.exhausted, source: /wdf/workflow}
+      - {type: task.succeeded, source: /wdf/workflow}
+      - {type: task.failed, source: /wdf/workflow}
+      - {type: task.skipped, source: /wdf/workflow}
+      - {type: task.result.ready, source: /wdf/workflow}
+    # The task request is handed to the activity and never written to the event history.
+    builds: [task.requested]
+
+  placement:
+    source: /wdf/placement
+    reads:
+      attributes: []
+      data:
+        task.requested: [task_type, cpu_cores, memory_mib]
+    emits: []
+
+  worker:
+    source: /wdf/worker
+    reads:
+      attributes: [id, tenant, jobid, taskid, priorityclass, jobclass, traceparent]
+      data:
+        task.requested: [task_type, inputs, resume_checkpoint, deadline]
+    emits: []
+    writes: [heartbeat-details]
