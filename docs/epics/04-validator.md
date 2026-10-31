@@ -1,0 +1,645 @@
+# Epic #5: DAG configuration schema and validator - breakdown
+
+Status: draft
+Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/5
+Architecture note: docs/architecture/12-dag-and-workflow.drawio
+Depends on (closed epics): Dev environment (#1, closed), Job event envelope (#4, closed)
+
+Evidence marks: `[ran]` means executed on the author's host (WSL2, 2026-10-31) while preparing this spec, `[read]` means read and not re-run.
+The epic issue body was read on 2026-10-31, and this spec was written against that version.
+`main` was at `b6e11ff`, the closure of the envelope epic.
+Method: [docs/method.md](../method.md).
+Models: [docs/epics/03-envelope.md](03-envelope.md) (the most recent, fully reviewed breakdown) and [docs/epics/02-cluster.md](02-cluster.md).
+Spike results consulted: [Temporal](../spikes/temporal.md) (S3, S3b) for the 100,000 job scale, and [footprint](../spikes/S2-footprint.md) (S2) for the slot figures.
+This epic has no cluster dependency, and its own tests need no container.
+They run at tier T0 (host Python, no runtime), and the epic never starts a cluster or a container.
+Only the `just ci` gate needs Docker, for the envelope integration tests that already exist on `main`.
+
+## 0. Decisions for the captain (max 5)
+
+### 0.1 Recorded decisions
+
+Everything in the epic body stands.
+The calls below were made for earlier epics or in the brief that asked for this spec, and are applied here without a new question.
+
+| # | Decision | Source | Applied in |
+| --- | --- | --- | --- |
+| 1 | No verifier skill, no feature files and no verify recipes for this epic, and the `verify-job-model` row of the method is dropped. The product tests stay: the schema drift check, the validator fixtures, the property tests and the plan hash determinism test | the envelope epic, decision 3, carried | sections 3, 4 and 6 |
+| 2 | Python models are the schema source, and the exported JSON Schema is checked in with a drift test | the envelope epic, decision 5, and the epic body | 0.1, 0.2 |
+| 3 | `just` stays the entrypoint with logic in scripts. This epic adds no recipe, because `just test` and `just ci` already run every test below | the dev environment epic, carried | section 3 |
+| 4 | A batch is one shared template manifest plus per-job parameters on the row. The interface is shared with the envelope and dispatch epics, and the envelope spec records it | the envelope epic, decision 9 | section 2, question 1 |
+| 5 | The first epic to need a container test helper already has one on `main` (`packages/itest/`, import `wdf_itest`). This epic needs no container, so it does not use it | the envelope epic, issue 0.4 | section 8 |
+| 6 | Epic 4 is merged, so this spec consumes its real contracts, library names and versions as pinned in section 2 | the brief | section 2 |
+
+### 0.2 New questions
+
+None of these blocks the start of lane 0.
+Each has a default that applies when there is no answer, and an answer that differs from the default changes only the issues named in the last column, and an answer that arrives after lane 0 merges reaches the pinned files of lane 0 through a contract-change PR.
+
+| # | Question | Options | Recommendation | Default if no answer | Changes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | How do the per-job parameters of a batch (seed, parameters, class override) bind into the shared template, when the epic forbids expressions and templating? | (a) a fixed binding rule: a simulate task whose template seed is the literal `"job"` takes a seed derived from the job seed and its task id, and `parameters` replaces existing values of a task's `args` by task id and key, never adding structure, (b) placeholders with substitution in the template, (c) no sharing, so every job stores its own full manifest | (a). It adds no language: the template is a complete valid job, `bind` only replaces values that already exist, and one derived seed per task keeps chains of one job distinct. (b) is the templating the epic rules out, and (c) stores 100,000 near-identical manifests and loses the one build per batch. | (a) | 0.1, P.3, F.1, and for (c) the batch interface of the envelope spec and the dispatch epic (#24) |
+| 2 | Is the job class (short or long) set by the submitter or derived from the plan? Open in the epic and in #8, #14 and #24. | (a) the library derives a hint from the critical path timeout bound against a profile threshold, and the submitter's override on the row wins, (b) the submitter only, and the plan carries stats and no hint | (a). Admission reads a ready hint from the row and never re-parses, a submitter who knows better still overrides, and the cost is one function and one number. | (a), with the threshold at 3,600 s as a proposal | 0.2, P.2 |
+| 3 | Where does the simulate per-slot ceiling come from before the workers epic (#10) defines its pool manifests? `deploy/presets/slots/<preset>.yaml` holds the compile and aggregate budgets only. | (a) the limits loader reads compile and aggregate from the slots file, and `contracts/job/limits.yaml` holds a marked stand-in for simulate until the pool manifests exist, (b) a `revisit` child of the cluster epic adds a simulate entry to the slots files and blocks V.3, (c) copy all three budgets into `limits.yaml` | (a). It follows the epic's rule that limits are loaded from the pool table and not copied, and needs no edit to a closed epic. (b) is cleaner but blocks a lane on an estimate, and (c) is the drift the epic names as a risk. | (a), with a stand-in of 500 millicores and 512 MiB marked `estimate: true` | 0.2, V.3 |
+| 4 | The compile cache key of the envelope contract has four inputs (source hash, lockfile hash, `componentize-py` version, WIT version) and no entry module, while the compile parameters are the bundle and an entry module. Two compile tasks over one bundle with different entries would share a key and reuse one build. | (a) a contract-change PR adds the entry module as a fifth input of `wdf_keys.compile_cache_key` and its vectors now, before any consumer exists, (b) the bundle fixes its own entry and the compile task names none, (c) leave the key and reject, in one job, two compile tasks with one bundle and different entries | (a). The cache key is the only place the build identity is written, no stored cache entry or consumer exists yet, and (b) contradicts the epic's compile parameters while (c) leaves the collision across jobs. | (a), as issue 0.4 | 0.4, P.3 |
+
+### 0.3 Proposals the lanes pin
+
+These answer the open questions of the epic and the open design items it names.
+Each is a default the lanes build on and the captain may change in the one review, and none needs an answer to start.
+Names, numbers and shapes are pinned by lane 0 and change afterwards only through a contract-change PR.
+
+| Item | Proposal | Epic question |
+| --- | --- | --- |
+| Template shape | The validator accepts any acyclic graph over the three types, typed by the registry, and the compile, simulate and aggregate chain is the documented shape and what the generator builds. A job with no aggregate is valid, because the smoke job is one level 0 chain. More than one aggregate task is valid, and none may consume an aggregate output. | 1, 9, 11 |
+| Graph edges | `depends_on` lists control dependencies and every input reference adds a derived data edge, so the plan holds the union, sorted. A reference to a task that is not yet a dependency is not an error. | none |
+| Limits numbers | The `ci` profile: 512 tasks, `max_parallel` 32 with a default of 8, plan at most 256 KiB of canonical bytes, document at most 1 MiB, 3 retries per task, 172,800 s per attempt, critical path at most 7 days (shared with `MAX_JOB_DURATION_DAYS` of `wdf_compat.window` by a drift test), estimated history at most 10,000 events (Temporal warns at 10,240), and a job class threshold of 3,600 s over the classes `short` and `long`. Estimates of events: 10 per job, 8 per task and 6 per retry, so 512 tasks at 3 retries each reach 13,322 and the limit binds, until the workflow epic (#6) measures its shape. The estimate counts a first run and its retries and not pause, resume or patch cycles, so the history metric of #6 watches the real length. A `permissive` profile lifts every limit about a hundredfold for failure tests. | 5 |
+| Compile defaults | The document never sets compile resources or timeout. The plan takes the compile slot budget, a timeout of 600 s and 1 retry from the profile. Aggregate retries default to 0. Simulate retries are required in the document. A plan is a function of the document, the job parameters and the limits profile, so it records the profile name, the `plan` command takes `--profile` with `ci` as its default, and the vectors hold plans under `ci`. A stored manifest never changes when a slots file changes, because it is compiled once at submit. | none |
+| Chains per job | No separate cap: the task count bounds chains, and a larger fan-in uses an aggregate-only job over an index object. | 2 |
+| Batch sharing | A template is validated once per hash, and the per-job parameters per job, as in the recorded decision. A job plan is the template bound to the job parameters. | 2 |
+| Job class | Question 2 above names the rule. The submitter's override is a value of the profile's `classes`, `short` and `long`. | 3 |
+| Priority class | Submission metadata only, never template content. | 4 |
+| YAML | Not accepted, and the CLI does not convert it. | 6 |
+| Existence checks | Inside a job, references are logical and need no check. The two content-addressed references that enter from outside, the source bundle and the aggregate index object, are checked by the caller through a resolver. | 7 |
+| Runtime capabilities | No task declares any. The platform WIT contract version is the capability set, owned by #11. | 8 |
+| Aggregation registry v1 | `summary_stats` with optional `blocks` and `columns` lists of strings, and `digest_list` with no arguments. Both read `result` outputs and write a `summary`. #11 confirms the argument names in its own spec. | 11 |
+| Numbers | Documents hold integers, strings, booleans and lists of them, and no floats, so the canonical bytes need no float formatting. The one decimal is `cpu` in cores with at most 3 decimals, parsed as an exact decimal and stored as integer millicores. Seeds are integers below 2^53, so no JSON reader rounds one. | none |
+| Seed derivation | The seed of a simulate task whose template seed is `"job"` is `int.from_bytes(sha256(f"{job_seed}:{task_id}".encode()).digest()[:8], "big") >> 11`, which is below 2^53, and the colon cannot appear in a task id. | none |
+| Other profiles | `dev` and `soak` use the `ci` numbers and differ only in the pool table read from their own slots file. `permissive` lifts the numbers about a hundredfold and the slot ceilings to 1,000 cores and 1 TiB whatever the slots files say. | none |
+| Patch rule | The table in issue H.1: frozen graph, resources, timeouts, budgets and flags, parameters of not-yet-completed work (bundle, workload, arguments, seed and aggregation) changeable, completed simulate and aggregate tasks untouched, and a changed bundle re-runs the compile of the chain, refused when a simulate of that chain already completed. | 10 |
+| Plan identity | `manifest_hash` is the SHA-256 of the canonical bytes of the template plan and is the address of the stored manifest. `plan_hash` is the SHA-256 of the canonical bytes of one bound job plan. | none |
+
+## 1. Goal and non-goals
+
+Goal: the job definition and its validator.
+A job is a JSON document built from the job template, tasks of exactly three types (compile, simulate, aggregate) with their dependencies, resource needs, timeouts and retry budgets, submitted with the Python source bundle that its compile task builds.
+It is validated at the submit path, before the accepted-jobs row is written and before anything is published, and it compiles to a deterministic plan that the rest of the system consumes.
+Configuration is data and never executable code.
+
+Terms: the document (or template) is what an author writes, the plan is the validated, defaulted and ordered form, and a bound plan is a plan with one job's parameters applied.
+The manifest is the canonical bytes of the template plan, stored by hash.
+
+Non-goals for this pass:
+
+- everything the epic lists under "Does not own": what a task does when it runs (#11, #10), the submit sequence, reconciler, dispatch API and control API (#24), placement and queue choice (#9), intake queues (#7), the event and envelope schemas (#4), pool sizes and slot budgets (#2, #10), artifact storage and addressing (#3, #12), the checkpoint contract (#18), tenant, submission key and priority class, and expressions, templating, conditionals, loops, dynamic task generation or any general workflow language
+- the real resolver of source bundles and index objects, which reads `wdf-sources` through the artifact client in the dispatch epic (#24), while this epic ships the interface, a test double and a local directory resolver for the CLI
+- the bundle format, which the toolchain epic (#11) owns, so the local resolver reads a proposed layout and the library sees only a `BundleInfo`
+- the real pool table, which the workers epic (#10) owns, so the limits profile reads what exists and a marked stand-in for the rest (question 3)
+- running the library inside a Temporal workflow sandbox, which the workflow epic (#6) proves with its own workflow, while this epic ships a static guard that keeps the library free of input and output and of clocks
+- measuring the history event costs and the batch at the dispatch API, which belong to #6, #16 and the optional 100,000-row lane of #24
+- YAML authoring, float parameters, runtime capability declarations and any use of the cluster or of a container
+
+## 2. Interfaces
+
+### Consumes (each pinned to a version)
+
+| From | What | Pinned at | Stub used until it exists |
+| --- | --- | --- | --- |
+| Dev environment | Dev shell with `uv` and Python 3.13, `pytest` and `hypothesis` from `uv.lock`, and the recipes `just test` and `just ci` | `flake.lock`, `uv.lock`, workspace v1, recipe table v2 | none, exists [ran: Python 3.13.15, pydantic 2.14.2, hypothesis 6.170.14, jsonschema 4.26.0, `just --list` prints 17 names] |
+| Dev environment | `scripts/lint.sh`, which runs `ruff` on every tracked `*.py` and `yamllint --strict` with a 120 column limit on every `*.yaml` | lint as in the repo | none, exists [read] |
+| Envelope | Events contract: the `urn:wdf:schema:<name>:<major>.<minor>` identifier style, the identifier style and the additive-only minor rule, which this epic follows for the document, while the reader differs on purpose: an event is replayed after a deploy and a submitted document is not, so a document minor above the validator's own is rejected | `contracts/events/` events v1 | none, exists [read: `contracts/events/README.md`] |
+| Envelope | Artifact contract: the reference shape (`uri`, `sha256`, `size`, `name`, `kind`), the ten kinds, of which this epic uses `source`, `index`, `manifest`, `component`, `build-info`, `result` and `summary`, the bucket and key rule of `wdf-sources`, and the task id pattern `^[a-z0-9][a-z0-9._-]{0,62}$` of `producer.task` | `contracts/artifact/` artifact v1 | none, exists [read: `reference.schema.json`, `layout.yaml`] |
+| Envelope | The per-job block `JobParams` (`seed`, `parameters`, `class_override`) that admission reads from the row and passes beside the accepted event | `wdf_events.models.JobParams`, library v1 | none, exists [read], this epic owns the content of `parameters`, and a drift test compares field names and checks with generated blocks that whatever `wdf_jobdoc.JobParams` accepts the envelope model accepts too, because the envelope model has no upper bound on the seed and no type for `parameters` |
+| Envelope | The task request data that a plan task maps to: `task_type`, `cpu_cores`, `memory_mib`, `inputs`, `resume_checkpoint` and `deadline`, built by the workflow from a plan task | `wdf_events.models.TaskRequestData`, library v1 | none, exists [read], a test of P.1 builds one from every plan task |
+| Envelope | Compile cache key inputs: `wdf_keys.compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version)`, which has no entry module | `packages/keys/` keys v1, changed by issue 0.4 under question 4 | none, exists [read] |
+| Envelope | The schema evolution check `wdf_compat.breaking_changes(old, new)` and the placeholder `MAX_JOB_DURATION_DAYS` of 7 | `packages/compat/` compat v1 | none, exists [ran: both import] |
+| Envelope | The pool names `compile`, `simulate`, `aggregate`, `infra` and `obs` | `contracts/topology/topology.yaml` topology v1 | none, exists [read] |
+| Cluster | Per-slot budgets of the compile and aggregate pools, one task per pod, marked `estimate: true`, with no simulate entry | `deploy/presets/slots/<preset>.yaml` for `ci`, `dev` and `soak` at `b6e11ff` | the simulate stand-in of question 3 |
+| Envelope | The batch manifest interface: one template manifest per batch stored by hash, per-job parameters on the row, and the contract-change rule if it changes | `docs/epics/03-envelope.md` section 2 | none |
+| Epic and Temporal | The 253 ms per 1,000 tasks validation measure [read: epic text], the 2 MiB Temporal payload limit [read: the envelope spec, from the epic text], and the 10,240 event history warning [read: Temporal documentation, not in the repo and not re-checked] | no pin, the spikes do not cover them | the estimate constants of 0.3 |
+
+No `revisit` child issue is open against the dev environment, cluster or envelope epics [ran: `gh-axi issue list --label revisit --state all` shows only the closed recipe table issue].
+The contract and package names below were checked free on `main` [ran: no `contracts/job/`, `packages/jobdoc/`, `packages/jobcheck/`, `packages/plan/`, `packages/jobpatch/`, `packages/jobtools/` or `packages/jobexamples/` exists].
+
+### Produces (each pinned precisely)
+
+Names, shapes and versions below are proposals that lane 0 pins, and a change after the pin is a contract-change PR with a consumer list and a bump of the contract `VERSION`.
+For a generated schema that PR carries the contract file, the model under `packages/` and the regenerated schema together, because the drift check fails otherwise.
+Epic text and notes link to these files and never copy them.
+
+| To | What | Where it lives (path) | Shape (schema file, signature, exit codes, key names) | Version |
+| --- | --- | --- | --- | --- |
+| #24, #14, #15, #17, CI | Job contract: the document schema, plan schema, stats schema, registry, limits profile, error table and vectors | `contracts/job/` | `README.md`, `VERSION`, `schemas/job/1.0.json`, `schemas/plan/1.json`, `schemas/stats/1.json`, `registry.json`, `limits.yaml` with `limits.schema.json`, `errors.yaml` with `errors.schema.json`, `vectors/`. `check.sh <document.json>` runs the full validator with the `ci` profile and the resolver table `vectors/resolver.json` (a static map from SHA-256 to `BundleInfo`, plus the index objects that exist), and exits 0 valid, 1 invalid with one `reason: <code>: <detail>` line per issue on stderr, 2 usage. The document carries `schema: "urn:wdf:schema:job:1.0"`, and a reader accepts every minor up to its own and rejects a higher one with `unsupported-schema-version`. Without a resolver the library skips the bundle and index checks, which the CLI says in its output. | job v1 |
+| all epics | Models, strict loader, registry, profile model: the document, task and parameter models, `parse_document(data: bytes) -> Document` (raises `DocumentInvalid` carrying `issues`), `Issue(code, path, message)`, `JobParams`, `LimitsProfile`, `PoolTable` and the one loader that reads files, `load_profile(preset, root)` | `packages/jobdoc/` (import `wdf_jobdoc`) | The loader rejects duplicate keys, `NaN`, floats outside `cpu`, strings not in NFC or holding a lone surrogate, and bytes over the profile limit before it parses, and maps `RecursionError` and an integer over Python's digit limit to `not-json`, so no input ends in a traceback. Schema generation `python -m wdf_jobdoc.schemagen [--check]` writes and checks `schemas/job/`, `schemas/plan/`, `schemas/stats/`, `registry.json` and `limits.schema.json`. | library v1 |
+| #24, #14 | Validator: `validate(data: bytes, profile, resolver=None) -> Report`, `Report(ok, issues, document)`, `Issue` re-exported from `wdf_jobdoc`, whose JSON Pointer `path` and `code` come from `errors.yaml`, `SourceResolver` with `resolve_source(ref) -> BundleInfo` and `exists(ref) -> bool`, `BundleInfo(source_sha256, lockfile_sha256, modules)`, `resolver_contract(resolver)`, and `pool_budget(profile, task_type)` | `packages/jobcheck/` (import `wdf_jobcheck`) | Pure and no I/O. Issues are sorted by path then code and capped at 100, so the same input gives the same answer. `pool_budget` is what the placement epic (#9) calls so that the unschedulable rule and the submit rule share one number. | validator v1 |
+| #6, #8, #9, #24, #3 | Plan library: `compile_plan(document, profile) -> Plan`, `check_job_params(plan, params, profile) -> tuple[Issue, ...]`, `bind(plan, params, profile) -> Plan`, `canonical_bytes(plan)`, `manifest_hash(plan)`, `plan_hash(plan)`, `manifest_bytes(plan)`, `manifest_reference(plan) -> dict`, `task_request_fields(task) -> dict`, `stats(plan) -> PlanStats`, `class_hint(stats, profile) -> str`, `read_plan(data) -> Plan` | `packages/plan/` (import `wdf_plan`) | `Plan` holds `plan_version` (1), `profile` (the limits profile name it was compiled under), `max_parallel` and `tasks` in topological order with ties broken by task id, each with `id`, `type`, `pool`, `depends_on`, `inputs`, `cpu_milli`, `memory_mib`, `run_timeout_s`, `retries`, `checkpoint`, `allow_partial` and `params`. Canonical bytes are `json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=True)` encoded as ASCII, with integers only, and the loader has already rejected strings that are not in Unicode normalization form NFC or that hold a lone surrogate. `manifest_reference` builds a reference of kind `manifest` that `contracts/artifact/check.sh` accepts. `PlanStats` has `task_count`, `counts`, `chain_count`, `max_width`, `critical_path_timeout_bound_s`, `peak_cpu_milli`, `peak_memory_mib`, `largest_cpu_milli`, `largest_memory_mib`, `checkpoint_tasks` and `estimated_history_events`. | plan v1 |
+| #24, #6 | Patch check: `patch_check(old, new, completed) -> PatchReport` | `packages/jobpatch/` (import `wdf_jobpatch`) | `PatchReport(compatible, issues, changed, recompile)`. Pure over two bound plans and the set of completed task ids. | patch v1 |
+| #14, #15, #17 | Example library, parameter vectors, golden plans and the generator | `packages/jobexamples/` (import `wdf_jobexamples`), `contracts/job/vectors/valid/`, `contracts/job/vectors/job-params/`, `contracts/job/vectors/plans/` | `examples() -> list[str]`, `load(name) -> bytes`, `generate(shape, chains, **kw) -> bytes` for `fan-out`, `fan-in` and `chains`, and `seed_list(count, start=0) -> bytes` (NDJSON, one job parameter block per line), all deterministic. The library reads the vectors by repository path, as `wdf_events.metrics` reads its contract. | examples v1 |
+| #24, #14, CI | Validate and plan CLI | `packages/jobtools/` (import `wdf_jobtools`) | `python -m wdf_jobtools validate <document> [--profile ci\|dev\|soak\|permissive] [--bundles DIR] [--json]`, `plan <document> [--profile P] [--params FILE] [--out DIR] [--json]` and `patch-check <old> <new> --params FILE [--new-params FILE] --completed FILE`. Exit codes 0 ok, 1 invalid or incompatible, 2 usage or unreadable input. `--json` prints `{"ok", "issues": [{"code", "path", "message"}]}` for `validate` and `patch-check`, and for `plan` the same object plus `manifest_hash`, `plan_hash`, `stats` and `class_hint`. | cli v1 |
+
+### The batch manifest interface (shared with #24 and #3)
+
+This is the interface of the envelope spec, made concrete here.
+
+- The template manifest of a batch is `manifest_bytes(plan)` of the template plan, and its address is the content-addressed reference `manifest_reference(plan)` builds.
+- A job row holds its own seed, parameters and class override, validated by `check_job_params` and applied by `bind`.
+- The dispatch API (#24) calls `validate` once per template hash and `check_job_params` per job, then stores the manifest through the artifact client (#12) before any row is inserted.
+- The compile tasks of every job of a batch are byte-identical after `bind`, so their cache key is one value, which the workflow computes with `wdf_keys.compile_cache_key` from `BundleInfo`, the entry module of the task and the toolchain pins of #11.
+- A change to any line above is a contract-change PR that lists #3, #6, #8, #24 and the envelope contracts as consumers.
+
+## 3. Lanes (disjoint file ownership)
+
+Package names are proposals.
+Lane 0 owns every package it creates until the owning lane takes over the glob, as the method says for stubs.
+
+Departures from the method, stated so that the captain approves them knowingly:
+
+- Lane Needs run across lanes: V.3 waits for P.1 and P.2 (the validator checks the compiled plan, so `wdf_jobcheck` imports `wdf_plan` and never the reverse), H.1 for P.3, F.1 for V.4 and P.1, F.2 for P.3 and H.1, P.4 for F.2, and the CLI lane for V.4, P.1 to P.3 and H.1.
+  The reason is that a fixture, a golden plan or a CLI test over a stub would only assert `NotImplementedError`.
+  The envelope spec records the same departure.
+- Vectors are added under a class directory by the lane that owns the check, and golden plans by lane F, after lane 0 has pinned the contract.
+  The error table is pinned whole in lane 0, so a lane adds fixtures and never codes.
+- Issue 0.4 edits files of the closed envelope epic (the events contract README, its version, the key vectors and `packages/keys/`), as a contract-change PR with a consumer list, which the method allows for a pinned contract, and not as a `revisit` child.
+- A contract-change PR for a generated schema is not `contracts/` only, because the model and the regenerated file must change with it.
+- The root `pyproject.toml` is edited once, by lane 0 (issue 0.3), to list the new workspace members, because a plain `uv run` installs only what the dev group names.
+- No `just/<domain>.just` module is added, and `docs/method.md` is not edited by this spec.
+  A follow-up edit is needed, because its verifier table (line 220) and the tranche A rows for E3 and E4 (lines 245 and 246) still list `verify-job-model`, and line 112 points the exit test at "spec section 7", which is section 6 here.
+
+| Lane | Workers | Owns (exclusive) | Issues | Needs |
+| --- | --- | --- | --- | --- |
+| 0 Contracts and skeleton | 1 | `contracts/job/{README.md,VERSION,check.sh,errors.yaml,errors.schema.json,limits.yaml,limits.schema.json,registry.json}`, `contracts/job/schemas/**`, `contracts/job/vectors/invalid/schema/**`, `packages/jobdoc/**`, `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**` for issue 0.4 only, the root `pyproject.toml` edit and `uv.lock`, and until lanes V, P, H, F and L take over `packages/jobdoc/**` (lane P), `packages/jobcheck/**`, `packages/plan/**`, `packages/jobpatch/**`, `packages/jobexamples/**` and `packages/jobtools/**` | 0.1, 0.2, 0.3, 0.4 | nothing (barrier) |
+| V Validation | 1 | `packages/jobcheck/**`, `contracts/job/vectors/invalid/{graph,reference,bundle,resource,limit}/**`, `contracts/job/vectors/resolver.json` | V.1, V.2, V.3, V.4 | lane 0, V.1, P.1 and P.2 for V.3, and V.1 to V.3 for V.4 |
+| P Plan | 1 | `packages/plan/**`, `packages/jobdoc/**` after lane 0, `contracts/job/vectors/job-params/invalid/**` | P.1, P.2, P.3, P.4 | lane 0, P.1 for P.2 and P.3, and P.1 and F.2 for P.4 |
+| H Patch | 1 | `packages/jobpatch/**`, `contracts/job/vectors/patch/**` | H.1 | P.1 and P.3 |
+| F Fixtures | 1 | `packages/jobexamples/**`, `contracts/job/vectors/valid/**`, `contracts/job/vectors/job-params/valid/**`, `contracts/job/vectors/plans/**` | F.1, F.2 | V.4 and P.1 for F.1, and F.1, P.3 and H.1 for F.2 |
+| L Tools | 1 | `packages/jobtools/**` | L.1, L.2 | V.4, P.1, P.2, P.3 and H.1 for L.1, and L.1 for L.2 |
+
+Shared-file rules:
+
+- `uv.lock` is the one hotspot, and a shared file that every lane may touch, which the Done rule of section 4 allows.
+  Lane 0 commits the `uv lock` result for the new workspace members, because `uv run --frozen` refuses an unlocked member.
+  No new third-party dependency is expected: `pydantic`, `jsonschema`, `pyyaml` and `hypothesis` are already locked, and a dependency lands in the PR that needs it.
+  A lock conflict is never resolved by hand, `uv lock` is rerun after rebase.
+- `deploy/versions.yaml`, `deploy/presets/**`, `justfile`, `just/*.just`, `scripts/*` and `.github/workflows/*` are not touched.
+  The slots files are read and never edited, because the cluster epic is closed.
+- After lane 0 merges, a file of the pinned contract changes only through a contract-change PR, except the vectors that a lane adds under its own glob.
+- Generated files (`schemas/`, `registry.json`, `limits.schema.json`) are committed, and the drift check regenerates them, so a lane never hand edits one.
+- `contracts/job/vectors/plans/1/HASHES` has one SHA-256 line per golden file, as the golden events of the envelope contract do.
+  A PR that changes a golden file or its line is a contract-change PR, and the test fails when a file and its line disagree or a file has no line.
+- The contract YAML files sit under `contracts/`, so `scripts/lint.sh` applies `yamllint --strict` to them and does not apply `kubeconform`.
+- Packages `jobdoc`, `jobcheck`, `plan` and `jobpatch` are pure: no input or output, clock, randomness, environment or network.
+  Three tool modules read or write files and are exempt by name in the guard test of 0.3: `wdf_jobdoc.profile_files` (the one home of `load_profile`), `wdf_jobdoc.schemagen` and `wdf_jobcheck.check`, and no other module imports them.
+  `jobtools` and `jobexamples` read files and are outside the guard.
+
+## 4. Issues
+
+Each issue below becomes a GitHub issue after approval, filed from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md) as a sub-issue of #5 and replaced by a `#NNN` link in this section.
+Each issue copies its Owns line from the lane table, uses its Test line as the Verifier section, and keeps only the `just ci` and Owns checkboxes of Done means.
+Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker as the envelope spec says), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
+Acceptance lines are commands with an observable result, except the README content lines, which the reviewer checks in the PR.
+Tiers are T0 throughout, and the proposal numbering of the epic is in brackets.
+Commands are written without the `nix develop -c uv run --frozen` prefix that every one of them takes.
+
+### Mapping from the epic's detail issues
+
+| Epic detail issue | Delivered by |
+| --- | --- |
+| 1 Job template and task models | 0.1, 0.2 |
+| 2 Graph validation | V.1 |
+| 3 Artifact reference validation | V.2 |
+| 4 Limits profile and resource sanity | 0.2 (profile, loader, stand-in), V.3 (checks) |
+| 5 Plan compiler and stats | P.1, P.2 |
+| 6 Manifest storage contract | P.1 (bytes, hash, reference), confirmed by #3 and #12 in their specs |
+| 7 Patch compatibility check | H.1 |
+| 8 Validate and plan CLI | L.1 |
+| 9 Example library, generator and invalid fixtures | F.1, F.2, and the class directories of lanes 0, V and H |
+| 10 Versioning policy and compatibility tests | P.4 |
+| 11 Batch validation performance | L.2 |
+| not in the epic's list: per-job binding, the validator entry point, the package skeletons, the cache key entry input | P.3, V.4, 0.3, 0.4 |
+
+### 0.1 Document models, strict loader and error table [1]
+
+Lane 0, tier T0.
+Needs: nothing.
+
+Scope: the document model with tasks keyed by id, the closed set of three task types, strict fields, id rules, resource units, `allow_partial`, the simulate-only `checkpoint` flag (a boolean, default false), the strict loader with the size limit (code `document-too-large`, class `schema`), the error table and the schema export.
+`parse_document` raises `DocumentInvalid` carrying the issues, and `Issue` is defined here, so `jobdoc` never imports `jobcheck`.
+Question 1 of section 0.2 shapes the seed field, and the numbers of section 0.3 apply.
+
+Owns: `contracts/job/{README.md,VERSION,errors.yaml,errors.schema.json}`, `contracts/job/schemas/job/**`, `contracts/job/vectors/invalid/schema/**`, `packages/jobdoc/**`.
+
+Consumes and produces: artifact contract v1 (task id pattern, reference shape), events contract v1 (identifier style); produces the document schema `schemas/job/1.0.json` and `errors.yaml` listing every code of every class with its class.
+
+Acceptance criteria:
+
+- [ ] `python -m wdf_jobdoc.schemagen --check` exits 0, and renaming a field of a model makes it exit 1 naming the file under `contracts/job/schemas/`.
+- [ ] `pytest packages/jobdoc -q -rs` passes with no skip, and covers duplicate keys, `NaN`, a float outside `cpu`, a `cpu` with four decimals, an unknown field, a task type outside the closed set and a field not allowed for its type (for example `cpu` on a compile task).
+- [ ] `pytest packages/jobdoc -q -rs -k vectors` loads every file under `vectors/invalid/schema/<code>/` through `parse_document` and checks that the first issue has the code of its directory name.
+- [ ] `errors.yaml` validates against `errors.schema.json`, and the README lists the classes `schema`, `graph`, `reference`, `bundle`, `resource`, `limit`, `params` and `patch`.
+
+Test: `packages/jobdoc/tests/test_loader.py`, `test_models.py`, `test_schema_drift.py`, `test_error_table.py` and `test_vectors.py`.
+
+### 0.2 Registries and the limits profile [4]
+
+Lane 0, T0.
+Needs: 0.1.
+Questions 2 and 3 of section 0.2 apply.
+
+Scope: the task type registry (a pool derived from the type, accepted kinds of in-job input references, declared outputs), the aggregation registry with its argument models, the limits profile model, `limits.yaml` with the numbers of section 0.3 and the `permissive` profile, the pool table model and `load_profile`.
+The compile source bundle is `params.source` and never an entry of `inputs`, which holds only logical references between tasks of the job.
+
+Owns: `contracts/job/{limits.yaml,limits.schema.json,registry.json}` and `packages/jobdoc/**`.
+
+Consumes and produces: topology v1 (pool names), `deploy/presets/slots/<preset>.yaml`; produces the registry export and the limits file.
+
+Acceptance criteria:
+
+- [ ] `pytest packages/jobdoc -q -rs` passes, including `test_registry_pools_exist_in_topology` and `test_registry_kinds_exist_in_artifact_layout`.
+- [ ] `load_profile("ci", root)` returns the compile and aggregate budgets of `deploy/presets/slots/ci.yaml` as millicores and MiB (1 CPU and 1 Gi read as 1000 and 1024), and the stand-in for simulate, shown by `test_pool_table_from_slots`.
+- [ ] `test_standin_used_only_where_missing` fails when a slots file gains a simulate entry that the loader ignores.
+- [ ] `test_max_job_duration_matches_compat` fails when `max_job_duration_days` differs from `wdf_compat.window.MAX_JOB_DURATION_DAYS`.
+- [ ] A task type or aggregation outside the registry is rejected with `unknown-task-type` or `unknown-aggregation`, and a seed in an aggregate task with `unknown-field`, shown by `test_vectors.py` over `vectors/invalid/schema/`.
+
+Test: `packages/jobdoc/tests/test_registry.py`, `test_limits.py`, `test_pool_table.py`.
+
+### 0.3 Plan model, package skeletons and stubs
+
+Lane 0, T0.
+Needs: 0.2.
+
+Scope: the plan and stats models with their schema files, the job parameter model, the five other packages with their `pyproject.toml`, the root `pyproject.toml` and `uv.lock` edit, a stub for every cross-lane entry point, and the purity guard.
+
+Owns: `contracts/job/check.sh`, `contracts/job/schemas/{plan,stats}/**`, the new packages until the owning lane takes over, and the root `pyproject.toml` edit.
+
+Consumes and produces: `wdf_events.models.JobParams`; produces the plan and stats schemas, `check.sh` (which runs `python -m wdf_jobcheck.check`), and stubs that raise `NotImplementedError("not implemented: owned by lane V")` (or P, H, F, L) for `validate` beyond the schema and registry passes, `compile_plan`, `bind`, `patch_check`, `examples` and the CLI commands, which exit 3 with the same text.
+
+Acceptance criteria:
+
+- [ ] `uv sync --frozen` and `uv lock --check` exit 0 with the new members, and `python -m wdf_jobdoc.schemagen --check` exits 0.
+- [ ] Every file under `contracts/job/vectors/invalid/schema/*/` exits 1 through `contracts/job/check.sh` with `reason: <code>:` for its directory name, and a valid document exits 3 with `not implemented: owned by lane V` until V.4 replaces the stub.
+- [ ] `pytest packages/jobdoc -q -rs -k "job_params"` passes, and the test fails when the field names of `JobParams` differ from those of `wdf_events.models.JobParams`.
+- [ ] `pytest packages/jobdoc -q -rs -k "no_io_imports"` passes, and fails for a fixture module that imports `os`, `sys`, `socket`, `subprocess`, `pathlib`, `tempfile`, `urllib`, `time`, `datetime`, `random`, `secrets`, `uuid`, `logging` or `wdf_events`, or calls `open` or `print`, with the three tool modules of section 3 exempt by name.
+- [ ] `pytest packages/jobcheck packages/plan packages/jobpatch -q -rs -k vectors` accepts the stub error only for the names in each test's `STUBBED` list, and a real match for the rest.
+
+Test: `packages/jobdoc/tests/test_job_params.py`, `test_purity.py`, `test_check_stub.py` and `packages/*/tests/test_vectors.py`.
+
+### 0.4 Compile cache key entry input (contract change)
+
+Lane 0, tier T0.
+Needs: nothing.
+Question 4 of section 0.2 applies, and the issue is dropped if the answer is (b) or (c).
+
+Scope: add the entry module as a fifth input of `compile_cache_key` and its vectors, with the consumer list.
+This is a contract-change PR on the envelope contract, so it touches the contract, the package and its tests together and bumps the contract `VERSION`.
+Consumers: #6 (the workflow computes the key), #11 (the compile worker re-checks it) and this epic.
+
+Owns: `contracts/events/{README.md,VERSION,vectors/keys.json}` and `packages/keys/**`, for this issue only.
+
+Acceptance criteria:
+
+- [ ] `pytest packages/keys -q -rs` passes, and `test_compile_key_entry` shows two entries over one bundle give two keys and one entry gives one.
+- [ ] The formula in `contracts/events/README.md` and the vectors in `keys.json` name the entry, and `contracts/events/VERSION` is bumped.
+- [ ] `pytest packages/events packages/compat -q -rs -m "not integration"` still passes.
+
+Test: `packages/keys/tests/test_compile_key.py`, `test_vectors.py`.
+
+### V.1 Graph validation [2]
+
+Lane V, T0.
+Needs: lane 0.
+
+Scope: unknown dependencies, self dependencies and cycles reported with the path, over the union of `depends_on` and the edges derived from input references.
+
+Owns: `packages/jobcheck/**` (the graph module) and `contracts/job/vectors/invalid/graph/**`.
+
+Acceptance criteria:
+
+- [ ] A document naming a missing task in `depends_on` exits 1 with `unknown-dependency` and a pointer to that entry, and a task listing itself with `self-dependency`.
+- [ ] A three task cycle exits 1 with `dependency-cycle`, and the message lists the tasks in order and repeats the first at the end.
+- [ ] `pytest packages/jobcheck -q -rs -k "property"` passes `test_cycle_path_is_a_real_cycle` (every reported path is a walk of real edges that returns to its start, on generated graphs with an injected back edge) and `test_acyclic_documents_are_accepted` (generated acyclic graphs never report a cycle).
+
+Test: `packages/jobcheck/tests/test_graph.py`, `test_graph_properties.py`.
+
+### V.2 Artifact reference and bundle validation [3]
+
+Lane V, T0.
+Needs: lane 0.
+
+Scope: the reference checks of a task (producer exists, output declared by its type, kind accepted by the consumer, input counts per type, the aggregate-only form) and the resolver interface with its contract function.
+
+Owns: `packages/jobcheck/**` (the references and resolver modules) and `contracts/job/vectors/invalid/{reference,bundle}/**`.
+
+Consumes and produces: artifact contract v1; produces `SourceResolver`, `BundleInfo`, `BundleNotFound`, `resolver_contract(resolver)`, a `StaticResolver` test double that loads `contracts/job/vectors/resolver.json`, and that table, which every valid and bundle vector refers to by SHA-256.
+The table holds one good bundle with a lockfile and the entry modules `echo` and `sim`, which F.1 uses and never edits, and one entry per bundle failure.
+
+Acceptance criteria:
+
+- [ ] Each of `unknown-producer`, `undeclared-output`, `input-kind-not-accepted`, `missing-required-input`, `too-many-inputs`, `duplicate-input`, `index-and-inputs`, `aggregate-without-input` and `index-job-not-alone` has a vector that exits 1 with that code.
+- [ ] A compile task that consumes a simulate output fails with `input-kind-not-accepted`, and a simulate task with no component input with `missing-required-input`.
+- [ ] A bundle the resolver cannot find, one with another hash, one with no lockfile and an entry module the bundle lacks fail with `bundle-unresolved`, `bundle-hash-mismatch`, `bundle-without-lockfile` and `entry-not-in-bundle`, and an index object that does not exist with `index-unresolved`.
+- [ ] `resolver_contract(StaticResolver(...))` passes, and fails for a resolver that returns a bundle with the wrong hash.
+
+Test: `packages/jobcheck/tests/test_references.py`, `test_resolver.py`.
+
+### V.3 Limits and resource sanity [4]
+
+Lane V, T0.
+Needs: lane 0, V.1, P.1 and P.2.
+
+Scope: resource checks against the per-type slot budget on the document, and the size and count limits, where the plan size, critical path bound and history estimate come from `compile_plan`, `canonical_bytes` and `stats` of the plan library, so submit and placement share one number.
+`pool_budget` is the one function the placement epic reads.
+
+Owns: `packages/jobcheck/**` (the limits module) and `contracts/job/vectors/invalid/{resource,limit}/**`.
+
+Consumes and produces: the `ci` profile and the permissive profile of 0.2; produces `pool_budget`.
+
+Acceptance criteria:
+
+- [ ] A simulate or aggregate task above its pool budget exits 1 with `cpu-exceeds-slot` or `memory-exceeds-slot`, and the same task passes under the `permissive` profile.
+- [ ] Vectors exist for `too-many-tasks`, `max-parallel-exceeded`, `plan-too-large`, `run-timeout-too-long`, `retries-too-many`, `critical-path-too-long` and `history-budget-exceeded`, each exiting 1 with its code, and a boundary vector for each limit that exits 0 exactly at the limit.
+- [ ] `pool_budget(profile, "compile")` equals the compile slot of `deploy/presets/slots/ci.yaml`, shown by `test_pool_budget_matches_slots`.
+
+Test: `packages/jobcheck/tests/test_resources.py`, `test_limits.py`.
+
+### V.4 The validate entry point
+
+Lane V, T0.
+Needs: V.1, V.2 and V.3.
+
+Scope: `validate` composing the checks in a fixed order (schema, registry, graph, references, resources, limits, bundles), collecting every issue up to the cap, and `python -m wdf_jobcheck.check` behind `contracts/job/check.sh`.
+
+Owns: `packages/jobcheck/**`.
+
+Acceptance criteria:
+
+- [ ] `for f in contracts/job/vectors/invalid/*/*/*.json; do want=$(basename "$(dirname "$f")"); contracts/job/check.sh "$f" 2>&1 | grep -q "^reason: $want:" || echo "MISMATCH $f"; done` prints nothing.
+- [ ] A document with a cycle, an unknown output and a task above its slot budget reports all three in one call, sorted by path then code, and a document with a bad field reports only the schema pass, because the later passes need a typed document: graph, references and resources run on it independently, and the plan checks (plan size, critical path, history) run only when graph and references found nothing.
+- [ ] `test_validate_is_deterministic` shows two runs give equal reports, and `test_pass_gating` shows the order above.
+- [ ] `STUBBED` is empty in `packages/jobcheck/tests/test_vectors.py`.
+- [ ] `pytest packages/jobcheck -q -rs` passes with no skip.
+
+Test: `packages/jobcheck/tests/test_validate.py`, `test_vectors.py`.
+
+### P.1 Plan compiler, canonical form and manifest [5, 6]
+
+Lane P, T0.
+Needs: lane 0.
+
+Scope: topological order with ties broken by task id, resolved defaults (compile resources, timeout and retries, default `max_parallel`), derived pools, derived edges, the canonical bytes, `manifest_hash`, `plan_hash`, `manifest_bytes` and `manifest_reference`.
+
+Owns: `packages/plan/**`.
+
+Consumes and produces: artifact contract v1 (`layout.yaml` key rule); produces the compiler and the plan identity of section 0.3.
+
+Acceptance criteria:
+
+- [ ] `pytest packages/plan -q -rs -k "property"` passes `test_hash_ignores_key_order_and_whitespace` (a document with its keys shuffled and its whitespace changed compiles to the same bytes and hash) and `test_order_is_topological_and_stable` (every task follows its dependencies and equal inputs give equal order).
+- [ ] `manifest_reference(plan)` passes `contracts/artifact/check.sh` for kind `manifest`, and `test_reference_matches_layout` compares its key rule with `layout.yaml`.
+- [ ] A document that omits compile resources compiles with the compile slot budget, 600 s and 1 retry, shown by `test_compile_defaults`.
+- [ ] `task_request_fields(task)` returns `task_type`, `cpu_cores` (millicores over 1,000) and `memory_mib` of a plan task, and `test_plan_task_maps_to_task_request` validates them, with a deadline and the input references added, against `wdf_events.models.TaskRequestData` for every task of every example, so the plan and the task request cannot drift.
+- [ ] `test_plan_has_no_floats` fails for a plan whose canonical bytes contain a decimal point outside a string.
+
+Test: `packages/plan/tests/test_compile.py`, `test_canonical.py`, `test_manifest.py`, `test_properties.py`.
+
+### P.2 Plan stats and the class hint [5]
+
+Lane P, T0.
+Needs: P.1.
+Question 2 of section 0.2 applies.
+
+Scope: the plan stats for neighbours and the class hint, with `max_width` as the widest topological level, a plain bound that `packages/plan/README.md` says is not the exact antichain.
+
+Owns: `packages/plan/**`.
+
+Acceptance criteria:
+
+- [ ] `pytest packages/plan -q -rs -k stats` passes against golden stats for a single chain, a fan-out of 8, a fan-in of 8 chains and an aggregate-only job, including `critical_path_timeout_bound_s` as the longest path of `run_timeout_s` times one plus `retries`.
+- [ ] `estimated_history_events` equals 10 plus, per task, 8 plus 6 times its retries, shown by `test_history_estimate`.
+- [ ] `class_hint` returns `short` at the threshold and `long` one second above it, shown by `test_class_hint_boundary`.
+
+Test: `packages/plan/tests/test_stats.py`, `test_class_hint.py`.
+
+### P.3 Per-job parameters and binding
+
+Lane P, T0.
+Needs: P.1.
+Question 1 of section 0.2 applies.
+
+Scope: `check_job_params` and `bind`, the seed derivation, and the job parameter vectors that golden plans use.
+
+Owns: `packages/plan/**` and `contracts/job/vectors/job-params/**`.
+
+Consumes and produces: `JobParams` of the envelope library; produces the invalid vectors `vectors/job-params/invalid/<code>/<name>.template.json` and `<name>.params.json`, each pair self-contained, where the params file is a bare job parameter block.
+The valid parameter blocks are named `<example>.<case>.json`, belong to lane F and are bare blocks bound to the example of that name.
+`check_job_params` also reports `plan-too-large` when the bound plan exceeds the profile limit, so a long parameter string cannot push a stored job past the payload budget.
+
+Acceptance criteria:
+
+- [ ] `unknown-parameter`, `parameter-type-mismatch`, `bad-seed` (negative or at least 2^53) and `unknown-class` each have a vector under `vectors/job-params/invalid/<code>/<name>.params.json` next to its template, and `pytest packages/plan -q -rs -k params_vectors` shows `check_job_params` reports that code for each.
+- [ ] `pytest packages/plan -q -rs -k "bind"` passes `test_bind_is_idempotent`, `test_bind_changes_only_seed_and_args` and `test_two_chains_get_distinct_seeds`.
+- [ ] The derived seed of task `sim-1` for job seed 7 equals the SHA-256 vector in `test_seed_vector`, and the compile tasks of 1,000 jobs bound from one template are byte-identical, so `wdf_keys.compile_cache_key` gives one value, shown by `test_batch_shares_one_cache_key`, which uses the key with the entry module of question 4.
+
+Test: `packages/plan/tests/test_bind.py`, `test_batch_cache_key.py`.
+
+### P.4 Versioning policy and compatibility tests [10]
+
+Lane P, T0.
+Needs: P.1 and F.2.
+
+Scope: the additive-only rule for the document minors and the plan version, `read_plan` for the current plan version and the hook for the previous one, exercised by a synthetic version 0 and a test-only upgrade function because no earlier version exists, and the evolution test.
+
+Owns: `packages/plan/**`.
+
+Consumes and produces: `wdf_compat.breaking_changes`; produces `read_plan` and the rule in `packages/plan/README.md` that a previous plan version stays readable for the same window as an event major.
+
+Acceptance criteria:
+
+- [ ] `pytest packages/plan -q -rs -k "evolution"` fails and names the field when a required field is added to a model without a new version, and passes on the committed models.
+- [ ] `read_plan` reads every golden plan under `contracts/job/vectors/plans/` whose version is the current or the previous one, and `test_read_plan_rejects_other_versions` shows another version raises `UnsupportedPlanVersion`.
+- [ ] `test_golden_plans_still_compile` recompiles every example to the committed bytes, so a change to defaults, ordering or canonical form fails and needs a contract-change PR.
+
+Test: `packages/plan/tests/test_schema_evolution.py`, `test_read_plan.py`, `test_golden_plans.py`.
+
+### H.1 Patch compatibility check [7]
+
+Lane H, T0.
+Needs: P.1.
+
+Scope: `patch_check(old, new, completed)` over two bound plans (the CLI compiles and binds both documents), with this rule.
+Resources, timeout and retries of a compile task come from the profile and not from the document, so they are not compared.
+Whether a paused task with a committed checkpoint can resume under changed code is the checkpoint epic's contract (#18) and is not decided here: the report lists every changed task so that #18 and #24 can apply it.
+
+| Difference between the plans | Verdict |
+| --- | --- |
+| a different `plan_version`, `max_parallel`, task id set, type, `depends_on`, `inputs`, resource, timeout, retry budget, `checkpoint` or `allow_partial` | `frozen-field-changed` |
+| any difference in a completed simulate or aggregate task | `completed-task-changed` |
+| a compile task whose `source` or `entry` differs, with no completed simulate in its chain | compatible, listed in `recompile` |
+| a compile task whose `source` or `entry` differs, with a completed simulate in its chain | `build-changed-after-result` |
+| a not yet completed simulate whose `workload`, `args` or `seed` differ, with `checkpoint` false, or an aggregate whose `aggregation` or `args` differ | compatible, listed in `changed` |
+| a not yet completed simulate with `checkpoint` true whose `seed` differs, because a checkpoint written under the old seed would be resumed under another | `seed-changed-on-checkpoint-task` |
+| a completed id that is not a task of the plan | `unknown-completed-task` |
+| any other difference, including a compile argument, the pool and the aggregate-only index reference | `frozen-field-changed` |
+
+Owns: `packages/jobpatch/**` and `contracts/job/vectors/patch/**`.
+
+Acceptance criteria:
+
+- [ ] `contracts/job/vectors/patch/<verdict>/<case>/` holds `old.json` and `new.json` (documents), `params.json`, an optional `new-params.json`, `completed.json` and `expected.json`, where `<verdict>` is `ok` or a code, and `pytest packages/jobpatch -q -rs` compiles and binds both sides, runs every case and compares the codes, `recompile` and `changed` with `expected.json`.
+- [ ] A case exists for every row of the table, plus one where a patch adds a task and one where it changes a dependency, both `frozen-field-changed`.
+- [ ] `test_patch_check_is_pure` shows the same inputs give the same report, and that the inputs are not mutated.
+
+Test: `packages/jobpatch/tests/test_patch_cases.py`, `test_purity.py`.
+
+### F.1 Example library and generator [9]
+
+Lane F, T0.
+Needs: V.4 and P.1.
+
+Scope: the example library on the workload ladder of #11 (level 0 functional chain and level 1 simulation chain with XML result blocks, fan-out, the chain and aggregate job, an aggregate-only job with an index reference, an aggregate that opts into partial results, and a batch template with its seed list `vectors/valid/batch-template.seeds.ndjson`), and a deterministic generator for large fan-out and fan-in jobs and for seed lists.
+
+Owns: `packages/jobexamples/**` and `contracts/job/vectors/valid/**`.
+Every example refers to the one good bundle of `vectors/resolver.json` and to its modules.
+
+Acceptance criteria:
+
+- [ ] Every file under `vectors/valid/` exits 0 through `contracts/job/check.sh`, and `examples()` lists the same names, shown by `test_examples_are_valid_vectors`.
+- [ ] `level0-echo` is one compile then one simulate chain with no aggregate, which is the smoke job of the method.
+- [ ] `generate("fan-out", 100)` and `generate("fan-in", 100)` validate under the `ci` profile with the generator's default of 0 retries, `generate("fan-out", 600)` validates under `permissive` and fails under `ci` with `too-many-tasks` among its issues, and two calls give equal bytes.
+- [ ] The generator rejects a request above the `permissive` limits with a clear error.
+- [ ] `test_seed_list_binds_to_the_batch_template` binds every line of `batch-template.seeds.ndjson` to `batch-template.json` with `check_job_params` and `bind`, gets one distinct `plan_hash` per line and one `manifest_hash`, and `seed_list(5)` gives equal bytes twice.
+
+Test: `packages/jobexamples/tests/test_examples.py`, `test_generator.py`.
+
+### F.2 Golden plans and the fixture gate [9]
+
+Lane F, T0.
+Needs: F.1, P.3 and H.1.
+
+Scope: the canonical manifest of each example and the bound plan of each example under its `job-params/valid/<example>.seed-7.json`, with a SHA-256 line each, and a gate that every code of `errors.yaml` has a fixture.
+The gate looks for `vectors/invalid/<class>/<code>/` for the classes `schema`, `graph`, `reference`, `bundle`, `resource` and `limit`, `vectors/job-params/invalid/<code>/` for `params`, and `vectors/patch/<code>/` for `patch`.
+
+Owns: `packages/jobexamples/**` and `contracts/job/vectors/plans/**`.
+
+Acceptance criteria:
+
+- [ ] `pytest packages/jobexamples -q -rs -k golden` recompiles every example and compares bytes and hashes with `vectors/plans/1/`, and fails when a file and its `HASHES` line disagree or a file has no line.
+- [ ] `test_every_code_has_a_fixture` fails when a code of class `schema`, `graph`, `reference`, `bundle`, `resource`, `limit`, `params` or `patch` has no file under its directory in `vectors/`, and reports the code.
+- [ ] `test_plan_hash_is_deterministic` compiles and binds every example twice in separate processes and compares the hashes.
+
+Test: `packages/jobexamples/tests/test_golden.py`, `test_fixture_gate.py`.
+
+### L.1 Validate and plan CLI [8]
+
+Lane L, T0.
+Needs: V.4, P.1, P.2, P.3 and H.1.
+
+Scope: the three commands with path-qualified errors, JSON output and exit codes, the profile flag, and a local directory resolver for `--bundles`.
+
+Owns: `packages/jobtools/**`.
+
+Acceptance criteria:
+
+- [ ] `python -m wdf_jobtools validate contracts/job/vectors/valid/level2-aggregate.json` exits 0, and the same on `invalid/graph/dependency-cycle/three-task-cycle.json --json` exits 1 with an `issues` entry whose `code` is `dependency-cycle` and whose `path` is a JSON Pointer.
+- [ ] `plan contracts/job/vectors/valid/level2-aggregate.json --params contracts/job/vectors/job-params/valid/level2-aggregate.seed-7.json --out DIR` writes `manifest.json` and prints `manifest_hash`, `plan_hash`, stats and the class hint, and a second run prints the same bytes.
+- [ ] `patch-check` on the case files of `vectors/patch/ok/bundle-changed/` exits 0 and prints `recompile`, and on a `completed-task-changed` case exits 1 with that code.
+- [ ] A missing file, an unknown profile and a bad flag exit 2 with a one line message.
+- [ ] `--bundles DIR` reads `<DIR>/<sha256>.tar.gz`, takes a top level `uv.lock` as the lockfile and the `*.py` paths as modules, and `test_local_resolver_passes_resolver_contract` runs `resolver_contract` against it.
+
+Test: `packages/jobtools/tests/test_cli.py`, `test_local_resolver.py`.
+
+### L.2 Batch validation performance [11]
+
+Lane L, T0.
+Needs: P.3 and L.1.
+
+Scope: validate one template once, then check and bind the parameters of a large number of jobs, and measure it.
+
+Owns: `packages/jobtools/**`.
+
+Acceptance criteria:
+
+- [ ] `python -m wdf_jobtools.bench --jobs 100000` exits 0 and prints `template_validations: 1`, `jobs: 100000` and `seconds: <n>` with `<n>` below 60, the pass line, which is a regression guard and not a contract (a prototype of bind and hash over 100,000 jobs of 8 tasks took 2.4 s [ran]).
+- [ ] `python -m wdf_jobtools.bench --tasks 512 --jobs 1000` prints the same fields for the largest template with no pass line, so that the cost of a plan at the limit is recorded, and whether the dispatch API hashes every bound plan or only the manifest is its own call (#24).
+- [ ] `test_template_is_validated_once` runs 2,000 jobs and shows `validate` is called once, counted by the test and not timed.
+- [ ] The measured line is recorded in the PR and in Closure.
+
+Test: `packages/jobtools/tests/test_bench.py`.
+
+## 5. Order, stubs and spikes
+
+- Barrier: lane 0 (0.1, then 0.2, then 0.3, with 0.4 beside them), one worker, merged alone.
+  The estimate is three days.
+- After lane 0: V.1 and P.1 start together, each in its own lane, and none needs a container.
+- DAG: lane 0, then (V.1, V.2 ‖ P.1, then P.2 and P.3), then V.3 after P.2, then (V.4 ‖ H.1 after P.3), then (F.1 after V.4 and P.1, then F.2 after P.3 and H.1 ‖ L.1 after V.4, P.2, P.3 and H.1), then (P.4 after F.2 ‖ L.2 after L.1), then the exit test.
+- Question 1 of section 0.2 is answered before 0.1, questions 2, 3 and 4 before 0.2 and 0.4, or their defaults apply, and a later answer is a contract-change PR.
+
+Stubs:
+
+| Stub | What it fakes | How its conformance test runs against the real thing |
+| --- | --- | --- |
+| `validate`, `compile_plan`, `bind`, `patch_check`, `examples` and the CLI commands in 0.3 | `NotImplementedError("not implemented: owned by lane V")` and the same for lanes P, H, F and L | each package's `test_vectors.py` accepts that error only for the names in its `STUBBED` list and a real match for the rest, and the owning issue empties the list |
+| Simulate stand-in budget in `limits.yaml` | the simulate pool of the workers epic (#10), 500 millicores and 512 MiB | `test_standin_used_only_where_missing` and the same pool table tests run against the stand-in and against a slots file that has the entry, so a real table cannot be ignored |
+| `StaticResolver` | the resolver the dispatch epic (#24) builds on the artifact client | `resolver_contract(resolver)` runs against the double, the local directory resolver and, in #24, the real one, in one test of that epic |
+
+Spikes: none.
+The history event constants and the batch timing are estimates and a guard, recorded as such, and no lane waits on a measurement.
+
+## 6. Exit test
+
+Run by a worker who did not write the lanes, on a clean `git archive` export of `main`, on this host with no cluster started, and with Docker running only for row 14.
+Each command runs from the export root as written, its real output is pasted in the PR that records the run, and it is summarised in Closure.
+The steps that change a file do so in the scratch export and restore it afterwards.
+
+| # | Command | Expected |
+| --- | --- | --- |
+| 1 | `nix develop -c uv sync --frozen` then `nix develop -c uv lock --check` | exit 0 for both, lock unchanged |
+| 2 | `nix develop -c uv run --frozen python -m wdf_jobdoc.schemagen --check` | exit 0 with no drift |
+| 3 | rename a field in the compile parameter model, run step 2 again, then restore the file | exit 1 naming `contracts/job/schemas/job/1.0.json` |
+| 4 | `for f in contracts/job/vectors/valid/*.json; do nix develop -c contracts/job/check.sh "$f"; done` | every file exits 0 |
+| 5 | the loop of block A below | no output |
+| 6 | `nix develop -c uv run --frozen pytest packages/jobdoc packages/jobcheck packages/plan packages/jobpatch packages/jobtools packages/jobexamples packages/keys -q -rs` | all pass with no `SKIPPED` line, covering the loader, limits, resolver contract, plan stats, binding, patch cases, golden plans and the fixture gate |
+| 7 | `nix develop -c uv run --frozen pytest packages/jobcheck packages/plan -q -rs -k property` | all pass, and the list includes `test_cycle_path_is_a_real_cycle`, `test_acyclic_documents_are_accepted`, `test_hash_ignores_key_order_and_whitespace` and `test_order_is_topological_and_stable` |
+| 8 | the commands of block B below | prints `same`, and the printed `plan_hash` is the SHA-256 on the `level2-aggregate.seed-7.plan.json` line of `contracts/job/vectors/plans/1/HASHES` |
+| 9 | `nix develop -c uv run --frozen python -m wdf_jobtools validate contracts/job/vectors/invalid/graph/dependency-cycle/three-task-cycle.json --json` | exit 1, one `dependency-cycle` issue with a JSON Pointer `path` |
+| 10 | the commands of block C below | exit 0 with `recompile` listing the compile task, then exit 1 with `build-changed-after-result` |
+| 11 | add a required field to the document model without a new version, run `nix develop -c uv run --frozen pytest packages/plan/tests/test_schema_evolution.py -q`, then restore | the test fails and names the field |
+| 12 | `nix develop -c uv run --frozen pytest packages/jobdoc packages/jobcheck packages/plan packages/jobpatch -q -rs -k "no_io_imports"` | all pass, none skipped |
+| 13 | `nix develop -c uv run --frozen python -m wdf_jobtools.bench --jobs 100000` | exit 0, `template_validations: 1`, `jobs: 100000`, `seconds` below 60 |
+| 14 | `nix develop -c just ci` | exit 0 |
+| 15 | the `ci` workflow on `main` | one green run, its URL recorded in Closure |
+
+Block A, row 5:
+
+```sh
+for f in contracts/job/vectors/invalid/*/*/*.json; do
+  want=$(basename "$(dirname "$f")")
+  nix develop -c contracts/job/check.sh "$f" 2>&1 | grep -q "^reason: $want:" || echo "MISMATCH $f"
+done
+```
+
+Block B, row 8:
+
+```sh
+doc=contracts/job/vectors/valid/level2-aggregate.json
+params=contracts/job/vectors/job-params/valid/level2-aggregate.seed-7.json
+a=$(nix develop -c uv run --frozen python -m wdf_jobtools plan "$doc" --params "$params" --json)
+b=$(nix develop -c uv run --frozen python -m wdf_jobtools plan "$doc" --params "$params" --json)
+[ "$a" = "$b" ] && echo same
+```
+
+Block C, row 10:
+
+```sh
+for c in ok/bundle-changed build-changed-after-result/simulate-completed; do
+  d=contracts/job/vectors/patch/$c
+  nix develop -c uv run --frozen python -m wdf_jobtools patch-check "$d/old.json" "$d/new.json" \
+    --params "$d/params.json" --completed "$d/completed.json"; echo "exit $?"
+done
+```
+
+Not provable by this epic: the library inside a real Temporal workflow sandbox and the replay of old golden plans by a workflow (#6), the real resolver against the object store and the 100,000 job call through the API (#24 and #12), the bundle format (#11), the real pool table (#10 and #9), the history event constants against a real workflow (#6 and #16), and any cluster behaviour.
+
+## 7. Parallelism and cost
+
+- Maximum parallel workers: 1 for lane 0, then 2 (V.1 and P.1), then 3 (V, P and H), then 3 at the widest point (P.4, F.2 and L.1 can overlap), then 1 for the exit test.
+- Host constraints: every issue is T0 and needs only `uv` and Python from the dev shell, so there is no limit on a worker beyond CPU.
+  Every lane's Done gate runs `just ci`, which runs `just itest`, so each gate needs Docker for the envelope integration tests that already exist on `main`.
+  The new packages start no container.
+- Estimates, not measurements: lane 0 (3 d), lane V (3.5 d), lane P (3.5 d, P.4 waits for F.2), lane H (1.5 d), lane F (2 d), lane L (2 d), exit test (1 d).
+  That is about 10 days elapsed along lane 0, V.1 to V.4, F.1, F.2, P.4 and the exit test, and about 16 worker-days of effort, with `uv.lock` rebases and the cross-lane Needs as the main sources of slip.
+
+## 8. Closure (filled at close)
+
+<commit sha, exit test run, CI run url, what was learned, what moved>
+
+Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
