@@ -3,6 +3,8 @@
 The formulas are written in contracts/events/README.md.
 """
 
+import hashlib
+import re
 import uuid
 
 __all__ = [
@@ -13,8 +15,6 @@ __all__ = [
     "job_id",
     "workflow_id",
 ]
-
-NOT_IMPLEMENTED = "not implemented: owned by lane K"
 
 NAMESPACE = uuid.UUID("9a3dcb38-1d98-5483-9f76-afc1a01e3f49")
 
@@ -55,4 +55,8 @@ def attempt_identity(activity_attempt, resume_counter):
 
 
 def compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version):
-    raise NotImplementedError(NOT_IMPLEMENTED)
+    for name, value in (("source_hash", source_hash), ("lockfile_hash", lockfile_hash)):
+        if not re.fullmatch(r"[0-9a-f]{64}", value):
+            raise ValueError(f"{name} must be 64 lower-case hex digits, got {value!r}")
+    framed = _frame("compile", source_hash, lockfile_hash, componentize_py_version, wit_version)
+    return hashlib.sha256(framed).hexdigest()
