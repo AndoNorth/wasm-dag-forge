@@ -1,0 +1,43 @@
+{
+  "schema": "urn:wdf:schema:job:1.0",
+  "parameters": {
+    "seed": "seed"
+  },
+  "tasks": {
+    "build": {
+      "type": "compile",
+      "params": {
+        "source": {
+          "uri": "s3://wdf-sources/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "size": 2048,
+          "name": "bundle.tar.gz",
+          "kind": "source"
+        },
+        "entry": "sim"
+      }
+    },
+    "agg": {
+      "type": "aggregate",
+      "inputs": [],
+      "cpu": 1,
+      "memory_mib": 512,
+      "run_timeout_s": 600,
+      "params": {
+        "aggregation": "summary_stats",
+        "args": {
+          "blocks": [
+            "pi"
+          ]
+        },
+        "index": {
+          "uri": "s3://wdf-sources/sha256/ff/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "size": 2048,
+          "name": "index.json",
+          "kind": "index"
+        }
+      }
+    }
+  }
+}
