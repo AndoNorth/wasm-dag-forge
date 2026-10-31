@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/artifact/layout.schema.json",
+  "title": "contracts/artifact/layout.yaml",
+  "type": "object",
+  "required": ["buckets", "kinds"],
+  "additionalProperties": false,
+  "properties": {
+    "buckets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^wdf-[a-z]+$" }
+    },
+    "kinds": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["bucket", "class", "key"],
+        "additionalProperties": false,
+        "properties": {
+          "bucket": { "type": "string", "pattern": "^wdf-[a-z]+$" },
+          "class": { "enum": ["content-addressed", "attempt-scoped"] },
+          "key": { "type": "string", "pattern": "^([a-z0-9]+|<[a-z0-9]+>)(/([a-z0-9]+|<[a-z0-9]+>))*$" }
+        }
+      }
+    }
+  }
+}

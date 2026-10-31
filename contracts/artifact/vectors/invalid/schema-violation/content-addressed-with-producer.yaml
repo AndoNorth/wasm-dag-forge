@@ -1,0 +1,10 @@
+---
+uri: s3://wdf-sources/sha256/05/05b3abf2579a5eb66403cd78be557fd860633a1fe2103c7642030defe32c657f
+sha256: 05b3abf2579a5eb66403cd78be557fd860633a1fe2103c7642030defe32c657f
+size: 1024
+name: manifest.json
+kind: manifest
+producer:
+  job: 3a9617fa-df7c-5760-a644-42d559e0f433
+  task: simulate-0
+  attempt: r0a1

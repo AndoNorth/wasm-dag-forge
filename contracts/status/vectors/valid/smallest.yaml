@@ -1,0 +1,15 @@
+---
+statuses: [accepted, running, succeeded]
+terminal: [succeeded]
+views:
+  pausing: {over: job.pause.requested, shown_while: [running]}
+  cancelling: {over: job.cancel.requested, shown_while: [accepted, running]}
+projection:
+  job.accepted: [{sets: accepted}]
+  job.started: [{sets: running}]
+  job.succeeded: [{sets: succeeded}]
+  job.pause.requested: [{sets: null}]
+  job.cancel.requested: [{sets: null}]
+transitions:
+  - {from: accepted, to: running}
+  - {from: running, to: succeeded}

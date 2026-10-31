@@ -1,0 +1,6 @@
+---
+uri: s3://wdf-sources/sha256/05/d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa
+sha256: 05b3abf2579a5eb66403cd78be557fd860633a1fe2103c7642030defe32c657f
+size: 1024
+name: manifest.json
+kind: manifest

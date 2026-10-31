@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AndoNorth/wasm-dag-forge/contracts/status/status.schema.json",
+  "title": "contracts/status/status.yaml",
+  "type": "object",
+  "required": ["statuses", "terminal", "views", "projection", "transitions"],
+  "additionalProperties": false,
+  "properties": {
+    "statuses": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "terminal": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "views": {
+      "type": "object",
+      "required": ["pausing", "cancelling"],
+      "additionalProperties": false,
+      "properties": {
+        "pausing": { "$ref": "#/$defs/view" },
+        "cancelling": { "$ref": "#/$defs/view" }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^job(\\.[a-z0-9]+)+$" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["sets"],
+          "additionalProperties": false,
+          "properties": {
+            "sets": { "type": ["string", "null"] },
+            "when": {
+              "type": "object",
+              "required": ["source"],
+              "additionalProperties": false,
+              "properties": { "source": { "type": "string", "pattern": "^/wdf/[a-z][a-z0-9-]*$" } }
+            }
+          }
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "from": { "$ref": "#/$defs/name" },
+          "to": { "$ref": "#/$defs/name" },
+          "row_only": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[a-z]+(-[a-z]+)*$" },
+    "view": {
+      "type": "object",
+      "required": ["over", "shown_while"],
+      "additionalProperties": false,
+      "properties": {
+        "over": { "type": "string", "pattern": "^job(\\.[a-z0-9]+)+$" },
+        "shown_while": { "type": "array", "items": { "$ref": "#/$defs/name" } }
+      }
+    }
+  }
+}
