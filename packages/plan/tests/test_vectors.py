@@ -1,10 +1,10 @@
-"""The plan library vectors: every one is a stub until its lane lands."""
+"""The plan library vectors: an entry point is a stub until its lane lands."""
 
 import pytest
-from wdf_plan import bind, compile_plan
+from wdf_plan import bind
 
 # Names of the stubbed entry points, removed as each lane implements one.
-STUBBED = {"compile_plan": (compile_plan, 2), "bind": (bind, 3)}
+STUBBED = {"bind": (bind, 3)}
 
 
 @pytest.mark.parametrize("name", sorted(STUBBED))
