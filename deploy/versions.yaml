@@ -27,3 +27,7 @@ images:
     version: "16.14"
     # yamllint disable-line rule:line-length
     digest: sha256:fe03a7605299a34ddf5e4f285dff78c3d7190a576b3c6b46f2fcff69f4bffd54
+  temporalio/temporal:
+    version: 1.9.1
+    # yamllint disable-line rule:line-length
+    digest: sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e
