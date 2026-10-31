@@ -1,0 +1,13 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "label": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "label"
+  ],
+  "type": "object"
+}

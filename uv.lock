@@ -5,6 +5,7 @@ requires-python = "==3.13.*"
 [manifest]
 members = [
     "wasm-dag-forge",
+    "wdf-compat",
     "wdf-events",
     "wdf-itest",
     "wdf-keys",
@@ -348,6 +349,7 @@ source = { virtual = "." }
 dev = [
     { name = "hypothesis" },
     { name = "pytest" },
+    { name = "wdf-compat" },
     { name = "wdf-events" },
     { name = "wdf-itest" },
     { name = "wdf-keys" },
@@ -359,10 +361,22 @@ dev = [
 dev = [
     { name = "hypothesis" },
     { name = "pytest" },
+    { name = "wdf-compat", editable = "packages/compat" },
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-itest", editable = "packages/itest" },
     { name = "wdf-keys", editable = "packages/keys" },
 ]
+
+[[package]]
+name = "wdf-compat"
+version = "0.0.0"
+source = { editable = "packages/compat" }
+dependencies = [
+    { name = "wdf-events" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "wdf-events", editable = "packages/events" }]
 
 [[package]]
 name = "wdf-events"
