@@ -39,6 +39,24 @@ It never changes `id`, `source` or `time`, so the event store still dedups, and 
 Upgrade functions are registered in `UPGRADES` of `reader.py`, one per major step and never chained across a gap.
 Each upgrade increments `wdf_event_upgraded_total`.
 
+## Replay
+
+`upgrade_for_replay(data) -> bytes` is the pure function for a replayed dead letter that meets a newer reader.
+An event of the current major returns byte-identical, so the original bytes are republished.
+An event of the previous major returns as canonical bytes of the current major, with `id`, `source` and `time` unchanged, so the history row still dedups.
+It follows the table above, and it returns the whole upgraded event or raises, never bytes that are partly upgraded.
+It increments `wdf_event_upgraded_total` for an upgrade.
+Whether replay calls it or leaves the upgrade to the read path of admission is the broker epic's call, and `read_event` gives the same result either way.
+The window assumes that a replayed dead letter is upgraded or read by a reader that still knows its major.
+
+Each error carries a `dlq_reason` for the broker dead letter queue.
+
+| `reason` | Error | `dlq_reason` |
+| --- | --- | --- |
+| `unsupported-major`, `retired-major`, `no-upgrade` | `UnsupportedMajor` | `UNSUPPORTED_VERSION` |
+| `event-too-large` | `EventTooLarge` | `MALFORMED` |
+| every other reason, including `malformed-json`, `bad-data` and `upgrade-changed-identity` | `SchemaInvalid` | `MALFORMED` |
+
 `read_event` takes a `Registry` (schema directory, introduction dates, upgrades) so that a test can read a test-only type.
 The default `CATALOGUE` is the committed contract.
 
