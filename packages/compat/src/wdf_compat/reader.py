@@ -1,12 +1,13 @@
 """Reads an event of the current major or the one before it, upgrading the older one."""
 
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-from wdf_events import Event, SchemaInvalid, UnsupportedMajor, from_bytes
+from wdf_events import MAX_BYTES, Event, EventTooLarge, SchemaInvalid, UnsupportedMajor, from_bytes
 from wdf_events.metrics import registry as metrics
 from wdf_events.models import INTRODUCED
 from wdf_events.profile import CONTRACT_DIR, TYPE_RE, check_event, known_versions
@@ -78,3 +79,27 @@ def read_event(data: bytes, registry: Registry = CATALOGUE, today: date | None =
     """
     event = from_bytes(data, registry.schemas_dir)
     return _upgrade(event, registry, today or datetime.now(UTC).date())
+
+
+def upgrade_for_replay(
+    data: bytes, registry: Registry = CATALOGUE, today: date | None = None
+) -> bytes:
+    """The bytes to republish for a replayed event, at the current major of its type.
+
+    An event of the current major comes back byte-identical, and an event of the previous major
+    comes back as canonical bytes of the upgraded event, with `id`, `source` and `time` unchanged.
+    The errors are those of `read_event`, and no call returns bytes that are partly upgraded.
+    """
+    event = from_bytes(data, registry.schemas_dir)
+    upgraded = _upgrade(event, registry, today or datetime.now(UTC).date())
+    if upgraded is event:
+        return data
+    encoded = json.dumps(
+        upgraded.model_dump(exclude_none=True),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    if len(encoded) > MAX_BYTES:
+        raise EventTooLarge("event-too-large", f"{len(encoded)} bytes, the limit is {MAX_BYTES}")
+    return encoded
