@@ -61,9 +61,9 @@ def test_cpu_outside_three_decimals_or_the_bound_is_refused(issues, good, text):
 
 
 def test_cpu_has_no_float_rounding(load, good):
-    # 0.29 as an IEEE double is 0.28999999999999998, which would give 289 millicores.
-    data = json.dumps(good).replace('"cpu": 0.25', '"cpu": 0.29')
-    assert load(data.encode()).tasks["sim"].cpu_milli == 290
+    # int(1.001 * 1000) is 1000 with IEEE doubles, one millicore short.
+    data = json.dumps(good).replace('"cpu": 0.25', '"cpu": 1.001')
+    assert load(data.encode()).tasks["sim"].cpu_milli == 1001
 
 
 def test_the_size_limit_is_checked_before_parsing(issues):
