@@ -318,7 +318,3 @@ class Document(_Model):
                 "bad-parameter-declaration", "the reserved parameter seed has the type seed"
             )
         return value
-
-
-# Kept for the schema generator: one model per (name, major.minor), as the events contract does.
-DOCUMENT_MODELS: dict[tuple[str, str], type[BaseModel]] = {("job", "1.0"): Document}

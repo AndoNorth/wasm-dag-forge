@@ -8,12 +8,15 @@ import json
 import sys
 from pathlib import Path
 
-from .models import DOCUMENT_MODELS
+from .models import Document
+from .plan_models import Plan, PlanStats
 from .profile import LimitsFile
 from .registry import REGISTRY
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_DIR = "contracts/job/schemas"
+# One model per (name, version), written to schemas/<name>/<version>.json.
+DOCUMENT_MODELS = {("job", "1.0"): Document, ("plan", "1"): Plan, ("stats", "1"): PlanStats}
 
 
 def render_document_schema(name: str, version: str) -> str:

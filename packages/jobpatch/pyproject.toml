@@ -1,0 +1,13 @@
+[project]
+name = "wdf-jobpatch"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["wdf-jobdoc", "wdf-plan"]
+
+[tool.uv.sources]
+wdf-jobdoc = { workspace = true }
+wdf-plan = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

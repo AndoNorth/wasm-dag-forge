@@ -1,0 +1,679 @@
+{
+  "$defs": {
+    "AggregatePlanTask": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_partial": {
+          "title": "Allow Partial",
+          "type": "boolean"
+        },
+        "checkpoint": {
+          "title": "Checkpoint",
+          "type": "boolean"
+        },
+        "cpu_milli": {
+          "minimum": 1,
+          "title": "Cpu Milli",
+          "type": "integer"
+        },
+        "depends_on": {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "memory_mib": {
+          "minimum": 1,
+          "title": "Memory Mib",
+          "type": "integer"
+        },
+        "params": {
+          "discriminator": {
+            "mapping": {
+              "digest_list": "#/$defs/DigestListParams",
+              "summary_stats": "#/$defs/SummaryStatsParams"
+            },
+            "propertyName": "aggregation"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SummaryStatsParams"
+            },
+            {
+              "$ref": "#/$defs/DigestListParams"
+            }
+          ],
+          "title": "Params"
+        },
+        "pool": {
+          "const": "aggregate",
+          "title": "Pool",
+          "type": "string"
+        },
+        "retries": {
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "run_timeout_s": {
+          "minimum": 1,
+          "title": "Run Timeout S",
+          "type": "integer"
+        },
+        "type": {
+          "const": "aggregate",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "depends_on",
+        "inputs",
+        "cpu_milli",
+        "memory_mib",
+        "run_timeout_s",
+        "retries",
+        "checkpoint",
+        "allow_partial",
+        "type",
+        "pool",
+        "params"
+      ],
+      "title": "AggregatePlanTask",
+      "type": "object"
+    },
+    "CompileParams": {
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "maxLength": 128,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+          "title": "Entry",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceReference"
+        }
+      },
+      "required": [
+        "source",
+        "entry"
+      ],
+      "title": "CompileParams",
+      "type": "object"
+    },
+    "CompilePlanTask": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_partial": {
+          "title": "Allow Partial",
+          "type": "boolean"
+        },
+        "checkpoint": {
+          "title": "Checkpoint",
+          "type": "boolean"
+        },
+        "cpu_milli": {
+          "minimum": 1,
+          "title": "Cpu Milli",
+          "type": "integer"
+        },
+        "depends_on": {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "memory_mib": {
+          "minimum": 1,
+          "title": "Memory Mib",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/CompileParams"
+        },
+        "pool": {
+          "const": "compile",
+          "title": "Pool",
+          "type": "string"
+        },
+        "retries": {
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "run_timeout_s": {
+          "minimum": 1,
+          "title": "Run Timeout S",
+          "type": "integer"
+        },
+        "type": {
+          "const": "compile",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "depends_on",
+        "inputs",
+        "cpu_milli",
+        "memory_mib",
+        "run_timeout_s",
+        "retries",
+        "checkpoint",
+        "allow_partial",
+        "type",
+        "pool",
+        "params"
+      ],
+      "title": "CompilePlanTask",
+      "type": "object"
+    },
+    "DigestListArgs": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "DigestListArgs",
+      "type": "object"
+    },
+    "DigestListParams": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "digest_list",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/DigestListArgs"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "aggregation"
+      ],
+      "title": "DigestListParams",
+      "type": "object"
+    },
+    "IndexReference": {
+      "additionalProperties": false,
+      "description": "The content-addressed reference of an aggregate index object, the `index` kind.",
+      "properties": {
+        "kind": {
+          "const": "index",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-sources/sha256/[0-9a-f]{2}/[0-9a-f]{64}$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "IndexReference",
+      "type": "object"
+    },
+    "InputRef": {
+      "additionalProperties": false,
+      "description": "A logical reference to a declared output of another task of the same job.",
+      "properties": {
+        "output": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Output",
+          "type": "string"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task",
+        "output"
+      ],
+      "title": "InputRef",
+      "type": "object"
+    },
+    "SimulateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{0,31}$": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "param": {
+                      "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "param"
+                  ],
+                  "title": "Placeholder",
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "param": {
+                  "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "param"
+              ],
+              "title": "Placeholder",
+              "type": "object"
+            }
+          ],
+          "title": "Seed"
+        },
+        "workload": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Workload",
+          "type": "string"
+        }
+      },
+      "required": [
+        "workload",
+        "seed"
+      ],
+      "title": "SimulateParams",
+      "type": "object"
+    },
+    "SimulatePlanTask": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_partial": {
+          "title": "Allow Partial",
+          "type": "boolean"
+        },
+        "checkpoint": {
+          "title": "Checkpoint",
+          "type": "boolean"
+        },
+        "cpu_milli": {
+          "minimum": 1,
+          "title": "Cpu Milli",
+          "type": "integer"
+        },
+        "depends_on": {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/InputRef"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "memory_mib": {
+          "minimum": 1,
+          "title": "Memory Mib",
+          "type": "integer"
+        },
+        "params": {
+          "$ref": "#/$defs/SimulateParams"
+        },
+        "pool": {
+          "const": "simulate",
+          "title": "Pool",
+          "type": "string"
+        },
+        "retries": {
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "run_timeout_s": {
+          "minimum": 1,
+          "title": "Run Timeout S",
+          "type": "integer"
+        },
+        "type": {
+          "const": "simulate",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "depends_on",
+        "inputs",
+        "cpu_milli",
+        "memory_mib",
+        "run_timeout_s",
+        "retries",
+        "checkpoint",
+        "allow_partial",
+        "type",
+        "pool",
+        "params"
+      ],
+      "title": "SimulatePlanTask",
+      "type": "object"
+    },
+    "SourceReference": {
+      "additionalProperties": false,
+      "description": "The content-addressed reference of a source bundle, the `source` kind of the artifacts.",
+      "properties": {
+        "kind": {
+          "const": "source",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-sources/sha256/[0-9a-f]{2}/[0-9a-f]{64}$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "SourceReference",
+      "type": "object"
+    },
+    "SummaryStatsArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "param": {
+                  "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "param"
+              ],
+              "title": "Placeholder",
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blocks"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "param": {
+                  "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "param"
+              ],
+              "title": "Placeholder",
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns"
+        }
+      },
+      "title": "SummaryStatsArgs",
+      "type": "object"
+    },
+    "SummaryStatsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "summary_stats",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SummaryStatsArgs"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "aggregation"
+      ],
+      "title": "SummaryStatsParams",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:plan:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Tasks in topological order, ties broken by task id.",
+  "properties": {
+    "max_parallel": {
+      "minimum": 1,
+      "title": "Max Parallel",
+      "type": "integer"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "enum": [
+          "integer",
+          "string",
+          "boolean",
+          "seed",
+          "string-list"
+        ],
+        "type": "string"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "plan_version": {
+      "const": 1,
+      "title": "Plan Version",
+      "type": "integer"
+    },
+    "profile": {
+      "pattern": "^[a-z]+$",
+      "title": "Profile",
+      "type": "string"
+    },
+    "tasks": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "aggregate": "#/$defs/AggregatePlanTask",
+            "compile": "#/$defs/CompilePlanTask",
+            "simulate": "#/$defs/SimulatePlanTask"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/CompilePlanTask"
+          },
+          {
+            "$ref": "#/$defs/SimulatePlanTask"
+          },
+          {
+            "$ref": "#/$defs/AggregatePlanTask"
+          }
+        ]
+      },
+      "title": "Tasks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "plan_version",
+    "profile",
+    "max_parallel",
+    "parameters",
+    "tasks"
+  ],
+  "title": "plan 1",
+  "type": "object"
+}
