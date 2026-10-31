@@ -14,9 +14,7 @@ import wdf_keys
 VECTORS = json.loads(
     (Path(__file__).resolve().parents[3] / "contracts/events/vectors/keys.json").read_text()
 )
-STUBBED = {
-    "compile_cache_key",
-}
+STUBBED: set[str] = set()
 CASES = [(name, case) for name, cases in VECTORS["functions"].items() for case in cases]
 
 
