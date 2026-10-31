@@ -32,7 +32,7 @@ def check_resources(document: Document, profile) -> tuple[Issue, ...]:
                 Issue(
                     "cpu-exceeds-slot",
                     pointer(["tasks", task_id, "cpu"]),
-                    f"{task.cpu_milli}m is above the {budget.cpu_milli}m of a {task.type} slot",
+                    f"{task.cpu_milli}m is above the {budget.cpu_milli}m of {task.type} slots",
                 )
             )
         if task.memory_mib > budget.memory_mib:
@@ -40,7 +40,7 @@ def check_resources(document: Document, profile) -> tuple[Issue, ...]:
                 Issue(
                     "memory-exceeds-slot",
                     pointer(["tasks", task_id, "memory_mib"]),
-                    f"{task.memory_mib}Mi is above the {budget.memory_mib}Mi of a {task.type} slot",
+                    f"{task.memory_mib}Mi is above the {budget.memory_mib}Mi of {task.type} slots",
                 )
             )
     return tuple(issues)

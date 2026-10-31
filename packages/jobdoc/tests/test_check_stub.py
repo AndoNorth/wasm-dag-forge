@@ -1,4 +1,4 @@
-"""check.sh refuses every invalid schema vector with its code, and stops at the first stub."""
+"""check.sh refuses every invalid schema vector with its code and accepts a valid document."""
 
 import subprocess
 import sys
@@ -24,14 +24,14 @@ def test_every_schema_vector_is_refused_with_the_code_of_its_directory(vectors):
         assert f"reason: {path.parent.name}:" in result.stderr, path
 
 
-def test_a_valid_document_reaches_the_first_stub(good, tmp_path):
+def test_a_valid_document_exits_0(good, tmp_path):
     import json
 
     path = tmp_path / "good.json"
     path.write_text(json.dumps(good))
     result = run(str(path))
-    assert result.returncode == 3
-    assert "not implemented: owned by lane V" in result.stderr
+    assert result.returncode == 0
+    assert result.stdout.startswith("ok ")
 
 
 @pytest.mark.parametrize("args", [[], ["a", "b"], ["/nonexistent.json"]])

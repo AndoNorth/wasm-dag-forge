@@ -1,18 +1,20 @@
 """Command line of contracts/job/check.sh: python -m wdf_jobcheck.check <document.json>.
 
-Validates one document with the `ci` profile and the live slots files.
-Exit 0 valid, 1 invalid with one `reason: <code>: <detail>` line per issue on stderr, 2 usage,
-3 when a pass is still a stub.
+Validates one document with the `ci` profile, the live slots files and the resolver table of
+contracts/job/vectors/resolver.json.
+Exit 0 valid, 1 invalid with one `reason: <code>: <detail>` line per issue on stderr, 2 usage.
 """
 
+import json
 import sys
 from pathlib import Path
 
 from wdf_jobdoc.profile_files import load_profile
 
-from . import validate
+from . import StaticResolver, validate
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+RESOLVER_TABLE = REPO_ROOT / "contracts/job/vectors/resolver.json"
 
 
 def main(argv: list[str]) -> int:
@@ -20,11 +22,8 @@ def main(argv: list[str]) -> int:
         print("usage: check.sh <document.json>", file=sys.stderr)
         return 2
     profile = load_profile("ci", REPO_ROOT)
-    try:
-        report = validate(Path(argv[0]).read_bytes(), profile)
-    except NotImplementedError as exc:
-        print(exc, file=sys.stderr)
-        return 3
+    resolver = StaticResolver(json.loads(RESOLVER_TABLE.read_text()))
+    report = validate(Path(argv[0]).read_bytes(), profile, resolver)
     for issue in report.issues:
         print(f"reason: {issue.code}: {issue.path or '/'} {issue.message}", file=sys.stderr)
     if not report.ok:
