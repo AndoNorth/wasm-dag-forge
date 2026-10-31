@@ -16,7 +16,7 @@ JOB_TYPES = {
 }  # fmt: skip
 TASK_TYPES = {
     "placed", "started", "checkpoint.committed", "attempt.failed", "retries.exhausted",
-    "succeeded", "failed", "skipped",
+    "succeeded", "failed", "skipped", "requested", "result.ready",
 }  # fmt: skip
 NAMES = {f"job.{n}" for n in JOB_TYPES} | {f"task.{n}" for n in TASK_TYPES}
 # The accepted event keeps its vectors under vectors/accepted/ only.

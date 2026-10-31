@@ -5,6 +5,7 @@ from .codec import MAX_BYTES, format_time, from_bytes, to_bytes
 from .errors import EventError, EventTooLarge, SchemaInvalid, UnsupportedMajor
 from .models import Event
 from .store import to_event_row
+from .task_request import TaskRequest, check_task_request
 
 __all__ = [
     "MAX_BYTES",
@@ -12,8 +13,10 @@ __all__ = [
     "EventError",
     "EventTooLarge",
     "SchemaInvalid",
+    "TaskRequest",
     "UnsupportedMajor",
     "build_event",
+    "check_task_request",
     "format_time",
     "from_bytes",
     "to_bytes",
