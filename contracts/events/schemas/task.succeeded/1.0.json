@@ -1,0 +1,9 @@
+{
+  "$id": "urn:wdf:schema:task.succeeded:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Data of an event whose type and context attributes say everything.",
+  "properties": {},
+  "title": "task.succeeded 1.0",
+  "type": "object"
+}

@@ -1,0 +1,21 @@
+{
+  "attempt": 1,
+  "data": {
+    "reason": "trap",
+    "unexpected": 1
+  },
+  "datacontenttype": "application/json",
+  "dataschema": "urn:wdf:schema:task.failed:1.0",
+  "id": "d45eacb7-38bb-5ea3-b895-cda47e5aa86d",
+  "jobclass": "simulate",
+  "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "priorityclass": "standard",
+  "source": "/wdf/workflow",
+  "specversion": "1.0",
+  "subject": "3a9617fa-df7c-5760-a644-42d559e0f433/sim",
+  "taskid": "sim",
+  "tenant": "acme",
+  "time": "2026-10-30T12:00:00.123456Z",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "type": "dev.wdf.task.failed.v1"
+}

@@ -1,0 +1,23 @@
+{
+  "$id": "urn:wdf:schema:job.cancel.requested:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Data of a control request, where the reason is the operator's own words.",
+  "properties": {
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 1024,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "title": "job.cancel.requested 1.0",
+  "type": "object"
+}

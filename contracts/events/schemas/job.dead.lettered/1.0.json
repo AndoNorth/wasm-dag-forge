@@ -1,0 +1,27 @@
+{
+  "$id": "urn:wdf:schema:job.dead.lettered:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A message that parsed far enough to name a job and was then refused.",
+  "properties": {
+    "detail": {
+      "maxLength": 1024,
+      "title": "Detail",
+      "type": "string"
+    },
+    "dlq_reason": {
+      "enum": [
+        "MALFORMED",
+        "UNSUPPORTED_VERSION"
+      ],
+      "title": "Dlq Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "dlq_reason",
+    "detail"
+  ],
+  "title": "job.dead.lettered 1.0",
+  "type": "object"
+}

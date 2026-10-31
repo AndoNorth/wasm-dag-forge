@@ -1,0 +1,21 @@
+{
+  "data": {
+    "attempts": 3,
+    "reason": "worker lost",
+    "unexpected": 1
+  },
+  "datacontenttype": "application/json",
+  "dataschema": "urn:wdf:schema:task.retries.exhausted:1.0",
+  "id": "fbf04e85-617c-5b05-9d78-a6da84ed1e39",
+  "jobclass": "simulate",
+  "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "priorityclass": "standard",
+  "source": "/wdf/workflow",
+  "specversion": "1.0",
+  "subject": "3a9617fa-df7c-5760-a644-42d559e0f433/sim",
+  "taskid": "sim",
+  "tenant": "acme",
+  "time": "2026-10-30T12:00:00.123456Z",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "type": "dev.wdf.task.retries.exhausted.v1"
+}

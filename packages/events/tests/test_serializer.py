@@ -9,7 +9,7 @@ from wdf_events import SchemaInvalid, UnsupportedMajor, from_bytes, to_bytes
 from wdf_events.profile import CONTRACT_DIR
 
 VECTORS = sorted(CONTRACT_DIR.glob("vectors/accepted/valid/*.json")) + sorted(
-    CONTRACT_DIR.glob("vectors/types/**/*.json")
+    CONTRACT_DIR.glob("vectors/types/*/valid.json")
 )
 ACCEPTED = json.loads((CONTRACT_DIR / "vectors/accepted/valid/accepted.json").read_text())
 

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "unexpected": 1
+  },
+  "datacontenttype": "application/json",
+  "dataschema": "urn:wdf:schema:job.succeeded:1.0",
+  "id": "4839eba7-815c-51c3-831b-bea2013a8a68",
+  "jobclass": "simulate",
+  "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "priorityclass": "standard",
+  "source": "/wdf/workflow",
+  "specversion": "1.0",
+  "subject": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "tenant": "acme",
+  "time": "2026-10-30T12:00:00.123456Z",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "type": "dev.wdf.job.succeeded.v1"
+}

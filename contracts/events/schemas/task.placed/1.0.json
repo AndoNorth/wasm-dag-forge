@@ -1,0 +1,18 @@
+{
+  "$id": "urn:wdf:schema:task.placed:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "queue": {
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Queue",
+      "type": "string"
+    }
+  },
+  "required": [
+    "queue"
+  ],
+  "title": "task.placed 1.0",
+  "type": "object"
+}

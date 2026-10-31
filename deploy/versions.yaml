@@ -23,3 +23,7 @@ images:
     version: "1.37"
     # yamllint disable-line rule:line-length
     digest: sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+  postgres:
+    version: "16.14"
+    # yamllint disable-line rule:line-length
+    digest: sha256:fe03a7605299a34ddf5e4f285dff78c3d7190a576b3c6b46f2fcff69f4bffd54
