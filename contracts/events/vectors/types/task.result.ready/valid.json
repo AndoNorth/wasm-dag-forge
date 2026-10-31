@@ -1,0 +1,31 @@
+{
+  "attempt": 2,
+  "data": {
+    "result": {
+      "kind": "result",
+      "name": "result.bin",
+      "producer": {
+        "attempt": "r0a2",
+        "job": "3a9617fa-df7c-5760-a644-42d559e0f433",
+        "task": "sim"
+      },
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "size": 8192,
+      "uri": "s3://wdf-results/acme/b/j/7/sim/r0a2/result.bin"
+    }
+  },
+  "datacontenttype": "application/json",
+  "dataschema": "urn:wdf:schema:task.result.ready:1.0",
+  "id": "11da18d0-b411-5542-aa9f-e5cc62486751",
+  "jobclass": "simulate",
+  "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+  "priorityclass": "standard",
+  "source": "/wdf/workflow",
+  "specversion": "1.0",
+  "subject": "3a9617fa-df7c-5760-a644-42d559e0f433/sim",
+  "taskid": "sim",
+  "tenant": "acme",
+  "time": "2026-10-30T12:00:00.123456Z",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "type": "dev.wdf.task.result.ready.v1"
+}

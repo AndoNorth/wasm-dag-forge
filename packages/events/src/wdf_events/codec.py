@@ -32,7 +32,6 @@ def _no_constants(token: str) -> Any:
 def to_bytes(event: Event) -> bytes:
     try:
         document = event.model_dump(exclude_none=True)
-        check_event(document)
         encoded = json.dumps(
             document, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode()
@@ -40,6 +39,7 @@ def to_bytes(event: Event) -> bytes:
             raise EventTooLarge(
                 "event-too-large", f"{len(encoded)} bytes, the limit is {MAX_BYTES}"
             )
+        check_event(document)
     except EventError as exc:
         registry.inc("wdf_event_rejected_total", reason=exc.metric_reason)
         raise

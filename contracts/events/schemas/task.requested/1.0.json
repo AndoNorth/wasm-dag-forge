@@ -1,0 +1,256 @@
+{
+  "$defs": {
+    "AttemptReference": {
+      "additionalProperties": false,
+      "description": "An attempt-scoped object, which names the attempt that wrote it.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "result",
+            "output",
+            "log-tail",
+            "summary",
+            "checkpoint"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-(sources|components|results|checkpoints)/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "AttemptReference",
+      "type": "object"
+    },
+    "CheckpointReference": {
+      "additionalProperties": false,
+      "description": "A checkpoint reference, a subset of contracts/artifact/reference.schema.json.",
+      "properties": {
+        "kind": {
+          "const": "checkpoint",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-checkpoints/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "CheckpointReference",
+      "type": "object"
+    },
+    "ContentReference": {
+      "additionalProperties": false,
+      "description": "A content-addressed object, which has no producer.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "manifest",
+            "source",
+            "index",
+            "component",
+            "build-info"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-(sources|components|results|checkpoints)/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "ContentReference",
+      "type": "object"
+    },
+    "ProducerRef": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "pattern": "^r[0-9]+a[0-9]+$",
+          "title": "Attempt",
+          "type": "string"
+        },
+        "job": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job",
+          "type": "string"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "task",
+        "attempt"
+      ],
+      "title": "ProducerRef",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:task.requested:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Data of dev.wdf.task.requested.v1, the input of a task activity.\n\n`inputs` is a list of references and is never the inputs themselves, so an aggregate over many\nresults passes one index reference and the size budget guards the rest.",
+  "properties": {
+    "cpu_cores": {
+      "exclusiveMinimum": 0,
+      "title": "Cpu Cores",
+      "type": "number"
+    },
+    "deadline": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "title": "Deadline",
+      "type": "string"
+    },
+    "inputs": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "build-info": "#/$defs/ContentReference",
+            "checkpoint": "#/$defs/AttemptReference",
+            "component": "#/$defs/ContentReference",
+            "index": "#/$defs/ContentReference",
+            "log-tail": "#/$defs/AttemptReference",
+            "manifest": "#/$defs/ContentReference",
+            "output": "#/$defs/AttemptReference",
+            "result": "#/$defs/AttemptReference",
+            "source": "#/$defs/ContentReference",
+            "summary": "#/$defs/AttemptReference"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ContentReference"
+          },
+          {
+            "$ref": "#/$defs/AttemptReference"
+          }
+        ]
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "memory_mib": {
+      "minimum": 1,
+      "title": "Memory Mib",
+      "type": "integer"
+    },
+    "resume_checkpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CheckpointReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "task_type": {
+      "enum": [
+        "compile",
+        "simulate",
+        "aggregate"
+      ],
+      "title": "Task Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_type",
+    "cpu_cores",
+    "memory_mib",
+    "inputs",
+    "deadline"
+  ],
+  "title": "task.requested 1.0",
+  "type": "object"
+}

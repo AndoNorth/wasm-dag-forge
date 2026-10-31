@@ -1,6 +1,6 @@
 """The platform event and the data models that are the source of the generated schemas."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -156,6 +156,67 @@ class SkippedData(BaseModel):
     cache_key: str = Field(pattern="^[0-9a-f]{64}$")
 
 
+BUCKETS = "(sources|components|results|checkpoints)"
+
+
+class _Reference(BaseModel):
+    """The fields every artifact reference has, as contracts/artifact/reference.schema.json."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    uri: str = Field(pattern=f"^s3://wdf-{BUCKETS}/.+$")
+    sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    size: int = Field(ge=0)
+    name: str = Field(min_length=1, max_length=255, pattern="^[^/]+$")
+
+
+class ContentReference(_Reference):
+    """A content-addressed object, which has no producer."""
+
+    kind: Literal["manifest", "source", "index", "component", "build-info"]
+
+
+class AttemptReference(_Reference):
+    """An attempt-scoped object, which names the attempt that wrote it."""
+
+    kind: Literal["result", "output", "log-tail", "summary", "checkpoint"]
+    producer: ProducerRef
+
+
+class ResultReference(AttemptReference):
+    kind: Literal["result", "summary"]
+
+
+ArtifactReference = Annotated[ContentReference | AttemptReference, Field(discriminator="kind")]
+
+TIME_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z$"
+
+
+class TaskRequestData(BaseModel):
+    """Data of dev.wdf.task.requested.v1, the input of a task activity.
+
+    `inputs` is a list of references and is never the inputs themselves, so an aggregate over many
+    results passes one index reference and the size budget guards the rest.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    task_type: Literal["compile", "simulate", "aggregate"]
+    cpu_cores: float = Field(gt=0)
+    memory_mib: int = Field(ge=1)
+    inputs: list[ArtifactReference]
+    resume_checkpoint: CheckpointReference | None = None
+    deadline: str = Field(pattern=TIME_PATTERN)
+
+
+class ResultReadyData(BaseModel):
+    """Data of dev.wdf.task.result.ready.v1: one reference to the result, never its bytes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    result: ResultReference
+
+
 class JobParams(BaseModel):
     """The per-job block that admission reads from the row and passes beside the accepted event.
 
@@ -195,6 +256,8 @@ DATA_MODELS: dict[tuple[str, str], type[BaseModel]] = {
     ("task.succeeded", "1.0"): NoData,
     ("task.failed", "1.0"): Reason,
     ("task.skipped", "1.0"): SkippedData,
+    ("task.requested", "1.0"): TaskRequestData,
+    ("task.result.ready", "1.0"): ResultReadyData,
 }
 
 # The date each major of a type was introduced, which the compatibility window counts from.
@@ -208,5 +271,6 @@ ATTEMPT_TYPES = frozenset(
         "task.attempt.failed",
         "task.succeeded",
         "task.failed",
+        "task.result.ready",
     }
 )
