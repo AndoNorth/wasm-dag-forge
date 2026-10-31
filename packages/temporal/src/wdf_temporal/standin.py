@@ -29,6 +29,7 @@ RUNNER = SandboxedWorkflowRunner(
         "pydantic",
         "pydantic_core",
         "jsonschema",
+        "opentelemetry",
         "jsonschema_specifications",
         "referencing",
         "rpds",

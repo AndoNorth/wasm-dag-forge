@@ -23,3 +23,13 @@ A value that is not a model keeps the stock `json/plain` behaviour.
 `wdf_temporal.standin.StandInJob` takes the accepted event and the job params block as its two start arguments.
 It builds a task request event, runs one activity with it as input, and returns the result ready event that the activity builds.
 The real workflow replaces it, and keeps the same converter.
+
+## Trace context
+
+`new_traceparent()` creates the W3C `traceparent` once, at submit, and every event carries it from there.
+`stage_span` opens the span of a stage as a child of the span that an incoming `traceparent` names, and `current_traceparent()` gives the value for the event the stage emits.
+`tracing_interceptor()` is the `temporalio.contrib.opentelemetry` interceptor, which carries the context through the workflow and activity headers.
+The stand-in runner passes `opentelemetry` through the workflow sandbox, so the interceptor works inside a workflow.
+
+The interceptor parents every workflow-side span on the span of the start call, so the stage chain is submit, admission, the start of the workflow, and the activity run.
+The guarantee is one trace id across the stages of a run, and nothing is claimed about a trace that spans several days.
