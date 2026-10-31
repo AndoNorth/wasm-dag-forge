@@ -1,0 +1,57 @@
+# wdf-compat
+
+The compatibility rules of the event contract, imported as `wdf_compat`.
+The contract itself is [contracts/events/README.md](../../contracts/events/README.md), and the event models are in `packages/events/`.
+
+## What a minor may change
+
+A minor of a data schema may add an optional field, and may loosen a constraint.
+Readers of the earlier minor ignore the added field, because an unknown minor of a known major resolves to the highest minor the reader knows.
+
+## What needs a new major
+
+A new major is a new `type`, and each of these changes needs one:
+
+- removing a field
+- renaming a field, which is a removal plus an added field
+- adding a required field, or making an optional field required
+- narrowing a type or an enum, so that a value the old schema accepted is rejected
+- tightening a constraint (a smaller maximum, a larger minimum, a different pattern)
+
+`breaking_changes(old, new)` finds these in two schemas and returns one message per change.
+`tests/test_schema_evolution.py` applies it to the model of every type against its committed schema, and to each consecutive pair of minors of a major, so a change that wedges a replayed event fails the test and names the field.
+
+## Reading
+
+`read_event(data) -> Event` returns an event at the current major of its type, where the current major is the highest one with a schema file.
+
+| Event | Result |
+| --- | --- |
+| current major | read as it is |
+| previous major, window open | upgraded by the function registered for that step, then validated against the current major |
+| previous major, window over | `UnsupportedMajor`, reason `retired-major` |
+| previous major, no upgrade registered | `UnsupportedMajor`, reason `no-upgrade` |
+| any other major | `UnsupportedMajor`, reason `unsupported-major` |
+| invalid at its own major | `SchemaInvalid` |
+
+An upgrade function takes the decoded event of major N and returns the decoded event of major N + 1.
+It never changes `id`, `source` or `time`, so the event store still dedups, and `read_event` rejects an upgrade that does with `SchemaInvalid`, reason `upgrade-changed-identity`.
+Upgrade functions are registered in `UPGRADES` of `reader.py`, one per major step and never chained across a gap.
+Each upgrade increments `wdf_event_upgraded_total`.
+
+`read_event` takes a `Registry` (schema directory, introduction dates, upgrades) so that a test can read a test-only type.
+The default `CATALOGUE` is the committed contract.
+
+## The window
+
+There is no side-by-side emission of two majors, so a previous major has no producer once the current one is introduced.
+It stays readable for `readable_days()` days from that date, which is the dead letter retention plus the maximum job duration.
+A message can be dead lettered on the last day, replayed on the last day of its retention and then start a job that runs for the maximum duration.
+
+| Constant (`window.py`) | Value | State |
+| --- | --- | --- |
+| `MAX_JOB_DURATION_DAYS` | 7 | placeholder |
+| `DEAD_LETTER_RETENTION_DAYS` | 14 | placeholder |
+
+The window is 21 days at the placeholders.
+`INTRODUCED` in `wdf_events.models` records the date each major was introduced, and `check_catalogue` fails a catalogue that introduces a major no more than a window after the previous one, so a reader never meets a major two steps back.

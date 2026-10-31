@@ -9,12 +9,13 @@ members = ["packages/*"]
 
 # Workspace members are installed through the dev group, because a plain `uv run` installs only the root project.
 [tool.uv.sources]
+wdf-compat = { workspace = true }
 wdf-events = { workspace = true }
 wdf-itest = { workspace = true }
 wdf-keys = { workspace = true }
 
 [dependency-groups]
-dev = ["hypothesis", "pytest", "wdf-events", "wdf-itest", "wdf-keys"]
+dev = ["hypothesis", "pytest", "wdf-compat", "wdf-events", "wdf-itest", "wdf-keys"]
 
 [tool.pytest.ini_options]
 # Several packages have a tests/test_vectors.py, so test modules are imported by path and not by basename.

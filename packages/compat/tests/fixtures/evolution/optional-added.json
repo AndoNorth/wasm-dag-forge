@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "hint": {
+      "type": "string"
+    },
+    "name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "type": "object"
+}

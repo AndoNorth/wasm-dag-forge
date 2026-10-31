@@ -63,10 +63,11 @@ def _loosen(schema: Any) -> Any:
     return schema
 
 
-def check_event(event: Any) -> tuple[str, int, int]:
+def check_event(event: Any, schemas_dir: Path | None = None) -> tuple[str, int, int]:
     """Validates a decoded event and returns the (name, major, minor) its data was checked against.
 
     Raises UnsupportedMajor for a major with no schema and SchemaInvalid for every other failure.
+    `schemas_dir` replaces the contract's schema directory, for a registry other than the catalogue.
     """
     if not isinstance(event, dict):
         raise SchemaInvalid(
@@ -92,7 +93,8 @@ def check_event(event: Any) -> tuple[str, int, int]:
         raise SchemaInvalid("bad-dataschema", event["dataschema"])
     name, major = kind["name"], int(kind["major"])
 
-    versions = known_versions(name)
+    schemas_dir = schemas_dir or CONTRACT_DIR / "schemas"
+    versions = known_versions(name, schemas_dir)
     if not versions:
         raise SchemaInvalid("unknown-type", event["type"])
     if major not in {m for m, _ in versions}:
@@ -116,7 +118,7 @@ def check_event(event: Any) -> tuple[str, int, int]:
     known = (major, minor) in versions
     if not known:
         minor = max(m for ma, m in versions if ma == major)
-    schema = json.loads((CONTRACT_DIR / f"schemas/{name}/{major}.{minor}.json").read_text())
+    schema = json.loads((schemas_dir / name / f"{major}.{minor}.json").read_text())
     if not known:
         schema = _loosen(schema)
     cls = validator_for(schema)

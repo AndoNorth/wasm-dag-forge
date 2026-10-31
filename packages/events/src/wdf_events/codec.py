@@ -3,6 +3,7 @@
 import json
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -55,14 +56,14 @@ def to_bytes(event: Event) -> bytes:
     return encoded
 
 
-def from_bytes(data: bytes) -> Event:
+def from_bytes(data: bytes, schemas_dir: Path | None = None) -> Event:
     if len(data) > MAX_BYTES:
         raise EventTooLarge("event-too-large", f"{len(data)} bytes, the limit is {MAX_BYTES}")
     try:
         document = json.loads(data.decode(), parse_constant=_no_constants)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SchemaInvalid("malformed-json", str(exc)) from None
-    check_event(document)
+    check_event(document, schemas_dir)
     try:
         return Event.model_validate(document)
     except ValidationError as exc:
