@@ -51,7 +51,7 @@ Substitution replaces that one value and never concatenates, computes or branche
 | `packages/jobexamples/` | `wdf_jobexamples` | the example documents, the parameter vectors and the generator |
 | `packages/jobtools/` | `wdf_jobtools` | `python -m wdf_jobtools {validate,plan,patch-check}` |
 
-Entry points that no lane has implemented yet raise `NotImplementedError` with `not implemented: owned by lane <letter>`, and the command line exits 3 with the same text.
+Entry points that no lane has implemented yet raise `NotImplementedError` with `not implemented: owned by lane <letter>`.
 The plan and statistics models live in `wdf_jobdoc` next to the schema generator, so that one module generates every schema and the packages stay acyclic.
 The libraries of `jobdoc`, `jobcheck`, `plan` and `jobpatch` import no file system, clock, randomness, logging or event module and call neither `open` nor `print`, and `packages/jobdoc/tests/test_purity.py` keeps that true.
 The only exempt modules are the profile file reader, the schema generator and the `check` command.
@@ -59,7 +59,7 @@ The only exempt modules are the profile file reader, the schema generator and th
 ## Checking a document
 
 `check.sh <document.json>` exits 0 when the document is valid, 1 with one `reason: <code>: <detail>` line per issue on stderr, and 2 on a usage error.
-It exits 3 while a pass is still a stub.
+The bundle and index checks go through the resolver table `vectors/resolver.json`.
 
 ## Registries
 

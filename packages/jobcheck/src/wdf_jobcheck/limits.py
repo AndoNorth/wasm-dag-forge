@@ -11,7 +11,12 @@ from wdf_plan import canonical_bytes, compile_plan, stats
 __all__ = ["check_limits"]
 
 
-def check_limits(document: Document, profile) -> tuple[Issue, ...]:
+def check_limits(document: Document, profile, with_plan: bool = True) -> tuple[Issue, ...]:
+    """The limits of a document, and with `with_plan` those that need its compiled plan.
+
+    The plan limits are skipped by a caller that already knows the graph or a reference is broken,
+    since the plan of such a document says nothing a fix would not change.
+    """
     issues = []
     if len(document.tasks) > profile.max_tasks:
         issues.append(
@@ -48,7 +53,7 @@ def check_limits(document: Document, profile) -> tuple[Issue, ...]:
                     f"{task.retries} retries, at most {profile.max_retries} are allowed",
                 )
             )
-    return tuple(issues) + _plan_limits(document, profile)
+    return tuple(issues) + (_plan_limits(document, profile) if with_plan else ())
 
 
 def _plan_limits(document: Document, profile) -> tuple[Issue, ...]:
