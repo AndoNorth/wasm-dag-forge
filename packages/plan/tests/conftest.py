@@ -90,3 +90,71 @@ def valid_documents():
 @pytest.fixture
 def good():
     return copy.deepcopy(GOOD)
+
+
+def _build(task_id="build", source=SOURCE):
+    return {"type": "compile", "params": {"source": source, "entry": "sim"}}
+
+
+def _sim(build="build", timeout=100, retries=0, **extra):
+    return {
+        "type": "simulate",
+        "inputs": [{"task": build, "output": "component"}],
+        "cpu": 0.25,
+        "memory_mib": 384,
+        "run_timeout_s": timeout,
+        "retries": retries,
+        "params": {"workload": "pi", "seed": 1},
+    } | extra
+
+
+def _agg(*sims, timeout=600):
+    return {
+        "type": "aggregate",
+        "inputs": [{"task": s, "output": "result"} for s in sims],
+        "cpu": 1,
+        "memory_mib": 512,
+        "run_timeout_s": timeout,
+        "params": {"aggregation": "digest_list"},
+    }
+
+
+@pytest.fixture(scope="session")
+def shapes():
+    """Documents of the shapes the stats are checked on, each a dict keyed by shape name."""
+    index = {**SOURCE, "kind": "index", "uri": f"s3://wdf-sources/sha256/aa/{HASH}"}
+    schema = "urn:wdf:schema:job:1.0"
+    return {
+        "chain": GOOD,
+        "fan-out": {
+            "schema": schema,
+            "tasks": {"build": _build()} | {f"s{i}": _sim() for i in range(8)},
+        },
+        "fan-in": {
+            "schema": schema,
+            "tasks": {f"b{i}": _build() for i in range(8)}
+            | {f"s{i}": _sim(f"b{i}") for i in range(8)}
+            | {"agg": _agg(*(f"s{i}" for i in range(8)))},
+        },
+        "aggregate-only": {
+            "schema": schema,
+            "tasks": {
+                "agg": {
+                    "type": "aggregate",
+                    "cpu": 1,
+                    "memory_mib": 512,
+                    "run_timeout_s": 600,
+                    "params": {"aggregation": "digest_list", "index": index},
+                }
+            },
+        },
+        "depends-only": {
+            "schema": schema,
+            "tasks": {
+                "b1": _build(),
+                "b2": _build(),
+                "s1": _sim("b1", depends_on=["b2"]),
+                "s2": _sim("b2"),
+            },
+        },
+    }
