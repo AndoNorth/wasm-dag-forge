@@ -1,0 +1,21 @@
+{
+  "schema": "urn:wdf:schema:job:1.0",
+  "tasks": {
+    "agg": {
+      "type": "aggregate",
+      "cpu": 1,
+      "memory_mib": 512,
+      "run_timeout_s": 600,
+      "params": {
+        "aggregation": "digest_list",
+        "index": {
+          "uri": "s3://wdf-sources/sha256/ff/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "size": 2048,
+          "name": "index.json",
+          "kind": "index"
+        }
+      }
+    }
+  }
+}
