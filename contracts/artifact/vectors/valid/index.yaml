@@ -1,0 +1,6 @@
+---
+uri: s3://wdf-sources/sha256/1b/1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6
+sha256: 1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6
+size: 1024
+name: index.json
+kind: index

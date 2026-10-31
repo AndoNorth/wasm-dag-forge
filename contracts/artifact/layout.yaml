@@ -1,0 +1,34 @@
+---
+# Buckets, and for each artifact kind its bucket, addressing class and key template. Schema: layout.schema.json.
+# A content-addressed key is derived from the object bytes and an attempt-scoped key from the attempt that wrote it.
+buckets:
+  - wdf-sources
+  - wdf-components
+  - wdf-results
+  - wdf-checkpoints
+kinds:
+  manifest: {bucket: wdf-sources, class: content-addressed, key: "sha256/<hash2>/<hash>"}
+  source: {bucket: wdf-sources, class: content-addressed, key: "sha256/<hash2>/<hash>"}
+  index: {bucket: wdf-sources, class: content-addressed, key: "sha256/<hash2>/<hash>"}
+  component: {bucket: wdf-components, class: content-addressed, key: "sha256/<hash2>/<hash>"}
+  build-info: {bucket: wdf-components, class: content-addressed, key: "sha256/<hash2>/<hash>"}
+  result:
+    bucket: wdf-results
+    class: attempt-scoped
+    key: "<tenant>/<batch>/<job>/<seed>/<task>/<attempt>/<name>"
+  output:
+    bucket: wdf-results
+    class: attempt-scoped
+    key: "<tenant>/<batch>/<job>/<seed>/<task>/<attempt>/<name>"
+  log-tail:
+    bucket: wdf-results
+    class: attempt-scoped
+    key: "<tenant>/<batch>/<job>/<seed>/<task>/<attempt>/<name>"
+  summary:
+    bucket: wdf-results
+    class: attempt-scoped
+    key: "<tenant>/<batch>/aggregate/<job>/<task>/<attempt>/<name>"
+  checkpoint:
+    bucket: wdf-checkpoints
+    class: attempt-scoped
+    key: "<tenant>/<batch>/<job>/<seed>/<task>/<attempt>/<segment>/<name>"

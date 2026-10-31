@@ -1,0 +1,10 @@
+---
+uri: s3://wdf-results/acme/batch-1/aggregate/3a9617fa-df7c-5760-a644-42d559e0f433/aggregate/r0a1/summary.json
+sha256: 454349e422f05297191ead13e21d3db520e5abef52055e4964b82fb213f593a1
+size: 1024
+name: summary.json
+kind: summary
+producer:
+  job: 3a9617fa-df7c-5760-a644-42d559e0f433
+  task: aggregate
+  attempt: r0a1

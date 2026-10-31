@@ -262,12 +262,14 @@ source = { editable = "packages/events" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pydantic" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "jsonschema" },
     { name = "pydantic" },
+    { name = "pyyaml" },
 ]
 
 [[package]]

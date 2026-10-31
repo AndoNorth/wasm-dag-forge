@@ -1,0 +1,74 @@
+---
+# Job status contract. Schema: status.schema.json.
+statuses:
+  - accepted
+  - admitted
+  - running
+  - paused
+  - resume-pending
+  - succeeded
+  - partial
+  - failed
+  - cancelled
+  - terminated
+terminal:
+  - succeeded
+  - partial
+  - failed
+  - cancelled
+  - terminated
+# A view is derived from a requested action that is still outstanding, and is never a stored status.
+views:
+  pausing:
+    over: job.pause.requested
+    shown_while: [admitted, running]
+  cancelling:
+    over: job.cancel.requested
+    shown_while: [accepted, admitted, running, paused, resume-pending]
+# The status that each job lifecycle event type sets on the job row, or null when it sets none.
+# A type with more than one entry says which source emitted it in a when condition.
+projection:
+  job.accepted: [{sets: accepted}]
+  job.published: [{sets: null}]
+  job.admitted: [{sets: admitted}]
+  job.started: [{sets: running}]
+  job.paused: [{sets: paused}]
+  job.pause.requested: [{sets: null}]
+  job.resume.requested: [{sets: resume-pending}]
+  # The workflow resumes a job that was running, and the control stage resumes one that never started.
+  job.resumed:
+    - {when: {source: /wdf/workflow}, sets: running}
+    - {when: {source: /wdf/control}, sets: accepted}
+  job.cancel.requested: [{sets: null}]
+  job.terminate.requested: [{sets: null}]
+  job.succeeded: [{sets: succeeded}]
+  job.partial: [{sets: partial}]
+  job.failed: [{sets: failed}]
+  job.cancelled: [{sets: cancelled}]
+  job.terminated: [{sets: terminated}]
+  # A dead lettered job keeps its row at accepted so that a replay can admit it.
+  job.dead.lettered: [{sets: null}]
+# Allowed moves of the row. A row_only move is made by the control stage on the row of a job that never started.
+transitions:
+  - {from: accepted, to: admitted}
+  - {from: accepted, to: paused, row_only: true}
+  - {from: accepted, to: cancelled, row_only: true}
+  - {from: accepted, to: terminated, row_only: true}
+  - {from: admitted, to: running}
+  - {from: admitted, to: paused}
+  - {from: admitted, to: failed}
+  - {from: admitted, to: cancelled}
+  - {from: admitted, to: terminated}
+  - {from: running, to: paused}
+  - {from: running, to: succeeded}
+  - {from: running, to: partial}
+  - {from: running, to: failed}
+  - {from: running, to: cancelled}
+  - {from: running, to: terminated}
+  - {from: paused, to: resume-pending}
+  - {from: paused, to: cancelled}
+  - {from: paused, to: terminated}
+  - {from: resume-pending, to: running}
+  - {from: resume-pending, to: accepted, row_only: true}
+  - {from: resume-pending, to: cancelled}
+  - {from: resume-pending, to: terminated}

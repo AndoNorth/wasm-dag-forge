@@ -1,0 +1,6 @@
+---
+uri: s3://wdf-components/sha256/69/6985ca1f4daa5a584a28eae043a239cb96689af1337ea13afb63e00c2bf512fa
+sha256: 6985ca1f4daa5a584a28eae043a239cb96689af1337ea13afb63e00c2bf512fa
+size: 1024
+name: job.wasm
+kind: component

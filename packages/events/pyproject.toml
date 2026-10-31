@@ -2,7 +2,7 @@
 name = "wdf-events"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = ["pydantic", "jsonschema"]
+dependencies = ["pydantic", "jsonschema", "pyyaml"]
 
 [build-system]
 requires = ["hatchling"]

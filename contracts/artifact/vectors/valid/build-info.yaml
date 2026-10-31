@@ -1,0 +1,6 @@
+---
+uri: s3://wdf-components/sha256/95/95201f2d94449f4d01740df7b074440bae2d9e8832265cf903eef49294173869
+sha256: 95201f2d94449f4d01740df7b074440bae2d9e8832265cf903eef49294173869
+size: 1024
+name: build-info.json
+kind: build-info
