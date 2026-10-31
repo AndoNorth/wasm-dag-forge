@@ -68,27 +68,29 @@ def reshuffled(value, rnd):
     return value
 
 
-@settings(max_examples=60, deadline=None)
-@given(documents(), st.randoms(use_true_random=False), st.sampled_from([None, 0, 2, 4]))
-def test_hash_ignores_key_order_and_whitespace(plan_of, doc, rnd, indent):
-    spelled = json.dumps(
-        reshuffled(doc, rnd), indent=indent, separators=(", ", ": ") if indent is None else None
-    )
-    spaced = (" \n\t" + spelled + "\n ").encode()
-    a, b = plan_of(doc), plan_of(spaced)
-    assert canonical_bytes(a) == canonical_bytes(b)
-    assert plan_hash(a) == plan_hash(b)
+class TestProperty:
+    """The property tests, so that `pytest -k property` selects them."""
 
+    @settings(max_examples=60, deadline=None)
+    @given(documents(), st.randoms(use_true_random=False), st.sampled_from([None, 0, 2, 4]))
+    def test_hash_ignores_key_order_and_whitespace(self, plan_of, doc, rnd, indent):
+        spelled = json.dumps(
+            reshuffled(doc, rnd), indent=indent, separators=(", ", ": ") if indent is None else None
+        )
+        spaced = (" \n\t" + spelled + "\n ").encode()
+        a, b = plan_of(doc), plan_of(spaced)
+        assert canonical_bytes(a) == canonical_bytes(b)
+        assert plan_hash(a) == plan_hash(b)
 
-@settings(max_examples=60, deadline=None)
-@given(documents(), st.randoms(use_true_random=False))
-def test_order_is_topological_and_stable(plan_of, doc, rnd):
-    plan = plan_of(doc)
-    position = {t.id: i for i, t in enumerate(plan.tasks)}
-    assert sorted(position) == sorted(doc["tasks"])
-    for task in plan.tasks:
-        assert all(position[d] < position[task.id] for d in task.depends_on)
-    # Equal inputs give equal order, however the tasks are listed.
-    shuffled = {**doc, "tasks": reshuffled(doc["tasks"], rnd)}
-    assert [t.id for t in plan_of(shuffled).tasks] == [t.id for t in plan.tasks]
-    assert [t.id for t in plan_of(doc).tasks] == [t.id for t in plan.tasks]
+    @settings(max_examples=60, deadline=None)
+    @given(documents(), st.randoms(use_true_random=False))
+    def test_order_is_topological_and_stable(self, plan_of, doc, rnd):
+        plan = plan_of(doc)
+        position = {t.id: i for i, t in enumerate(plan.tasks)}
+        assert sorted(position) == sorted(doc["tasks"])
+        for task in plan.tasks:
+            assert all(position[d] < position[task.id] for d in task.depends_on)
+        # Equal inputs give equal order, however the tasks are listed.
+        shuffled = {**doc, "tasks": reshuffled(doc["tasks"], rnd)}
+        assert [t.id for t in plan_of(shuffled).tasks] == [t.id for t in plan.tasks]
+        assert [t.id for t in plan_of(doc).tasks] == [t.id for t in plan.tasks]
