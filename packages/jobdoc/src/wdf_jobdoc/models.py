@@ -23,20 +23,20 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from .registry import PARAMETER_TYPES
+
 SCHEMA_ID = "urn:wdf:schema:job:1.0"
 
 TASK_ID_PATTERN = "^[a-z0-9][a-z0-9._-]{0,62}$"
 NAME_PATTERN = "^[a-z][a-z0-9_]{0,31}$"
 MODULE_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$"
 OUTPUT_PATTERN = "^[a-z][a-z0-9-]{0,31}$"
-AGGREGATION_PATTERN = "^[a-z][a-z0-9_]{0,63}$"
 SHA256_PATTERN = "^[0-9a-f]{64}$"
 
 # Seeds stay below 2**53, so no JSON reader rounds one.
 SEED_LIMIT = 2**53
 # Cores are bounded so that the integer millicore value of a plan stays small whatever the exponent.
 MAX_CPU_CORES = 1_000_000
-PARAMETER_TYPES = ("integer", "string", "boolean", "seed", "string-list")
 
 TaskId = Annotated[str, StringConstraints(pattern=TASK_ID_PATTERN)]
 
@@ -110,6 +110,32 @@ ArgValue = Annotated[
     ),
 ]
 ArgName = Annotated[str, StringConstraints(pattern=NAME_PATTERN)]
+
+
+def _string_list(value: Any) -> Any:
+    if isinstance(value, dict):
+        return _placeholder(value)
+    if not isinstance(value, list):
+        raise PydanticCustomError("bad-type", "a list of strings or a placeholder is expected")
+    for index, item in enumerate(value):
+        if isinstance(item, dict) and "param" in item:
+            raise PydanticCustomError(
+                "placeholder-misplaced",
+                "a placeholder is not a list element ({index})",
+                {"index": index},
+            )
+        if not isinstance(item, str):
+            raise PydanticCustomError(
+                "bad-type", "list element {index} is not a string", {"index": index}
+            )
+    return value
+
+
+StringList = Annotated[
+    Any,
+    PlainValidator(_string_list),
+    WithJsonSchema({"anyOf": [{"type": "array", "items": {"type": "string"}}, PLACEHOLDER_SCHEMA]}),
+]
 
 
 def _seed(value: Any) -> Any:
@@ -209,10 +235,32 @@ class SimulateParams(_Model):
     seed: Seed
 
 
-class AggregateParams(_Model):
-    aggregation: str = Field(pattern=AGGREGATION_PATTERN)
-    args: dict[ArgName, ArgValue] = Field(default_factory=dict)
+class _AggregateParams(_Model):
     index: IndexReference | None = None
+
+
+class SummaryStatsArgs(_Model):
+    blocks: StringList | None = None
+    columns: StringList | None = None
+
+
+class DigestListArgs(_Model):
+    pass
+
+
+class SummaryStatsParams(_AggregateParams):
+    aggregation: Literal["summary_stats"]
+    args: SummaryStatsArgs = Field(default_factory=SummaryStatsArgs)
+
+
+class DigestListParams(_AggregateParams):
+    aggregation: Literal["digest_list"]
+    args: DigestListArgs = Field(default_factory=DigestListArgs)
+
+
+AggregateParams = Annotated[
+    SummaryStatsParams | DigestListParams, Field(discriminator="aggregation")
+]
 
 
 class _Task(_Model):

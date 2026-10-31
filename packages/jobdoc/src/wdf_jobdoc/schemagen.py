@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 from .models import DOCUMENT_MODELS
+from .profile import LimitsFile
+from .registry import REGISTRY
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCHEMA_DIR = "contracts/job/schemas"
@@ -22,12 +24,23 @@ def render_document_schema(name: str, version: str) -> str:
     return json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+def render_limits_schema() -> str:
+    schema = LimitsFile.model_json_schema()
+    schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    schema["$id"] = "urn:wdf:schema:job-limits:1"
+    schema["title"] = "job limits 1"
+    return json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+
+
 def outputs() -> dict[str, str]:
     """Every generated file, by repository path."""
-    return {
+    files = {
         f"{SCHEMA_DIR}/{name}/{version}.json": render_document_schema(name, version)
         for name, version in DOCUMENT_MODELS
     }
+    files["contracts/job/registry.json"] = json.dumps(REGISTRY, indent=2, sort_keys=True) + "\n"
+    files["contracts/job/limits.schema.json"] = render_limits_schema()
+    return files
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,80 +1,5 @@
 {
   "$defs": {
-    "AggregateParams": {
-      "additionalProperties": false,
-      "properties": {
-        "aggregation": {
-          "pattern": "^[a-z][a-z0-9_]{0,63}$",
-          "title": "Aggregation",
-          "type": "string"
-        },
-        "args": {
-          "patternProperties": {
-            "^[a-z][a-z0-9_]{0,31}$": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  },
-                  "type": "array"
-                },
-                {
-                  "additionalProperties": false,
-                  "properties": {
-                    "param": {
-                      "pattern": "^[a-z][a-z0-9_]{0,31}$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "param"
-                  ],
-                  "title": "Placeholder",
-                  "type": "object"
-                }
-              ]
-            }
-          },
-          "title": "Args",
-          "type": "object"
-        },
-        "index": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/IndexReference"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        }
-      },
-      "required": [
-        "aggregation"
-      ],
-      "title": "AggregateParams",
-      "type": "object"
-    },
     "AggregateTask": {
       "additionalProperties": false,
       "properties": {
@@ -111,7 +36,22 @@
           "type": "integer"
         },
         "params": {
-          "$ref": "#/$defs/AggregateParams"
+          "discriminator": {
+            "mapping": {
+              "digest_list": "#/$defs/DigestListParams",
+              "summary_stats": "#/$defs/SummaryStatsParams"
+            },
+            "propertyName": "aggregation"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SummaryStatsParams"
+            },
+            {
+              "$ref": "#/$defs/DigestListParams"
+            }
+          ],
+          "title": "Params"
         },
         "retries": {
           "default": 0,
@@ -193,6 +133,41 @@
         "params"
       ],
       "title": "CompileTask",
+      "type": "object"
+    },
+    "DigestListArgs": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "DigestListArgs",
+      "type": "object"
+    },
+    "DigestListParams": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "digest_list",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/DigestListArgs"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "aggregation"
+      ],
+      "title": "DigestListParams",
       "type": "object"
     },
     "IndexReference": {
@@ -454,6 +429,100 @@
         "kind"
       ],
       "title": "SourceReference",
+      "type": "object"
+    },
+    "SummaryStatsArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "param": {
+                  "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "param"
+              ],
+              "title": "Placeholder",
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blocks"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "param": {
+                  "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "param"
+              ],
+              "title": "Placeholder",
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns"
+        }
+      },
+      "title": "SummaryStatsArgs",
+      "type": "object"
+    },
+    "SummaryStatsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "summary_stats",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SummaryStatsArgs"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "aggregation"
+      ],
+      "title": "SummaryStatsParams",
       "type": "object"
     }
   },

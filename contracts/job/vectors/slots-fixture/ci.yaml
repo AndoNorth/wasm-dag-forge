@@ -1,0 +1,14 @@
+# A fixed copy of deploy/presets/slots/ci.yaml for tests: an edit of the live file never changes a test result.
+# One task per pod on the compile, simulate and aggregate pools, so requests equal limits and one pod fills one slot.
+# The figures are a provisional estimate until real components are characterized.
+estimate: true
+pools:
+  compile:
+    requests: {cpu: "1", memory: 1Gi}
+    limits: {cpu: "1", memory: 1Gi}
+  simulate:
+    requests: {cpu: 250m, memory: 384Mi}
+    limits: {cpu: 250m, memory: 384Mi}
+  aggregate:
+    requests: {cpu: "1", memory: 1Gi}
+    limits: {cpu: "1", memory: 1Gi}

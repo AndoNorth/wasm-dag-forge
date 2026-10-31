@@ -86,3 +86,16 @@ def test_the_exported_schema_refuses_what_the_loader_refuses(contract, good, mut
     schema = json.loads((contract / "schemas/job/1.0.json").read_text())
     mutate(good)
     assert list(Draft202012Validator(schema).iter_errors(good))
+
+
+@pytest.mark.parametrize("name", ["registry.json", "limits.schema.json"])
+def test_the_other_generated_files_are_checked_too(tmp_path, root, name):
+    for generated in ("registry.json", "limits.schema.json"):
+        (tmp_path / "contracts/job").mkdir(parents=True, exist_ok=True)
+        shutil.copy(root / "contracts/job" / generated, tmp_path / "contracts/job" / generated)
+    shutil.copytree(root / "contracts/job/schemas", tmp_path / "contracts/job/schemas")
+    assert run("--check", "--root", str(tmp_path)).returncode == 0
+    (tmp_path / "contracts/job" / name).write_text("{}\n")
+    result = run("--check", "--root", str(tmp_path))
+    assert result.returncode == 1
+    assert f"contracts/job/{name}" in result.stderr
