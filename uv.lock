@@ -9,6 +9,7 @@ members = [
     "wdf-events",
     "wdf-itest",
     "wdf-keys",
+    "wdf-stages",
     "wdf-temporal",
 ]
 
@@ -450,6 +451,7 @@ dev = [
     { name = "wdf-events" },
     { name = "wdf-itest" },
     { name = "wdf-keys" },
+    { name = "wdf-stages" },
     { name = "wdf-temporal" },
 ]
 
@@ -463,6 +465,7 @@ dev = [
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-itest", editable = "packages/itest" },
     { name = "wdf-keys", editable = "packages/keys" },
+    { name = "wdf-stages", editable = "packages/stages" },
     { name = "wdf-temporal", editable = "packages/temporal" },
 ]
 
@@ -517,6 +520,23 @@ requires-dist = [
 name = "wdf-keys"
 version = "0.0.0"
 source = { editable = "packages/keys" }
+
+[[package]]
+name = "wdf-stages"
+version = "0.0.0"
+source = { editable = "packages/stages" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "pyyaml" },
+    { name = "wdf-events" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema" },
+    { name = "pyyaml" },
+    { name = "wdf-events", editable = "packages/events" },
+]
 
 [[package]]
 name = "wdf-temporal"
