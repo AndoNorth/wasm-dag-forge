@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "functions": {
+    "job_id": [
+      {"args": ["acme", "sub-1"], "expect": "3a9617fa-df7c-5760-a644-42d559e0f433"},
+      {"args": ["acme", "sub-2"], "expect": "f7734c8a-4c87-5405-8908-0bc5d57742eb"},
+      {"args": ["globex", "sub-1"], "expect": "21a043cf-feb1-57a4-8d7b-ad856239919a"},
+      {"args": ["ab", "c"], "expect": "e3896031-3712-510b-88b8-a478b32888e0", "group": "boundary-ab-c"},
+      {"args": ["a", "bc"], "expect": "c13814b1-6019-5e33-b37c-ae23987596a0", "group": "boundary-ab-c"},
+      {"args": ["", "abc"], "expect": "f0825a17-344e-5d2a-a2aa-288614a52193", "group": "boundary-empty"},
+      {"args": ["abc", ""], "expect": "60ad790c-343a-5fbf-bab2-d8893919dc3d", "group": "boundary-empty"},
+      {"args": ["1:a", "b"], "expect": "c3fa4254-bb02-5f56-bf3e-cd4cbe3a2a39", "group": "boundary-frame"},
+      {"args": ["1:", "ab"], "expect": "73d0f1ad-aa37-56a9-ad3f-9fce1d39b0ce", "group": "boundary-frame"},
+      {"args": ["acme", "sub-é-1"], "expect": "967c6812-4b45-53a2-ab45-d6094ad69535"}
+    ],
+    "batch_id": [
+      {"args": ["acme", "batch-1"], "expect": "20e38fea-a41a-57cd-b87a-f6711349a05d"},
+      {"args": ["acme", "sub-1"], "expect": "e8d18dbf-9e98-5021-a867-628542d9d150"},
+      {"args": ["ab", "c"], "expect": "c0e310ba-e65f-531d-8142-de4f21331acf", "group": "boundary-ab-c"},
+      {"args": ["a", "bc"], "expect": "503d4654-6ab8-5bc1-9d47-fc9f29785ee1", "group": "boundary-ab-c"}
+    ],
+    "workflow_id": [
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433"], "expect": "job-3a9617fa-df7c-5760-a644-42d559e0f433"}
+    ],
+    "attempt_identity": [
+      {"args": [1, 0], "expect": "r0a1"},
+      {"args": [3, 0], "expect": "r0a3"},
+      {"args": [1, 1], "expect": "r1a1"},
+      {"args": [1, 11], "expect": "r11a1", "group": "boundary-digits"},
+      {"args": [11, 1], "expect": "r1a11", "group": "boundary-digits"},
+      {"args": [0, 0], "raises": "ValueError"},
+      {"args": [1, -1], "raises": "ValueError"}
+    ],
+    "cloudevent_id": [
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "", "", "accepted", 0], "expect": "1a904ce2-1dda-528a-b07a-ce4b518079a7"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "compile", "r0a1", "placed", 0], "expect": "0c921245-0174-5e73-b86a-b43b90161319"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "compile", "r0a1", "placed", 1], "expect": "20e8919d-223c-598e-a8d3-0e9083794a90"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "compile", "r0a3", "attempt.failed", 0], "expect": "6edbed97-bcba-5ec3-8360-98759eab5c4d"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "compile", "r1a1", "attempt.failed", 0], "expect": "9ca36804-454b-50cf-a31c-cae765dd50c8"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "ab", "c", "k", 0], "expect": "4407aa3b-dbcb-5563-ab92-287b20e23838", "group": "boundary-task-attempt"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "a", "bc", "k", 0], "expect": "688d0f43-818e-57a4-893f-266c69bdb09c", "group": "boundary-task-attempt"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "t", "", "a", 11], "expect": "deaecc2a-de25-5207-b320-6afaf33e16ad", "group": "boundary-kind-sequence"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "t", "", "a1", 1], "expect": "72ebdf5d-59c9-5fe1-9ff9-c273d2e7bf78", "group": "boundary-kind-sequence"},
+      {"args": ["3a9617fa-df7c-5760-a644-42d559e0f433", "t", "", "k", -1], "raises": "ValueError"}
+    ],
+    "compile_cache_key": [
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0"], "expect": "ab760da6dcef87c3b67b3db0c8c0da7a294d1621513dcf60405189b0be0931ec"},
+      {"args": ["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "1.2.3", "0.1.0"], "expect": "5001100b1b0230b8ca2e15654f33dcf030a6289cfb691981d7abdb1588e76302"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.4", "0.1.0"], "expect": "487c16c4e00ec41dd49373776db84fd7936973d609c543d97979b98a11d35f72"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.2.0"], "expect": "0ce2ca2384be88921f123eb6dfdbcf8b6a84bab08117ad0b22d1e1af9f179d49"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2", ".3.0.1.0"], "expect": "e7c3e95719846e84e1745c4485b2ecbaeb535f2e7a8d25d5b24b519ca3fde264", "group": "boundary-versions"},
+      {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.", "3.0.1.0"], "expect": "6c79c7e6a555ca8a4d50b03f1bde6229d35b70486a6668552b0818e743f331f7", "group": "boundary-versions"}
+    ]
+  }
+}

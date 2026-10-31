@@ -1,0 +1,6 @@
+---
+# Provenance of cloudevents.json, the published CloudEvents 1.0.2 JSON Schema vendored unchanged.
+url: https://raw.githubusercontent.com/cloudevents/spec/v1.0.2/cloudevents/formats/cloudevents.json
+tag: v1.0.2
+commit: fc1f6f31f5f011a72183f1bcea20c987cb683ade
+sha256: e28a6d252d7b7238d176618f6bbf6cde570b26a867bc5241563aed34c9dd1d83
