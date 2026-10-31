@@ -15,12 +15,7 @@ VECTORS = json.loads(
     (Path(__file__).resolve().parents[3] / "contracts/events/vectors/keys.json").read_text()
 )
 STUBBED = {
-    "attempt_identity",
-    "batch_id",
-    "cloudevent_id",
     "compile_cache_key",
-    "job_id",
-    "workflow_id",
 }
 CASES = [(name, case) for name, cases in VECTORS["functions"].items() for case in cases]
 

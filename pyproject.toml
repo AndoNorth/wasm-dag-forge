@@ -14,7 +14,7 @@ wdf-itest = { workspace = true }
 wdf-keys = { workspace = true }
 
 [dependency-groups]
-dev = ["pytest", "wdf-events", "wdf-itest", "wdf-keys"]
+dev = ["hypothesis", "pytest", "wdf-events", "wdf-itest", "wdf-keys"]
 
 [tool.pytest.ini_options]
 # Several packages have a tests/test_vectors.py, so test modules are imported by path and not by basename.
