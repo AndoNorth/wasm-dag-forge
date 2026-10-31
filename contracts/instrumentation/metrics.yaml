@@ -1,0 +1,27 @@
+---
+# Metrics defined by the event contract. Rules: README.md. Schema: metrics.schema.json.
+metrics:
+  wdf_event_bytes:
+    type: histogram
+    unit: bytes
+    help: Size of a serialised event.
+    buckets: [256, 1024, 2048, 4096, 16384, 65536]
+    labels: {}
+  wdf_event_size_warnings_total:
+    type: counter
+    help: Events serialised above the warning size.
+    labels: {}
+  wdf_event_rejected_total:
+    type: counter
+    help: Events refused by the serializer, by the kind of failure.
+    labels:
+      reason:
+        values: [schema-invalid, unsupported-major, event-too-large]
+  wdf_event_upgraded_total:
+    type: counter
+    help: Events read or replayed after an upgrade from the previous major.
+    labels:
+      type:
+        values_from: contracts/events/schemas
+      from_major:
+        values: ["1"]

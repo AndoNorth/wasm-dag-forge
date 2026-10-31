@@ -1,0 +1,14 @@
+---
+metrics:
+  wdf_example_bytes:
+    type: histogram
+    unit: bytes
+    help: Size of something.
+    buckets: [1, 10]
+    labels: {}
+  wdf_example_total:
+    type: counter
+    help: Things counted.
+    labels:
+      trace_id:
+        values: [a]
