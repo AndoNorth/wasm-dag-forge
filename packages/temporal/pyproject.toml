@@ -1,0 +1,13 @@
+[project]
+name = "wdf-temporal"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["temporalio", "wdf-events", "wdf-keys"]
+
+[tool.uv.sources]
+wdf-events = { workspace = true }
+wdf-keys = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
