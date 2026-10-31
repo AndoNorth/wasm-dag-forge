@@ -2,6 +2,7 @@
 
 from wdf_jobdoc.plan_models import Plan, PlanStats
 
+from .binding import ParamsInvalid, bind, check_job_params
 from .canonical import canonical_bytes, manifest_reference, plan_hash
 from .compiler import compile_plan, task_request_fields
 from .stats import chains, class_hint, stats
@@ -9,9 +10,11 @@ from .stats import chains, class_hint, stats
 __all__ = [
     "Plan",
     "PlanStats",
+    "ParamsInvalid",
     "bind",
     "chains",
     "class_hint",
+    "check_job_params",
     "canonical_bytes",
     "compile_plan",
     "manifest_reference",
@@ -19,7 +22,3 @@ __all__ = [
     "stats",
     "task_request_fields",
 ]
-
-
-def bind(plan, params, profile):
-    raise NotImplementedError("not implemented: owned by lane P")
