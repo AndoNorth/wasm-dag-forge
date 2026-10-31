@@ -2,11 +2,19 @@
 
 from wdf_jobdoc.plan_models import Plan, PlanStats
 
-__all__ = ["Plan", "PlanStats", "bind", "compile_plan"]
+from .canonical import canonical_bytes, manifest_reference, plan_hash
+from .compiler import compile_plan, task_request_fields
 
-
-def compile_plan(document, profile):
-    raise NotImplementedError("not implemented: owned by lane P")
+__all__ = [
+    "Plan",
+    "PlanStats",
+    "bind",
+    "canonical_bytes",
+    "compile_plan",
+    "manifest_reference",
+    "plan_hash",
+    "task_request_fields",
+]
 
 
 def bind(plan, params, profile):
