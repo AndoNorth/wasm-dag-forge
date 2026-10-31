@@ -4,7 +4,23 @@ from dataclasses import dataclass
 
 from wdf_jobdoc import Document, DocumentInvalid, Issue, parse_document
 
-__all__ = ["Report", "validate"]
+from .resolver import (
+    BundleInfo,
+    BundleNotFound,
+    SourceResolver,
+    StaticResolver,
+    resolver_contract,
+)
+
+__all__ = [
+    "BundleInfo",
+    "BundleNotFound",
+    "Report",
+    "SourceResolver",
+    "StaticResolver",
+    "resolver_contract",
+    "validate",
+]
 
 
 @dataclass(frozen=True)
