@@ -1,0 +1,58 @@
+{
+  "schema": "urn:wdf:schema:job:1.0",
+  "tasks": {
+    "agg": {
+      "cpu": 1,
+      "inputs": [
+        {
+          "output": "result",
+          "task": "sim"
+        }
+      ],
+      "memory_mib": 512,
+      "params": {
+        "aggregation": "summary_stats",
+        "args": {
+          "blocks": [
+            "pi"
+          ]
+        }
+      },
+      "run_timeout_s": 600,
+      "type": "aggregate"
+    },
+    "build": {
+      "params": {
+        "entry": "sim",
+        "source": {
+          "kind": "source",
+          "name": "bundle.tar.gz",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "size": 2048,
+          "uri": "s3://wdf-sources/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "type": "compile"
+    },
+    "sim": {
+      "cpu": 0.25,
+      "inputs": [
+        {
+          "output": "component",
+          "task": "build"
+        }
+      ],
+      "memory_mib": 384,
+      "params": {
+        "args": {
+          "n": 2000
+        },
+        "seed": 1,
+        "workload": "pi"
+      },
+      "retries": 1,
+      "run_timeout_s": 900,
+      "type": "simulate"
+    }
+  }
+}
