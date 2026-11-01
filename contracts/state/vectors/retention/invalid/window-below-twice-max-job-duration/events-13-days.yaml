@@ -1,0 +1,4 @@
+---
+windows:
+  event: {drop_after_days: 13}
+housekeeping: {}

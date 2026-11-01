@@ -5,17 +5,23 @@ requires-python = "==3.13.*"
 [manifest]
 members = [
     "wasm-dag-forge",
+    "wdf-artifactindex",
     "wdf-compat",
     "wdf-events",
+    "wdf-eventstore",
     "wdf-itest",
     "wdf-jobcheck",
     "wdf-jobdoc",
     "wdf-jobexamples",
     "wdf-jobpatch",
+    "wdf-jobstate",
     "wdf-jobtools",
     "wdf-keys",
+    "wdf-migrate",
     "wdf-plan",
     "wdf-stages",
+    "wdf-stateops",
+    "wdf-storecheck",
     "wdf-temporal",
 ]
 
@@ -453,17 +459,23 @@ source = { virtual = "." }
 dev = [
     { name = "hypothesis" },
     { name = "pytest" },
+    { name = "wdf-artifactindex" },
     { name = "wdf-compat" },
     { name = "wdf-events" },
+    { name = "wdf-eventstore" },
     { name = "wdf-itest" },
     { name = "wdf-jobcheck" },
     { name = "wdf-jobdoc" },
     { name = "wdf-jobexamples" },
     { name = "wdf-jobpatch" },
+    { name = "wdf-jobstate" },
     { name = "wdf-jobtools" },
     { name = "wdf-keys" },
+    { name = "wdf-migrate" },
     { name = "wdf-plan" },
     { name = "wdf-stages" },
+    { name = "wdf-stateops" },
+    { name = "wdf-storecheck" },
     { name = "wdf-temporal" },
 ]
 
@@ -473,18 +485,41 @@ dev = [
 dev = [
     { name = "hypothesis" },
     { name = "pytest" },
+    { name = "wdf-artifactindex", editable = "packages/artifactindex" },
     { name = "wdf-compat", editable = "packages/compat" },
     { name = "wdf-events", editable = "packages/events" },
+    { name = "wdf-eventstore", editable = "packages/eventstore" },
     { name = "wdf-itest", editable = "packages/itest" },
     { name = "wdf-jobcheck", editable = "packages/jobcheck" },
     { name = "wdf-jobdoc", editable = "packages/jobdoc" },
     { name = "wdf-jobexamples", editable = "packages/jobexamples" },
     { name = "wdf-jobpatch", editable = "packages/jobpatch" },
+    { name = "wdf-jobstate", editable = "packages/jobstate" },
     { name = "wdf-jobtools", editable = "packages/jobtools" },
     { name = "wdf-keys", editable = "packages/keys" },
+    { name = "wdf-migrate", editable = "packages/migrate" },
     { name = "wdf-plan", editable = "packages/plan" },
     { name = "wdf-stages", editable = "packages/stages" },
+    { name = "wdf-stateops", editable = "packages/stateops" },
+    { name = "wdf-storecheck", editable = "packages/storecheck" },
     { name = "wdf-temporal", editable = "packages/temporal" },
+]
+
+[[package]]
+name = "wdf-artifactindex"
+version = "0.0.0"
+source = { editable = "packages/artifactindex" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-events" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-events", editable = "packages/events" },
 ]
 
 [[package]]
@@ -517,6 +552,25 @@ requires-dist = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "wdf-keys", editable = "packages/keys" },
+]
+
+[[package]]
+name = "wdf-eventstore"
+version = "0.0.0"
+source = { editable = "packages/eventstore" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-compat" },
+    { name = "wdf-events" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-compat", editable = "packages/compat" },
+    { name = "wdf-events", editable = "packages/events" },
 ]
 
 [[package]]
@@ -599,6 +653,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "wdf-jobstate"
+version = "0.0.0"
+source = { editable = "packages/jobstate" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-events" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-events", editable = "packages/events" },
+]
+
+[[package]]
 name = "wdf-jobtools"
 version = "0.0.0"
 source = { editable = "packages/jobtools" }
@@ -623,6 +694,11 @@ requires-dist = [
 name = "wdf-keys"
 version = "0.0.0"
 source = { editable = "packages/keys" }
+
+[[package]]
+name = "wdf-migrate"
+version = "0.0.0"
+source = { editable = "packages/migrate" }
 
 [[package]]
 name = "wdf-plan"
@@ -653,6 +729,16 @@ requires-dist = [
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-keys", editable = "packages/keys" },
 ]
+
+[[package]]
+name = "wdf-stateops"
+version = "0.0.0"
+source = { editable = "packages/stateops" }
+
+[[package]]
+name = "wdf-storecheck"
+version = "0.0.0"
+source = { editable = "packages/storecheck" }
 
 [[package]]
 name = "wdf-temporal"

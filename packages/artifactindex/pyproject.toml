@@ -1,0 +1,12 @@
+[project]
+name = "wdf-artifactindex"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["pydantic", "pyyaml", "wdf-events"]
+
+[tool.uv.sources]
+wdf-events = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

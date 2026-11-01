@@ -9,34 +9,46 @@ members = ["packages/*"]
 
 # Workspace members are installed through the dev group, because a plain `uv run` installs only the root project.
 [tool.uv.sources]
+wdf-artifactindex = { workspace = true }
 wdf-compat = { workspace = true }
 wdf-events = { workspace = true }
+wdf-eventstore = { workspace = true }
 wdf-itest = { workspace = true }
 wdf-jobcheck = { workspace = true }
 wdf-jobdoc = { workspace = true }
 wdf-jobexamples = { workspace = true }
 wdf-jobpatch = { workspace = true }
+wdf-jobstate = { workspace = true }
 wdf-jobtools = { workspace = true }
 wdf-keys = { workspace = true }
+wdf-migrate = { workspace = true }
 wdf-plan = { workspace = true }
 wdf-stages = { workspace = true }
+wdf-stateops = { workspace = true }
+wdf-storecheck = { workspace = true }
 wdf-temporal = { workspace = true }
 
 [dependency-groups]
 dev = [
     "hypothesis",
     "pytest",
+    "wdf-artifactindex",
     "wdf-compat",
     "wdf-events",
+    "wdf-eventstore",
     "wdf-itest",
     "wdf-jobcheck",
     "wdf-jobdoc",
     "wdf-jobexamples",
     "wdf-jobpatch",
+    "wdf-jobstate",
     "wdf-jobtools",
     "wdf-keys",
+    "wdf-migrate",
     "wdf-plan",
     "wdf-stages",
+    "wdf-stateops",
+    "wdf-storecheck",
     "wdf-temporal",
 ]
 

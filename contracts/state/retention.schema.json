@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "HousekeepingRule": {
+      "additionalProperties": false,
+      "description": "An age rule that removes nothing a job can still need.",
+      "properties": {
+        "abort_incomplete_multipart_after_days": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Abort Incomplete Multipart After Days"
+        },
+        "compress_after_days": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compress After Days"
+        }
+      },
+      "title": "HousekeepingRule",
+      "type": "object"
+    },
+    "WindowRule": {
+      "additionalProperties": false,
+      "description": "An age rule that removes data, so it is held to the floor.",
+      "properties": {
+        "drop_after_days": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drop After Days"
+        },
+        "expire_after_days": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expire After Days"
+        }
+      },
+      "title": "WindowRule",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:state.retention:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "contracts/state/retention.yaml, keyed by the table or the bucket that a rule applies to.",
+  "properties": {
+    "housekeeping": {
+      "additionalProperties": {
+        "$ref": "#/$defs/HousekeepingRule"
+      },
+      "title": "Housekeeping",
+      "type": "object"
+    },
+    "windows": {
+      "additionalProperties": {
+        "$ref": "#/$defs/WindowRule"
+      },
+      "title": "Windows",
+      "type": "object"
+    }
+  },
+  "required": [
+    "windows",
+    "housekeeping"
+  ],
+  "title": "Retention",
+  "type": "object"
+}

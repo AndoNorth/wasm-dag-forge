@@ -1,0 +1,5 @@
+---
+windows:
+  event: {drop_after_days: 14}
+  wdf-sources: {expire_after_days: 28}
+housekeeping: {}
