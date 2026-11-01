@@ -63,13 +63,14 @@ Each has a default that the lanes build on when there is no answer, and an answe
 | 2 | Which migration tool? The epic asks for versioned migrations from day one with expand then contract. | (a) numbered plain SQL files with a small Python runner in the workspace (`wdf_migrate`): a `schema_migration` table with checksums, an advisory lock, repeatable files for generated SQL and a lint for destructive statements, (b) Alembic, (c) a binary tool (dbmate or golang-migrate) added to the flake | (a). No ORM was decided, `psycopg` is already locked, so (a) adds no dependency and no tool to the dev shell. Repeatable files let the status vocabulary and the retention policies be generated from their contracts and re-applied when the contract moves. The cost is a few hundred lines that this epic owns. | (a) | 0.3, and every migration issue |
 | 3 | Are per-service database roles worth building in a proof of concept? The epic lists it as optional. | (a) group roles and column grants now, as `NOLOGIN` roles from a generated migration with a test per role, and login roles and credentials left to the service epics that exist later, (b) defer all of it, (c) full roles now, with login users and a generated credential per role | (a). The grants cost one generated file and one test, they turn "one writer per kind of change" from a convention into something the database refuses, and retrofitting them after the services exist means touching every service. Credentials are the expensive part and need a service to use them, so they wait. | (a) | Q.4 (dropped for (b), extended for (c) with D.1) |
 | 4 | How is the SeaweedFS gap handled, where a credential with `Write` on a bucket can also replace that bucket's lifecycle rules (RustFS refuses it)? The epic defers the choice to the contract script issue. | (a) accept and document it: bucket credentials belong to platform pods only, the contract test records it as a `known-gap` per writing role and fails if the behaviour changes either way, (b) change the default product to RustFS 1.0.4, which loses the delete-while-full behaviour and the field exposure that the epic ranks higher, (c) put a policy proxy that refuses the lifecycle call in front of the store | (a). The PoC runs no tenant code with store credentials, the gap needs a credential that only platform pods hold, and (c) adds a component to a fixed-size cluster to close it. The `known-gap` line makes the choice visible and flips to a failure the day an upstream fix lands. | (a) | 0.2, C.1, O.1 |
-| 5 | Does a CI job run the cluster checks of this epic? The T2 checks (modules healthy, store contract against the deployed store, lifecycle expiry) need `just up` and a runner that holds the `ci` preset, which the `kind-smoke` job already does for every pull request. | (a) no new job: T2 evidence comes from the exit test and from lane workers under the cluster lock, (b) extend `kind-smoke` to deploy these modules and run the contract script, which adds minutes to every pull request, (c) a separate workflow `state-modules`, triggered on pull requests that touch the paths of this epic and on pushes to `main` | (c). It gives the epic a green run on `main` as evidence, it guards the three module directories and the contract script against rot, and it costs a runner only when these paths change. | (c). An answer of (a) drops issue X.1 only. | X.1 |
+| 5 | Does a CI job run the cluster checks of this epic? The T2 checks (modules healthy, store contract against the deployed store, lifecycle expiry) need `just up` and a runner that holds the `ci` preset, which the `kind-smoke` job already does for every pull request. | (a) no new job: T2 evidence comes from the exit test and from lane workers under the cluster lock, (b) extend `kind-smoke` to deploy these modules and run the contract script, which adds minutes to every pull request, (c) a separate workflow `state-modules`, triggered on pull requests that touch the paths of this epic and on pushes to `main` | (c). It gives the epic a green run on `main` as evidence, it guards the three module directories and the contract script against rot, and it costs a runner only when these paths change. | (c). An answer of (a) drops issue X.1, the `state-modules` run of row 23 of the exit test and the matching line of Closure, and nothing else. | X.1 |
 
 ### 0.3 Proposals the lanes pin
 
 These answer the open questions and open design items of the epic.
 Each is a default that the captain may change in the one review, and none needs an answer to start.
 Names, columns and numbers are pinned by lane 0 and the table issues, and change afterwards only through a contract-change PR.
+After lane 0 merges, `contracts/state/README.md` and the contract files are the source and this section is only a pointer to them, and Closure replaces its tables with links.
 
 | Item | Proposal | Epic question |
 | --- | --- | --- |
@@ -88,7 +89,7 @@ Names, columns and numbers are pinned by lane 0 and the table issues, and change
 | Lifecycle numbers | The detection interval of the lifecycle job is 60 minutes, so a rule runs up to an hour late and a dead worker is a capacity alert and not a silent failure. Abort of incomplete multipart uploads after 1 day on every bucket, the hard expiries of `retention.yaml` on results and checkpoints, and no age rule on sources and components. | none |
 | Volume sizing | `volumeSizeLimitMB = floor(0.8 x PVC MiB / (7 x 4))` with `-volume.max=0`, because the first write to a bucket grows up to 7 volumes and there are four buckets. The first write to each bucket is a check of the contract script. | none |
 | Capacity | The capacity input of a bucket store is the used share of its volume claim, the alert input fires at 70 percent, well below the 90 percent that the epic names, because SeaweedFS holds back about 12 MiB and RustFS runs to zero. | none |
-| Volume claims | Temporal's Postgres 5 GiB (3,507 MiB at 100,000 jobs per S3b, with a quarter margin), the app Postgres and the store from the S8 result. The default kind storage class keeps volumes on the host data directory, and its size is a request that kind does not enforce [read: the epic and `docs/cluster-host.md`]. | open question |
+| Volume claims | Temporal's Postgres 5 GiB (3,507 MiB at 100,000 jobs per S3b, with a quarter margin), the app Postgres and the store from the S8 result. The default kind storage class keeps volumes on the host data directory [read: `docs/cluster-host.md`]. Whether it enforces a claim size is not documented in this repository, so D.1 records `df` of the data volume inside the pod, and the epic body's own statement that only a tmpfs was tested stands. | open question |
 | TimescaleDB | The official image, pinned by digest at the newest `-pg16` tag on the day M.1 starts, telemetry off by setting, and the source-available license of its compression and policy features accepted for the PoC and stated in the module README. | none |
 | fsync on the default storage class | `pg_test_fsync` runs in the pod on its volume claim and prints its figures. They are recorded in Closure, with no pass line, because the epic gives no threshold. | open question |
 | Invariant and drift queries | SQL files under `contracts/state/invariants/` that each return the offending rows, so an empty result passes: a job in `running` whose workflow id is not among the open workflow ids (a job that never started has no workflow, so `accepted`, a dead lettered job and the row-only moves are never reported, and `running` is the one status that always has a workflow), an open workflow id whose row is terminal or missing, a row with a `job.published` event and no receipt or past `accepted` with no receipt, and a `task.result.ready` event that names an artifact with no row. The caller supplies the open workflow ids because this epic never reads Temporal, the two workflow comparisons are skipped with a `skipped: <name>` line when no list is given, and the others always run. | none |
@@ -112,7 +113,7 @@ Non-goals for this pass:
 - the real submit path of 100,000 jobs through the dispatch API (#24) and the Temporal visibility comparison for drift (the invariant queries take a list of open workflow ids from the caller)
 - the `Days` lifecycle rule observed on objects that are actually a day old, which needs a 25 hour wait and belongs to the characterization soak (#16), while this epic ships the arming and the checking halves of that test
 - a maximum job duration above 7 days, and every retention and sizing number for it (decision 7)
-- disk behaviour on a real Kubernetes volume claim and a restart while full, because kind does not enforce a claim size and only a size-capped tmpfs can be filled
+- disk behaviour on a real Kubernetes volume claim and a restart while full, because only a size-capped tmpfs was tested (the epic body) and whether the default storage class enforces a claim size is recorded by D.1
 - replication, high availability, backups, and any managed or cloud database or store
 - a verifier skill, feature files and verify recipes (decision 1)
 
@@ -128,9 +129,9 @@ Non-goals for this pass:
 | Cluster | Preset contract and the presets: the `ci` infra node is 3,072 MiB, the `dev` one 4,096 MiB and the `soak` one 6,144 MiB, the quota of `wdf-infra` is rendered from the preset by `scripts/cluster/namespaces.sh` [ran: 2,756 MiB for `ci` and 3,764 MiB for `dev`], and `scripts/cluster/slots.sh` reports every slot of `ci` as fitting [ran] | `contracts/preset/` preset v1, `deploy/presets/{ci,dev,soak}.yaml` | none, exists. R.1 changes the infra node of `ci` and `dev`. |
 | Cluster | Topology: namespaces `wdf-infra`, `wdf-control`, `wdf-workers` and `wdf-obs`, the pool label `wdf.dev/pool`, and the rule that control pods share the infra pool | `contracts/topology/` topology v1 | none, exists [read] |
 | Cluster | The cluster recipes and rules: `just up`, `just down` and `just nuke`, the lock `/tmp/wdf-cluster.lock` (taken by `just up`, `just down` and `just nuke` themselves unless `WDF_CLUSTER_LOCK_HELD` is set), `scripts/tilt/run.sh <preset>` (`tilt ci` for `ci` and `soak`), the persistence of volume claims on the host data directory of the preset, and the fact that `just up` does not apply the namespaces | `scripts/up.sh`, `scripts/tilt/run.sh`, `docs/cluster-host.md`, recipe table v2 | none, exists [read]. R.1 makes `just up` apply the namespaces. |
-| Cluster | Spike S2 figures: the infra node of `ci` must fit Temporal, its Postgres and the object store at about 2,350 MiB, and `kind` does not enforce volume claim sizes | `docs/spikes/S2-footprint.md` | numbers are inputs and are replaced by the S8 result |
+| Cluster | Spike S2 figures: the infra node of `ci` must fit Temporal, its Postgres and the object store at 2,314 MiB of requests and limits | `docs/spikes/S2-footprint.md` | numbers are inputs and are replaced by the S8 result |
 | Envelope | Events contract: the CloudEvents profile, `time` with exactly six fractional digits, the `dataschema` identifier, and the key rule `<source>#<id>` plus `time` for the event history | `contracts/events/` events v3 [ran: `VERSION` is 3] | none, exists |
-| Envelope | Event library: `wdf_events.to_event_row(event) -> (key, time, body)`, `to_bytes`, `from_bytes`, `build_event`, the models (`AcceptedData`, `ResultReadyData`, `ContentReference`, `AttemptReference`, `JobParams`) and `psycopg` as a dependency | `packages/events/` library v1 | none, exists [read] |
+| Envelope | Event library: `wdf_events.to_event_row(event) -> (key, time, body)`, `to_bytes`, `from_bytes`, `build_event`, the models of `wdf_events.models` (`AcceptedData`, `ResultReadyData`, `ContentReference`, `AttemptReference`, `JobParams`) and `psycopg` as a dependency | `packages/events/` library v1 | none, exists [read] |
 | Envelope | Status contract: ten statuses, the terminal set, the views, the projection of each lifecycle event type and the transition matrix with its `row_only` moves | `contracts/status/` status v1 | none, exists [read: `status.yaml`] |
 | Envelope | Artifact contract: the reference shape, the four buckets, the ten kinds with their addressing class and key template, and the attempt identity pattern of `producer.attempt` | `contracts/artifact/` artifact v2 [ran: `VERSION` is 2] | none, exists |
 | Envelope | Key derivation: `job_id`, `batch_id`, `workflow_id`, `attempt_identity`, `cloudevent_id` and the five-input `compile_cache_key` | `packages/keys/` keys v1, `contracts/events/vectors/keys.json` | none, exists [read] |
@@ -164,7 +165,7 @@ Epic text and notes link to these files and never copy them.
 | #12, #15, #16, CI | S3 contract script, runnable against any S3 endpoint | `packages/storecheck/` (import `wdf_storecheck`) | `python -m wdf_storecheck run --endpoint URL --credentials FILE --mode base\|access\|lifecycle\|days-arm\|days-check\|disk-full\|recover\|marker-put\|marker-get`, exit 0 every check passed or is a recorded known gap, 1 a check failed, 2 usage. `python -m wdf_storecheck.gen [--check]`. | storecheck v1 |
 | the cluster, #6, #12 | Modules | `deploy/appdb/`, `deploy/appdb/migrate/`, `deploy/temporaldb/`, `deploy/objectstore/` and `deploy/objectstore/bootstrap/`, each with one `module.yaml` and one `Tiltfile.module` (the Tiltfile finds manifests at depth 1 or 2 under `deploy/`) | Five modules in `wdf-infra`. Module `appdb` is the app Postgres with TimescaleDB, `temporaldb` is Temporal's plain Postgres with its two databases, and `objectstore` is the store, whose `resources` map holds its three workloads `store`, `admin` and `worker` (the lifecycle worker), all with pinned images, volume claims, requests and limits from the S8 result. Modules `appdb-migrate` and `objectstore-bootstrap` are host-side helpers: each registers one `local_resource` named after the module, has `depends_on` the module it acts on, and declares a nominal `resources` entry because the contract requires one and nothing of it runs in the cluster. A helper that is not a module of its own is disabled under `tilt ci`. | module v1 |
 | #16, #17, #15 | Invariant queries and the batch bench | `contracts/state/invariants/`, `packages/stateops/` (import `wdf_stateops`) | `python -m wdf_stateops.invariants --dsn DSN [--open-workflows FILE]` exits 0 clean, 1 with one `invariant: <name>: <key>` line per offending row, 2 usage, and without `--open-workflows` the two workflow comparisons print `skipped: <name>`. `python -m wdf_stateops.bench --jobs N [--dsn DSN] [--twice]` exits 0 when the counts are right, 1 when they are not, 2 usage, and prints `rows_inserted`, `events_inserted` and the seconds of each phase, and with `--twice` it runs the insert again in the same invocation and prints the counts of the second run. | stateops v1 |
-| #13, #16 | Metric and alert inputs | `contracts/state/inputs.yaml`, `python -m wdf_stateops.inputs --dsn DSN` | Each input has a name, a unit, a source (a SQL query or a store source) and, where it alerts, a threshold. The command prints `<name> <value>` per input. | state v1 |
+| #13, #16 | Metric and alert inputs | `contracts/state/inputs.yaml`, `python -m wdf_stateops.inputs --dsn DSN [--store-endpoint URL --credentials FILE]` and `--check FILE` | Each input has a name, a unit, a source (a SQL query or a store source) and, where it alerts, a threshold. The command prints `<name> <value>` per input. | state v1 |
 | #24, #8, #6 | Group roles and grants | `packages/stateops/`, the hand written repeatable migration `R__roles.sql` shipped as package data | `NOLOGIN` roles `wdf_dispatch`, `wdf_control`, `wdf_admission`, `wdf_workflow`, `wdf_artifacts`, `wdf_reaper` and `wdf_reader` with column grants per table, each role created only when absent and every grant applied again on every run, because roles are cluster wide and one container serves many databases. The writers table below is the statement and a catalog test holds the file to it. Login roles are the service epics'. | state v1 |
 | the cluster, every module owner | Resized infra node and applied namespaces | `deploy/presets/{ci,dev}.yaml`, `scripts/up.sh` | The infra node figures of the S8 result, and `just up` that applies `scripts/cluster/namespaces.sh apply <preset>` and stays idempotent. | preset v1 |
 
@@ -244,9 +245,8 @@ Each block below is in the [lane issue template](../../.github/ISSUE_TEMPLATE/la
 Issues are filed as sub-issues of #3, and R.1 and R.2 as `revisit` sub-issues of #2 and #4.
 Each issue copies its Owns line from the lane table, uses its Test line as the Verifier section, and keeps only the `just ci` and Owns checkboxes of Done means.
 Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker as the envelope spec says), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
-Acceptance lines are commands with an observable result, except the README content lines and the lines that say a result is pasted in the PR or in Closure, which the reviewer checks in the PR.
+Acceptance lines are commands with an observable result, except the lines that say a result is pasted in the PR or in Closure, which the reviewer checks in the PR.
 Commands are written without the `nix develop -c uv run --frozen` prefix that every Python command takes, and T2 commands run under `flock /tmp/wdf-cluster.lock env WDF_CLUSTER_LOCK_HELD=1 ...` as the cluster epic says, because `just up`, `just down` and `just nuke` take the lock themselves unless that variable is set.
-The proposal numbering of the epic is in brackets.
 
 ### Mapping from the epic's detail issues
 
@@ -266,6 +266,35 @@ The proposal numbering of the epic is in brackets.
 | not in the epic's list: the footprint measurement and the preset resize that the foundation review asks for | M.1, R.1 |
 | not in the epic's list: the container helper options, the namespaces in `just up`, the batch bench, the CI workflow | R.2, R.1, Q.2, X.1 |
 
+### Consumes and produces per issue
+
+The template's Consumes / produces section of each filed issue is its row below, with the pinned rows of section 2 and the stub names of section 5.
+
+| Issue | Consumes | Produces |
+| --- | --- | --- |
+| M.1 | preset contract, spikes S2, S3b, S4 and S5 | the S8 result: node and quota table, PVC figures, image digests |
+| R.1 | the S8 result, preset contract, cluster recipes | resized `ci` and `dev` presets, `just up` applying the namespaces |
+| R.2 | `wdf_itest` | the tmpfs, mount and exec options |
+| 0.1 | status v1, artifact v2, events v3, job v2, compat v1, keys v1 | `contracts/state/` (retention, row schemas), the six package skeletons and the workspace edit |
+| 0.2 | artifact v2 layout, the images map, spike S5 | `contracts/store/`, the two store image pins |
+| 0.3 | `wdf_itest`, the images map, the S8 result | `wdf_migrate`, the `appdb` fixture, the TimescaleDB pin, the credentials test |
+| J.1 | status v1, job v2 limits, the row models of 0.1 | `0100_accepted_job.sql`, `R__job_vocab.sql` |
+| J.2 | J.1 | `wdf_jobstate` functions |
+| E.1 | events v3, `retention.yaml` | `0200_event.sql`, `R__event_policies.sql` |
+| E.2 | `wdf_events.to_event_row`, the golden events | `wdf_eventstore.insert_events`, `events_for_job` |
+| E.3 | E.1, E.2 | the compressed chunk and retention behaviour, `chunk_count` |
+| A.1 | artifact v2, `wdf_events.models`, keys v1 | `0300_artifact_index.sql`, `wdf_artifactindex` |
+| D.1 | module v1, presets, the S8 result, `wdf_migrate` | modules `appdb` and `appdb-migrate`, the fsync probe |
+| D.2 | module v1, the `postgres` pin | module `temporaldb` |
+| O.1 | store contract, module v1, spike S5, C.1 | modules `objectstore` and `objectstore-bootstrap`, the runbook |
+| C.1 | store contract, the R.2 options, spike S5 | `wdf_storecheck` base and access modes |
+| C.2 | C.1, O.1 | the lifecycle, days, disk-full, recover and marker modes |
+| Q.1 | J.2, E.2, A.1 | `contracts/state/invariants/`, `wdf_stateops.invariants` |
+| Q.2 | Q.1, D.1 | `wdf_stateops.bench` |
+| Q.3 | J.1, E.1, A.1, Q.1, O.1 | `contracts/state/inputs.yaml`, `wdf_stateops.inputs` |
+| Q.4 | J.1, E.1, A.1 | `R__roles.sql` |
+| X.1 | D.1, D.2, O.1, C.1 | `.github/workflows/state-modules.yml` |
+
 ### M.1 Footprint of the real state components (spike S8)
 
 Lane M, tier T1.
@@ -280,7 +309,7 @@ The standard load is 100,000 jobs of two tasks, so 100,000 accepted rows in chun
 3. Temporal's Postgres at its S3b figure and RabbitMQ at its S4 figure of 154.6 MiB, carried and not re-run, and the `wdf-control` pods that share the infra node as a reserved line marked as an estimate until #24, #6 and #8 replace it.
 4. The proposed infra node figure and the `wdf-infra` quota for `ci` and `dev`, with the arithmetic shown.
 
-Pass line, binary: the result file holds the measured peaks of items 1 and 2, and a proposed infra node memory for `ci` and `dev` such that the sum of the component limits is at most the `wdf-infra` quota that `scripts/cluster/namespaces.sh render` gives for that size, the sum of the measured peaks plus 20 percent (a proposed headroom) is at most the node allocatable after the 50 MiB of daemons, and the `ci` sum of node limits stays at most the 16 GiB `MemTotal` of the runner recorded by the `kind-smoke` run of the cluster closure.
+Pass line, binary: the result file holds the measured peaks of items 1 and 2, and a proposed infra node memory for `ci` and `dev` such that the sum of the component limits is at most the `wdf-infra` quota that `scripts/cluster/namespaces.sh render` gives for that size, the sum of the measured peaks plus 20 percent (a proposed headroom) is at most the node allocatable after the 50 MiB of daemons, and the `ci` sum of node limits stays at most 15,984 MiB, the 16,367,524 kB `MemTotal` of the runner that the `kind-smoke` run of the cluster closure recorded.
 Anything else is fail, and the file names the smallest numbers that would pass or says that the figure cannot be met on that runner.
 
 Owns: `spikes/S8/**`, `docs/spikes/S8-state-footprint.md`, the S8 row of `docs/spikes/README.md`.
@@ -363,9 +392,9 @@ Acceptance criteria:
 - [ ] `pytest packages/jobstate packages/eventstore packages/artifactindex -m "not integration" -q -rs` passes with no `SKIPPED` line, including the retention rule test that reads `MAX_JOB_DURATION_DAYS` from `wdf_compat.window`.
 - [ ] `pytest packages/jobstate packages/eventstore packages/artifactindex -q -k wheel` passes, so each wheel works from a clean virtual environment away from the repository.
 - [ ] `uv lock --check` exits 0, and `uv run --frozen python -c 'import wdf_migrate, wdf_storecheck, wdf_stateops'` exits 0.
-- [ ] README content: the column tables, the attempt rule of decision 6 and the retention rules, checked in the PR.
+- [ ] `pytest packages/jobstate packages/eventstore packages/artifactindex -q -k readme` passes, including `test_readme_lists_every_model_field` in each package (every field of `JobRow`, `EventRow` and `ArtifactRow` appears in the column tables of `contracts/state/README.md`) and `test_readme_states_the_attempt_rule` (the README carries the sentence that the store never infers an attempt).
 
-Test: `packages/*/tests/test_gen.py`, `test_wheel.py`, `test_vectors.py` and `contracts/state/vectors/retention/`.
+Test: `packages/*/tests/test_gen.py`, `test_wheel.py`, `test_vectors.py`, `test_readme.py` and `contracts/state/vectors/retention/`.
 
 ### 0.2 Store contract and object store image pins
 
@@ -385,7 +414,7 @@ Acceptance criteria:
 - [ ] `contracts/store/check.sh contracts/store/roles.yaml`, `lifecycle.yaml` and `products.yaml` exit 0, and every file under `contracts/store/vectors/invalid/<reason>/` exits 1 with that `reason:`, covering `unknown-bucket`, `role-outside-matrix`, `secret-in-contract` and `bucket-without-rules`.
 - [ ] `python -m wdf_storecheck.gen --check` exits 0, and after renaming a model field it exits 1 naming `contracts/store/store.schema.json`.
 - [ ] `scripts/versions.sh --check` exits 0 with both new keys, and the digests equal those of `docs/spikes/object-store.md`.
-- [ ] `pytest packages/storecheck -m "not integration" -q -rs` passes with no `SKIPPED` line, including a test that every bucket of `layout.yaml` has a rule and that no role writes outside the matrix of section 0.3.
+- [ ] `pytest packages/storecheck -m "not integration" -q -rs` passes with no `SKIPPED` line, including a test that every bucket of `layout.yaml` has a rule and that every grant of `roles.yaml` names a bucket of `layout.yaml` and an action of the vocabulary of its schema.
 - [ ] `pytest packages/storecheck -q -k wheel` passes.
 
 Test: `packages/storecheck/tests/test_gen.py`, `test_roles.py`, `test_wheel.py`, and the vectors.
@@ -549,7 +578,7 @@ Acceptance criteria:
 - [ ] T2: `scripts/tilt/run.sh ci` exits 0 with the resource `appdb` healthy and the resource `appdb-migrate` completed, and no pod of the module is Pending or rejected by the quota (`kubectl --context kind-wdf -n wdf-infra get events` shows no `FailedCreate` or `Insufficient`).
 - [ ] T2: `kubectl --context kind-wdf -n wdf-infra exec statefulset/appdb -- psql -U postgres -tAc "select count(*) from job_status"` prints 10, and `show timescaledb.telemetry_level` prints `off`.
 - [ ] T2: after `just down` and `just up` and the same Tilt run, a marker row written before survives, and `just nuke` removes the data directory.
-- [ ] `scripts/storage/db/fsync.sh` prints its figures, which the PR pastes and Closure records, with no pass line.
+- [ ] `scripts/storage/db/fsync.sh` prints its figures and `df` of the data volume inside the pod, which the PR pastes and Closure records, with no pass line.
 - [ ] No tracked file under `deploy/appdb/` or `scripts/storage/db/` holds a credential, shown by `pytest packages/migrate -q -k no_credentials_in_tracked_files`.
 
 Test: the commands above, and `shellcheck` through `just lint` for the scripts.
@@ -776,7 +805,7 @@ Run by a worker who did not write the lanes, on a clean `git archive` export of 
 Each command runs from the export root as written, its real output is pasted in the PR that records the run, and it is summarised in Closure.
 Rows 13 to 21 take the cluster lock for their whole sequence, and row 10 is run inside that sequence after row 14, for example `flock /tmp/wdf-cluster.lock env WDF_CLUSTER_LOCK_HELD=1 bash -c '<commands>'`, because `just up`, `just down` and `just nuke` take the lock themselves unless that variable is set and would otherwise wait 900 s on the lock that their own caller holds.
 The steps that change a file do so in the scratch export and restore it afterwards.
-The export is of `main` after every lane has merged, in the order of section 5 with R.1 first.
+The export is of `main` after every lane has merged, in the order of section 5.
 `DSN` stands for the database that a step names and `<port>` for the loopback port of a `kubectl port-forward` that the step opens.
 Command prefixes `nix develop -c` are omitted below and every row takes them.
 
@@ -786,8 +815,8 @@ Command prefixes `nix develop -c` are omitted below and every row takes them.
 | 2 | `for p in jobstate eventstore artifactindex storecheck stateops; do uv run --frozen python -m wdf_$p.gen --check \|\| echo "DRIFT $p"; done` | no output |
 | 3 | rename a field of `JobRow`, run `uv run --frozen python -m wdf_jobstate.gen --check`, then restore the file | exit 1 naming `contracts/state/schemas/job-row/1.json` |
 | 4 | add an eleventh entry to `statuses` of `contracts/status/status.yaml`, run `uv run --frozen python -m wdf_jobstate.gen --check`, then restore the file | exit 1 naming `R__job_vocab.sql`, which shows the vocabulary is generated and never retyped |
-| 5 | `contracts/state/check.sh contracts/state/retention.yaml`, `contracts/store/check.sh contracts/store/roles.yaml`, `contracts/store/check.sh contracts/store/lifecycle.yaml`, then every file under `contracts/state/vectors/*/invalid/` and `contracts/store/vectors/invalid/` through its loader | exit 0 for the three tables, and exit 1 with a `reason:` line for every invalid file |
-| 6 | `uv run --frozen pytest packages/migrate packages/jobstate packages/eventstore packages/artifactindex packages/storecheck packages/stateops packages/itest -q -rs` | all pass with no `SKIPPED` line, covering the runner, the five tables, the grants, the invariants and both object store products |
+| 5 | `contracts/state/check.sh contracts/state/retention.yaml`, `python -m wdf_stateops.inputs --check contracts/state/inputs.yaml`, `contracts/store/check.sh` on `roles.yaml`, `lifecycle.yaml` and `products.yaml`, then every file under `contracts/state/vectors/retention/invalid/` through `contracts/state/check.sh`, every file under `contracts/state/vectors/inputs/invalid/` through the inputs loader and every file under `contracts/store/vectors/invalid/` through `contracts/store/check.sh` | exit 0 for the five valid files, and exit 1 with a `reason:` line for every invalid file |
+| 6 | `uv run --frozen pytest packages/migrate packages/jobstate packages/eventstore packages/artifactindex packages/storecheck packages/stateops packages/itest -q -rs` | all pass with no `SKIPPED` line, covering the runner, the three table families, the grants, the invariants and both object store products |
 | 7 | `uv run --frozen pytest packages/jobstate packages/eventstore packages/artifactindex packages/migrate -q -v -k "ten_of_the_contract or late_writer_loses or every_contract_transition or replay_inserts_no_row or time_from_the_fact or compressed_chunk or attempt_columns_have_no_default or from_empty_and_from_previous_release or first_writer_wins"` | each named test is listed `PASSED` |
 | 8 | `uv run --frozen pytest packages/migrate packages/jobstate packages/eventstore packages/artifactindex packages/storecheck packages/stateops -q -rs -k wheel` | all pass, none skipped, so every package works from a built wheel |
 | 9 | `uv run --frozen python -m wdf_stateops.bench --jobs 100000 --twice` | exit 0, `rows_inserted: 100000` and `events_inserted: 1400000`, then `rows_inserted: 0` and `events_inserted: 0` for the second run, with the phase times printed for the record |
@@ -814,7 +843,7 @@ Not provable by this epic: the `Days` lifecycle rule on objects a day old and th
 - Host constraints: T0 work needs only `uv` and Python from the dev shell.
   T1 work starts TimescaleDB, SeaweedFS or RustFS by `docker run` on 127.0.0.1, each capped at 1 GiB, with at most two containers across the host.
   T2 work needs the `ci` cluster, whose sum of node limits is what R.1 sets, on a host that holds it, so a worker never starts `dev` or `soak`.
-- CI cost, stated as estimates until M.1 records start times and image sizes: every lane's `just ci` now runs the T1 tests of these packages, which start about nine containers one after the other (one TimescaleDB container per test module of `migrate`, `jobstate`, `eventstore`, `artifactindex` and `stateops`, and SeaweedFS and RustFS containers for the contract tests and the full disk runs), and a clean runner pulls three more images.
+- CI cost, stated as estimates until M.1 records start times and image sizes: every lane's `just ci` now runs the T1 tests of these packages, which start, one after the other, one TimescaleDB container per test module that uses the `appdb` fixture (several modules in each of `migrate`, `jobstate`, `eventstore`, `artifactindex` and `stateops`, so the count is the number of such modules and is not estimated here) and SeaweedFS and RustFS containers for the contract tests and the full disk runs, and a clean runner pulls three more images.
   The `state-modules` workflow of X.1 (question 5) is the only addition that starts a cluster, and it runs only on the paths of this epic and on `main`.
   The plan keeps module scoped containers with a fresh database per test, and no test waits for a policy to fire, so the added time stays at the container starts.
 - Estimates, not measurements, in worker-days: M.1 (1), R.1 (0.5), R.2 (0.5), lane 0 (4), lane J (2.5), lane E (3), lane A (1.5), lane D (2), lane O (2), lane C (4), lane Q (3.5), lane X (0.5), exit test (1).
@@ -823,6 +852,8 @@ Not provable by this epic: the `Days` lifecycle rule on objects a day old and th
 ## 8. Closure (filled at close)
 
 Not yet run.
+At close the closing worker also refines the architecture note `docs/architecture/13-state-envelope-artifacts.drawio` with the infra node resize, the app database with TimescaleDB, the object store choice and its roles, and re-exports the diagrams (`scripts/export-diagrams.sh --check` clean).
+No lane owns the note, so this is a close step and not a lane issue.
 At close this section holds the commit of the last lane merge, the run of the exit test with its pasted output in the PR that records it, the fsync figures of D.1, the measured insert and ingest rates of Q.2, the S8 numbers that resized the infra node, the URLs of the two green workflow runs on `main`, and what moved.
 It also records the follow-ups that this spec already knows:
 
