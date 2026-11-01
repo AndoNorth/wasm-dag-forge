@@ -1,0 +1,46 @@
+{
+  "buckets": [
+    "wdf-sources",
+    "wdf-components",
+    "wdf-results",
+    "wdf-checkpoints"
+  ],
+  "roles": {
+    "submit": {
+      "read": [
+        "wdf-sources"
+      ],
+      "write": [
+        "wdf-sources"
+      ]
+    },
+    "compile": {
+      "read": [
+        "wdf-sources",
+        "wdf-components"
+      ],
+      "write": [
+        "wdf-components"
+      ]
+    },
+    "simulate": {
+      "read": [
+        "wdf-components",
+        "wdf-results",
+        "wdf-checkpoints"
+      ],
+      "write": [
+        "wdf-results",
+        "wdf-checkpoints"
+      ]
+    },
+    "aggregate": {
+      "read": [
+        "wdf-results"
+      ],
+      "write": [
+        "wdf-results"
+      ]
+    }
+  }
+}
