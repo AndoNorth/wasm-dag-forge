@@ -8,11 +8,9 @@ from dataclasses import dataclass, field
 
 import yaml
 
-from .profile import CONTRACT_DIR
+from .profile import CONTRACT
 
-_PINNED = yaml.safe_load((CONTRACT_DIR.parent / "instrumentation/metrics.yaml").read_text())[
-    "metrics"
-]
+_PINNED = yaml.safe_load((CONTRACT / "metrics.yaml").read_text())["metrics"]
 
 
 @dataclass

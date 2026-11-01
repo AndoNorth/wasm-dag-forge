@@ -13,6 +13,7 @@ CODES = (
     "parameter-type-mismatch",
     "bad-seed",
     "unknown-class",
+    "params-malformed",
 )
 
 
