@@ -59,6 +59,7 @@ codes:
   unbound-parameter: {class: params, meaning: "a declared parameter has no value"}
   unknown-parameter: {class: params, meaning: "a value for an undeclared name, or seed among the parameters"}
   parameter-type-mismatch: {class: params, meaning: "a value has another type than its declaration"}
+  params-malformed: {class: params, meaning: "the row block or its parameters member is not a mapping"}
   bad-seed: {class: params, meaning: "the seed is negative or at least 2**53"}
   unknown-class: {class: params, meaning: "the class override is not a class of the profile"}
   # patch: a changed plan of a paused job

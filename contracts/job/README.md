@@ -1,7 +1,7 @@
 # Job contract
 
 Owner epic: #5 (DAG configuration schema and validator).
-Version: 1
+Version: 2
 Consumers: dispatch API (#24), workflow (#6), admission (#8), placement (#9), storage (#3), load CLI (#14), failure scenarios (#15) and the system tests (#17).
 
 A job is a JSON document, a template of tasks keyed by id.

@@ -8,6 +8,7 @@ value, and changes nothing else.
 
 from wdf_jobdoc import Issue
 from wdf_jobdoc.issues import pointer
+from wdf_jobdoc.loader import string_issues
 from wdf_jobdoc.models import SEED_LIMIT
 from wdf_jobdoc.plan_models import Plan
 
@@ -50,10 +51,25 @@ def _value_issue(declared: str, value, path: str) -> Issue | None:
     )
 
 
+def _text_issues(value, tokens: tuple) -> list[Issue]:
+    """The loader's rule for strings, so that one logical value has one plan hash."""
+    if isinstance(value, str):
+        return string_issues(value, tokens, "string")
+    if isinstance(value, list):
+        return [i for n, v in enumerate(value) for i in _text_issues(v, (*tokens, n))]
+    return []
+
+
 def _field_issues(plan: Plan, params, profile) -> list[Issue]:
+    if not isinstance(params, dict):
+        return [Issue("params-malformed", "", "the row block is not a mapping")]
+    values = params.get("parameters")
+    if values is None:
+        values = {}
+    elif not isinstance(values, dict):
+        return [Issue("params-malformed", "/parameters", "the parameters are not a mapping")]
     issues = []
     row_seed = params.get("seed")
-    values = params.get("parameters") or {}
     if row_seed is not None:
         if (issue := _value_issue("seed", row_seed, "/seed")) is not None:
             issues.append(issue)
@@ -69,6 +85,8 @@ def _field_issues(plan: Plan, params, profile) -> list[Issue]:
             issues.append(Issue("unknown-parameter", path, "the template does not declare it"))
         elif (issue := _value_issue(plan.parameters[name], value, path)) is not None:
             issues.append(issue)
+        else:
+            issues += _text_issues(value, ("parameters", name))
     for name in plan.parameters:
         if name != RESERVED and name not in values:
             issues.append(Issue("unbound-parameter", pointer(("parameters", name)), "no value"))

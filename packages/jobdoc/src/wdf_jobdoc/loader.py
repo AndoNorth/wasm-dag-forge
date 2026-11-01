@@ -97,12 +97,12 @@ def _walk(raw, duplicates) -> list[Issue]:
                     Issue("duplicate-key", pointer((*path, key)), f"the key {key!r} appears twice")
                 )
             for key, child in node.items():
-                issues += _string_issues(key, (*path, key), "key")
+                issues += string_issues(key, (*path, key), "key")
                 stack.append((child, (*path, key)))
         elif isinstance(node, list):
             stack.extend((child, (*path, index)) for index, child in enumerate(node))
         elif isinstance(node, str):
-            issues += _string_issues(node, path, "string")
+            issues += string_issues(node, path, "string")
         elif isinstance(node, _NonFinite):
             issues.append(
                 Issue("non-finite-number", pointer(path), f"{node.literal} is not a number")
@@ -118,7 +118,7 @@ def _is_cpu(path) -> bool:
     return len(path) == 3 and path[0] == "tasks" and path[2] == "cpu"
 
 
-def _string_issues(text: str, path, what: str) -> list[Issue]:
+def string_issues(text: str, path, what: str) -> list[Issue]:
     try:
         text.encode("utf-8")
     except UnicodeEncodeError:

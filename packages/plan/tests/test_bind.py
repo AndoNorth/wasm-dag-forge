@@ -114,3 +114,53 @@ def test_a_long_value_is_refused_as_plan_too_large(template, ci):
 def test_a_class_of_the_profile_is_accepted(template, ci):
     for name in ci.classes:
         assert check_job_params(template, {**PARAMS, "class_override": name}, ci) == ()
+
+
+@pytest.mark.parametrize(
+    ("params", "path"),
+    [
+        ({"seed": 1, "parameters": [1]}, "/parameters"),
+        ({"seed": 1, "parameters": "x"}, "/parameters"),
+        ({"seed": 1, "parameters": 0}, "/parameters"),
+        ([], ""),
+        (None, ""),
+        ("seed", ""),
+    ],
+)
+def test_a_malformed_row_block_is_reported_not_raised(template, ci, params, path):
+    issues = check_job_params(template, params, ci)
+    assert [(i.code, i.path) for i in issues] == [("params-malformed", path)]
+    with pytest.raises(ParamsInvalid):
+        bind(template, params, ci)
+
+
+@pytest.fixture
+def text_template(good, plan_of):
+    good["parameters"] = {"seed": "seed", "note": "string", "tags": "string-list"}
+    good["tasks"]["sim"]["params"]["args"] = {"note": {"param": "note"}}
+    good["tasks"]["agg"]["params"]["args"] = {"blocks": {"param": "tags"}}
+    return plan_of(good)
+
+
+@pytest.mark.parametrize(
+    ("value", "code", "path"),
+    [
+        ("é", "not-nfc", "/parameters/note"),
+        ("\ud800", "lone-surrogate", "/parameters/note"),
+        (["ok", "é"], "not-nfc", "/parameters/tags/1"),
+        (["\udfff"], "lone-surrogate", "/parameters/tags/0"),
+    ],
+)
+def test_a_string_value_the_loader_would_refuse_is_refused(text_template, ci, value, code, path):
+    key = "tags" if isinstance(value, list) else "note"
+    row = {"seed": 1, "parameters": {"note": "a", "tags": ["a"], key: value}}
+    issues = check_job_params(text_template, row, ci)
+    assert [(i.code, i.path) for i in issues] == [(code, path)]
+
+
+def test_one_logical_text_binds_to_one_plan_hash(text_template, ci):
+    row = {"seed": 1, "parameters": {"note": "\u00e9", "tags": ["a"]}}
+    other = {"seed": 1, "parameters": {"note": "e\u0301", "tags": ["a"]}}
+    assert check_job_params(text_template, row, ci) == ()
+    with pytest.raises(ParamsInvalid):
+        bind(text_template, other, ci)

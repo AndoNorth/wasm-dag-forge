@@ -54,6 +54,8 @@ A job row carries a block with `seed`, `parameters` and an optional `class_overr
 - `unknown-parameter` for a name the template does not declare, and for `seed` among the `parameters`.
 - `parameter-type-mismatch` for a value of another type than its declaration.
 - `bad-seed` for a seed below 0 or at least 2^53, which is checked even when the template does not declare `seed`.
+- `params-malformed` for a block that is not a mapping or whose `parameters` is not a mapping, reported alone because nothing else in it can be read.
+- `not-nfc` and `lone-surrogate` for a `string` or `string-list` value the loader would refuse, so that one logical job has one plan hash.
 - `unknown-class` for an override that is not a class of the profile.
 - `plan-too-large` when the bound plan is over the profile's byte limit, so a long value cannot push a stored job past the payload budget.
 
