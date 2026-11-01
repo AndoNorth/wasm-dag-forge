@@ -1,0 +1,15 @@
+---
+detection_interval_minutes: 60
+buckets:
+  wdf-sources:
+    rules:
+      - kind: abort-incomplete-multipart
+        window: housekeeping.wdf-sources.abort_incomplete_multipart_after_days
+  wdf-components:
+    rules:
+      - kind: abort-incomplete-multipart
+        window: housekeeping.wdf-components.abort_incomplete_multipart_after_days
+  wdf-results:
+    rules:
+      - kind: abort-incomplete-multipart
+        window: housekeeping.wdf-results.abort_incomplete_multipart_after_days

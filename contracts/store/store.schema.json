@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "BucketRules": {
+      "additionalProperties": false,
+      "properties": {
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "title": "Rules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rules"
+      ],
+      "title": "BucketRules",
+      "type": "object"
+    },
+    "KnownGap": {
+      "additionalProperties": false,
+      "properties": {
+        "gap": {
+          "enum": [
+            "lifecycle-edit-by-writer",
+            "delete-while-full"
+          ],
+          "title": "Gap",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "gap",
+        "roles"
+      ],
+      "title": "KnownGap",
+      "type": "object"
+    },
+    "Lifecycle": {
+      "additionalProperties": false,
+      "description": "lifecycle.yaml: the rules of each bucket and how often the lifecycle job looks.",
+      "properties": {
+        "buckets": {
+          "additionalProperties": {
+            "$ref": "#/$defs/BucketRules"
+          },
+          "title": "Buckets",
+          "type": "object"
+        },
+        "detection_interval_minutes": {
+          "exclusiveMinimum": 0,
+          "title": "Detection Interval Minutes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "detection_interval_minutes",
+        "buckets"
+      ],
+      "title": "Lifecycle",
+      "type": "object"
+    },
+    "Product": {
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "description": "A key of the images map of deploy/versions.yaml.",
+          "minLength": 1,
+          "title": "Image",
+          "type": "string"
+        },
+        "known_gaps": {
+          "items": {
+            "$ref": "#/$defs/KnownGap"
+          },
+          "title": "Known Gaps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "image",
+        "known_gaps"
+      ],
+      "title": "Product",
+      "type": "object"
+    },
+    "Products": {
+      "additionalProperties": false,
+      "description": "products.yaml: the tested products and the behaviour each is known not to have.",
+      "properties": {
+        "products": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Product"
+          },
+          "title": "Products",
+          "type": "object"
+        }
+      },
+      "required": [
+        "products"
+      ],
+      "title": "Products",
+      "type": "object"
+    },
+    "Roles": {
+      "additionalProperties": false,
+      "description": "roles.yaml: for each role the actions it may take on each bucket it names.",
+      "properties": {
+        "roles": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "items": {
+                "enum": [
+                  "get",
+                  "put",
+                  "list",
+                  "multipart",
+                  "delete",
+                  "bucket",
+                  "lifecycle"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "title": "Roles",
+          "type": "object"
+        }
+      },
+      "required": [
+        "roles"
+      ],
+      "title": "Roles",
+      "type": "object"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "abort-incomplete-multipart",
+            "expire"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "window": {
+          "description": "A key of contracts/state/retention.yaml.",
+          "pattern": "^(windows|housekeeping)\\.[a-z0-9-]+\\.[a-z_]+$",
+          "title": "Window",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "window"
+      ],
+      "title": "Rule",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:store:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/Roles"
+    },
+    {
+      "$ref": "#/$defs/Lifecycle"
+    },
+    {
+      "$ref": "#/$defs/Products"
+    }
+  ],
+  "title": "contracts/store roles.yaml, lifecycle.yaml and products.yaml"
+}
