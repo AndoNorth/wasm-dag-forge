@@ -5,6 +5,8 @@ import json
 import re
 from datetime import datetime
 from functools import cache
+from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +15,11 @@ from jsonschema.validators import validator_for
 
 from .errors import SchemaInvalid, UnsupportedMajor
 
-CONTRACT_DIR = Path(__file__).resolve().parents[4] / "contracts/events"
+# The contract files the runtime reads ship inside the package, as links to the repository files.
+CONTRACT = resources.files(__package__) / "contract"
+# The repository copy of the whole contract, with its vectors, for tests and tooling only.
+_PARENTS = Path(__file__).resolve().parents
+CONTRACT_DIR = (_PARENTS[4] if len(_PARENTS) > 4 else Path()) / "contracts/events"
 TYPE_PREFIX = "dev.wdf."
 TYPE_RE = re.compile(r"^dev\.wdf\.(?P<name>(?:job|task)(?:\.[a-z0-9]+)+)\.v(?P<major>[1-9][0-9]*)$")
 DATASCHEMA_RE = re.compile(
@@ -23,18 +29,21 @@ DATASCHEMA_RE = re.compile(
 
 @cache
 def _profile_validators() -> tuple[Draft7Validator, Draft7Validator]:
-    cloudevents = json.loads((CONTRACT_DIR / "profile/cloudevents.json").read_text())
-    profile = json.loads((CONTRACT_DIR / "profile/profile.schema.json").read_text())
+    cloudevents = json.loads((CONTRACT / "profile/cloudevents.json").read_text())
+    profile = json.loads((CONTRACT / "profile/profile.schema.json").read_text())
     return Draft7Validator(cloudevents), Draft7Validator(profile)
 
 
-def known_versions(name: str, schemas_dir: Path | None = None) -> list[tuple[int, int]]:
+def known_versions(name: str, schemas_dir: Traversable | None = None) -> list[tuple[int, int]]:
     """The (major, minor) pairs that have a schema file for a type name, sorted ascending."""
-    directory = (schemas_dir or CONTRACT_DIR / "schemas") / name
+    directory = (schemas_dir or CONTRACT / "schemas") / name
     pairs = []
-    for path in directory.glob("*.json"):
-        major, _, minor = path.stem.partition(".")
-        pairs.append((int(major), int(minor)))
+    if directory.is_dir():
+        for path in directory.iterdir():
+            stem, dot, suffix = path.name.rpartition(".")
+            if suffix == "json":
+                major, _, minor = stem.partition(".")
+                pairs.append((int(major), int(minor)))
     return sorted(pairs)
 
 
@@ -63,7 +72,7 @@ def _loosen(schema: Any) -> Any:
     return schema
 
 
-def check_event(event: Any, schemas_dir: Path | None = None) -> tuple[str, int, int]:
+def check_event(event: Any, schemas_dir: Traversable | None = None) -> tuple[str, int, int]:
     """Validates a decoded event and returns the (name, major, minor) its data was checked against.
 
     Raises UnsupportedMajor for a major with no schema and SchemaInvalid for every other failure.
@@ -93,7 +102,7 @@ def check_event(event: Any, schemas_dir: Path | None = None) -> tuple[str, int, 
         raise SchemaInvalid("bad-dataschema", event["dataschema"])
     name, major = kind["name"], int(kind["major"])
 
-    schemas_dir = schemas_dir or CONTRACT_DIR / "schemas"
+    schemas_dir = schemas_dir or CONTRACT / "schemas"
     versions = known_versions(name, schemas_dir)
     if not versions:
         raise SchemaInvalid("unknown-type", event["type"])

@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
+from importlib.resources.abc import Traversable
 from typing import Any
 
 from pydantic import ValidationError
@@ -56,7 +56,7 @@ def to_bytes(event: Event) -> bytes:
     return encoded
 
 
-def from_bytes(data: bytes, schemas_dir: Path | None = None) -> Event:
+def from_bytes(data: bytes, schemas_dir: Traversable | None = None) -> Event:
     if len(data) > MAX_BYTES:
         raise EventTooLarge("event-too-large", f"{len(data)} bytes, the limit is {MAX_BYTES}")
     try:
