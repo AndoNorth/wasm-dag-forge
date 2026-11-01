@@ -1,6 +1,6 @@
 ---
 # Buckets, and for each artifact kind its bucket, addressing class and key template. Schema: layout.schema.json.
-# A content-addressed key is derived from the object bytes and an attempt-scoped key from the attempt that wrote it.
+# A content-addressed key derives from the object bytes, an attempt-scoped key from a never reused attempt identity.
 buckets:
   - wdf-sources
   - wdf-components

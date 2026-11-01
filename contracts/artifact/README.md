@@ -1,7 +1,7 @@
 # Artifact contract
 
 Owner epic: #4 (job event envelope and state propagation).
-Version: 1
+Version: 2
 Consumers: storage (#3), workers (#10), toolchain (#11) and artifacts (#12).
 
 An artifact reference points to an object and holds no bytes.
@@ -13,7 +13,7 @@ The reference schema is [reference.schema.json](reference.schema.json), and the 
 
 A reference has `uri`, `sha256`, `size`, `name` and `kind`, and a `producer` of job, task and attempt for the attempt-scoped kinds only.
 `uri` is `s3://<bucket>/<key>`, `sha256` is 64 lower-case hex digits of the object bytes, and `size` is the object size in bytes.
-`producer.attempt` is an attempt identity as the key formulas of `contracts/events/` define it.
+`producer.attempt` is an attempt identity as the key formulas of `contracts/events/` define it, built from the task attempt that the workflow counts across retries, resumes and patches.
 A reference has no field beyond these, so none can hold bytes, and the consumer verifies the hash and the size against the object.
 
 ## Buckets and addressing
@@ -27,7 +27,7 @@ A reference has no field beyond these, so none can hold bytes, and the consumer 
 
 The key templates are in `layout.yaml` and match the bucket layout of the storage epic.
 A content-addressed key is `sha256/<first two hex digits of the hash>/<hash>`, so identical bytes are stored once and a changed object is a new key.
-An attempt-scoped key names the tenant, batch, job, seed, task and attempt, and a checkpoint adds a segment, so an attempt identity that is never reused never collides.
+An attempt-scoped key names the tenant, batch, job, seed, task and attempt, and a checkpoint adds a segment, so two runs of one task never write the same key, because an attempt identity is never reused and a store never deduplicates one run against another.
 A summary of an aggregate task sits under `<tenant>/<batch>/aggregate/<job>/<task>/<attempt>/<name>`.
 The file `build-info.json` and its schema belong to the toolchain epic (#11), and this contract pins only the reference of a `build-info` object and its bucket.
 

@@ -46,12 +46,12 @@ def cloudevent_id(job_id, task_key, attempt_identity, kind, sequence):
     return _derive("event", job_id, task_key, attempt_identity, kind, str(sequence))
 
 
-def attempt_identity(activity_attempt, resume_counter):
-    if activity_attempt < 1:
-        raise ValueError(f"activity_attempt must be 1 or more, got {activity_attempt}")
+def attempt_identity(task_attempt, resume_counter):
+    if task_attempt < 1:
+        raise ValueError(f"task_attempt must be 1 or more, got {task_attempt}")
     if resume_counter < 0:
         raise ValueError(f"resume_counter must be 0 or more, got {resume_counter}")
-    return f"r{resume_counter}a{activity_attempt}"
+    return f"r{resume_counter}a{task_attempt}"
 
 
 def compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version, entry):

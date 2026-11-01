@@ -1,7 +1,7 @@
 # Events contract
 
 Owner epic: #4 (job event envelope and state propagation).
-Version: 2
+Version: 3
 Consumers: every epic.
 Storage (#3), validator (#5), workflow (#6), broker (#7), admission (#8), placement (#9), workers (#10), toolchain (#11), artifacts (#12), observability (#13), dispatch (#24) and the checkpoint epic (#18) read it.
 
@@ -26,7 +26,7 @@ The code lives in `packages/events/` (import `wdf_events`) and `packages/keys/` 
 | `subject` | The job id for a job type, and `<job id>/<task id>` for a task type |
 | `tenant`, `jobid`, `priorityclass`, `jobclass`, `traceparent` | Required on every event |
 | `taskid` | Required on a task type, and the `subject` is built from it |
-| `attempt` | An integer of 1 or more, present on events that belong to an attempt |
+| `attempt` | The task attempt, an integer of 1 or more, present on events that belong to an attempt |
 | `tracestate` | Optional, at most 512 characters |
 | `data` | An object that validates against the schema `dataschema` names |
 
@@ -76,11 +76,15 @@ A field boundary therefore cannot move without changing the frame.
 | `job_id(tenant, submission_key)` | `derive("job", tenant, submission_key)` |
 | `batch_id(tenant, batch_key)` | `derive("batch", tenant, batch_key)` |
 | `workflow_id(job_id)` | `"job-" + job_id` |
-| `attempt_identity(activity_attempt, resume_counter)` | `"r<resume_counter>a<activity_attempt>"`, and `ValueError` when `activity_attempt` is below 1 or `resume_counter` is below 0 |
+| `attempt_identity(task_attempt, resume_counter)` | `"r<resume_counter>a<task_attempt>"`, and `ValueError` when `task_attempt` is below 1 or `resume_counter` is below 0 |
 | `cloudevent_id(job_id, task_key, attempt_identity, kind, sequence)` | `derive("event", job_id, task_key, attempt_identity, kind, <sequence in decimal>)`, with `task_key` and `attempt_identity` empty where they do not apply, and `ValueError` when `sequence` is below 0 |
 | `compile_cache_key(source_hash, lockfile_hash, componentize_py_version, wit_version, entry)` | the lower-case hex SHA-256 of the UTF-8 bytes of `frame("compile", source_hash, lockfile_hash, componentize_py_version, wit_version, entry)`, and `ValueError` when a hash is not 64 lower-case hex digits or `entry` is empty |
 
-The activity attempt restarts after retry exhaustion and a patch, and the resume counter lives in workflow state, so the pair never repeats.
+The task attempt is the per-task counter that the workflow keeps and increments on every run of the task, so it is not the attempt number of a Temporal activity.
+Activities run once and the retry loop lives in the workflow, so an activity attempt number would be 1 on every retry and two retries would share one identity.
+The task attempt never restarts and never goes back, across retries, resumes and patches, and the resume counter lives in workflow state too.
+The pair therefore never repeats for a task, and two runs of one task never share an event id or an attempt-scoped object key.
+`vectors/keys.json` pins this under `workflow_retries`.
 The `entry` is the module of the source bundle that the compile task builds, so two entries over one bundle are two builds and two keys.
 The workflow and the compile worker both import `compile_cache_key` and compute it nowhere else.
 `wdf_keys` holds stubs that raise `NotImplementedError("not implemented: owned by lane K")` until the owning lane replaces them, and `packages/keys/tests/test_vectors.py` lists the stubbed names in `STUBBED`.
