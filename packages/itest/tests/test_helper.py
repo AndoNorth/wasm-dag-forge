@@ -122,3 +122,45 @@ def test_an_unreachable_docker_fails_and_never_skips(tmp_path):
     assert child.returncode != 0
     assert "DockerUnavailable" in child.stdout
     assert "skipped" not in child.stdout
+
+
+def test_tmpfs_is_size_capped(t1):
+    with t1.container("canary", command=["sleep", "60"], tmpfs={"/scratch": 8}) as c:
+        info = inspect(c.id)
+        assert info["HostConfig"]["Tmpfs"] == {"/scratch": "rw,size=8m"}
+        assert c.exec("dd", "if=/dev/zero", "of=/scratch/fits", "bs=1M", "count=4").returncode == 0
+        full = c.exec("dd", "if=/dev/zero", "of=/scratch/over", "bs=1M", "count=16", check=False)
+        assert full.returncode != 0
+        assert "No space left on device" in full.stderr
+
+
+def test_mount_is_read_only(t1, tmp_path):
+    identities = tmp_path / "identities.json"
+    identities.write_text("{}")
+    directory = tmp_path / "dir"
+    directory.mkdir()
+    (directory / "a").write_text("a")
+    mounts = {identities: "/etc/identities.json", directory: "/data"}
+    with t1.container("canary", command=["sleep", "60"], mounts=mounts) as c:
+        assert c.exec("cat", "/etc/identities.json").stdout == "{}"
+        assert c.exec("cat", "/data/a").stdout == "a"
+        for target in ("/etc/identities.json", "/data/new"):
+            write = c.exec("sh", "-c", f"echo x > {target}", check=False)
+            assert write.returncode != 0
+            assert "Read-only file system" in write.stderr
+
+
+def test_a_missing_mount_source_is_refused_before_docker_runs(t1, tmp_path):
+    with pytest.raises(Exception, match="existing absolute path"):
+        with t1.container("canary", mounts={tmp_path / "absent": "/x"}):
+            pass
+    assert run_ids(t1.run_id) == []
+
+
+def test_exec_runs_in_the_labelled_container(t1):
+    with t1.container("canary", command=["sleep", "60"]) as c:
+        assert c.exec("hostname").stdout.strip() == c.id[:12]
+        assert c.exec("sh", "-c", "exit 3", check=False).returncode == 3
+        with pytest.raises(Exception, match="exited 3"):
+            c.exec("sh", "-c", "exit 3")
+        assert run_ids(t1.run_id) == [c.id[:12]]
