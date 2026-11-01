@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Brings up the kind cluster wdf and its local registry for WDF_PRESET (default ci) through ctlptl.
+# Applies the namespaces and quotas of the preset once every node is Ready.
 # A second run with nothing changed leaves every container as it was.
 # Exit 0 every node Ready, 1 the cluster did not come up, 2 usage, 4 refused: the preset needs more memory than the
 # host has, or the cluster wdf is one this script did not start (or started for another preset).
@@ -66,5 +67,10 @@ labelled=$(kubectl --context "$context" get nodes -l "$pool_label" --no-headers 
 }
 running=$(docker ps -q --filter label=io.x-k8s.kind.cluster=wdf --filter status=running | wc -l)
 [ "$running" -eq "$want" ] || { echo "cluster wdf has $running running node containers, preset $preset has $want" >&2; exit 1; }
-scripts/cluster/allocatable.sh "$out/limits.yaml" || exit 1
+# The kubelet reservation is written when a node is created, so a preset resized after that ends in a mismatch here.
+scripts/cluster/allocatable.sh "$out/limits.yaml" || {
+    echo "node allocatable differs from preset $preset, a resized preset needs the cluster created again: just nuke, then just up" >&2
+    exit 1
+}
+scripts/cluster/namespaces.sh apply "$preset"
 echo "cluster wdf ready: preset $preset, $got nodes"
