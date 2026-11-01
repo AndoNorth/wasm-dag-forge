@@ -9,10 +9,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 PROBE = """
-import wdf_storecheck
-from wdf_storecheck.stubs import STUBBED
-assert STUBBED
+import json
+import yaml
+from wdf_storecheck.contract import check
+from wdf_storecheck.models import CONTRACT, Lifecycle, Products, Roles
 
+for name in ("roles.yaml", "lifecycle.yaml", "products.yaml"):
+    check(yaml.safe_load((CONTRACT / name).read_text()))
+for name in ("layout.yaml", "retention.yaml", "store.schema.json"):
+    assert (CONTRACT / name).is_file(), name
+assert json.loads((CONTRACT / "store.schema.json").read_text())["anyOf"]
 """
 
 
@@ -35,7 +41,7 @@ def clean_python(tmp_path_factory) -> Path:
     return python
 
 
-def test_a_wheel_in_a_clean_venv_imports_and_lists_its_stubs(clean_python, tmp_path):
+def test_a_wheel_in_a_clean_venv_loads_the_committed_contract(clean_python, tmp_path):
     """Runs isolated from a directory with no repository above it, so a path into the tree fails."""
     probe = subprocess.run(
         [clean_python, "-I", "-c", PROBE], capture_output=True, text=True, cwd=tmp_path

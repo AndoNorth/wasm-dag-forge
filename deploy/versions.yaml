@@ -31,3 +31,11 @@ images:
     version: 1.9.1
     # yamllint disable-line rule:line-length
     digest: sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e
+  chrislusf/seaweedfs:
+    version: "4.51"
+    # yamllint disable-line rule:line-length
+    digest: sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8
+  rustfs/rustfs:
+    version: 1.0.4
+    # yamllint disable-line rule:line-length
+    digest: sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2

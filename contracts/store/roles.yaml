@@ -1,0 +1,34 @@
+---
+# Object store identities and what each may do per bucket. Schema: store.schema.json, generated from the models.
+# Bucket names come from contracts/artifact/layout.yaml. The split is at bucket level and prefixes are not tested.
+# admin provisions buckets and lifecycle rules for the bootstrap and is used by no pod.
+roles:
+  admin:
+    wdf-sources: [bucket, lifecycle]
+    wdf-components: [bucket, lifecycle]
+    wdf-results: [bucket, lifecycle]
+    wdf-checkpoints: [bucket, lifecycle]
+  submit:
+    wdf-sources: [put, multipart]
+  indexer:
+    wdf-sources: [put, multipart]
+  compile:
+    wdf-sources: [get, list]
+    wdf-components: [put, multipart]
+  simulate:
+    wdf-components: [get, list]
+    wdf-results: [put, multipart]
+    wdf-checkpoints: [get, list, put, multipart]
+  aggregate:
+    wdf-results: [get, list, put, multipart]
+  workflow:
+    wdf-sources: [get, list]
+    wdf-components: [get, list]
+    wdf-results: [get, list]
+  export:
+    wdf-results: [get, list]
+  reaper:
+    wdf-sources: [list, delete]
+    wdf-components: [list, delete]
+    wdf-results: [list, delete]
+    wdf-checkpoints: [list, delete]

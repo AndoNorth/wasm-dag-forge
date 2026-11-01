@@ -1,0 +1,12 @@
+---
+roles:
+  admin: {wdf-sources: [bucket]}
+  submit: {wdf-sources: [put]}
+  indexer: {wdf-sources: [put]}
+  compile: {wdf-sources: [get]}
+  simulate: {wdf-results: [put]}
+  aggregate: {wdf-results: [get]}
+  workflow: {wdf-sources: [get]}
+  export: {wdf-results: [get]}
+  reaper: {wdf-results: [delete]}
+  janitor: {wdf-results: [delete]}
