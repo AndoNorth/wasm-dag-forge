@@ -60,3 +60,16 @@ A job row carries a block with `seed`, `parameters` and an optional `class_overr
 `bind(plan, params, profile)` raises `ParamsInvalid` carrying those issues, and otherwise replaces each placeholder by the job's value as a whole value and changes nothing else.
 The row seed is the value of the reserved parameter `seed`, and a template that does not declare it ignores the row seed.
 The declarations stay in the bound plan, so binding a bound plan again with the same block gives the same plan, and compile tasks never hold a placeholder, so they are byte-identical across a batch.
+
+## Versions and compatibility
+
+The document minors and the plan version follow the additive-only rule of the events contract: within a version a field may be added only as optional, and a required field, a removed field or a renamed one needs a new version.
+`wdf_plan.evolution.violations(old, new)` walks two schemas through `properties`, `items`, `additionalProperties`, `patternProperties`, `$ref`, `oneOf` and `anyOf` and reports each such change with the path to the field, so a model held in the map of tasks is compared as well.
+`test_schema_evolution.py` compares every committed schema with the one the models generate, and names the field that broke the rule.
+The generic walker of `wdf_compat` stops at `properties` and `items`, so it is not used here.
+
+`read_plan(data)` reads plan version 1 from JSON text or a parsed mapping and raises `UnsupportedPlanVersion` for any other version, a missing one and a non-integer one.
+It has no hook for another version, and the PR that introduces plan version N+1 adds the branch that reads version N, with `contracts/job/vectors/plans/N/` as its test.
+That branch stays for the window of an event major (`wdf_compat.window.readable_days`), because a stored job outlives a deploy by that long.
+
+`test_golden_plans_still_compile` recompiles every example against the slots fixture to the committed bytes, so a change to defaults, ordering or canonical form fails and needs a contract-change PR.
