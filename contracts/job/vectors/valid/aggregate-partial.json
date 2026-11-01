@@ -1,0 +1,126 @@
+{
+  "schema": "urn:wdf:schema:job:1.0",
+  "tasks": {
+    "build": {
+      "type": "compile",
+      "params": {
+        "source": {
+          "uri": "s3://wdf-sources/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "size": 2048,
+          "name": "bundle.tar.gz",
+          "kind": "source"
+        },
+        "entry": "sim"
+      }
+    },
+    "sim-0": {
+      "type": "simulate",
+      "inputs": [
+        {
+          "task": "build",
+          "output": "component"
+        }
+      ],
+      "cpu": 0.25,
+      "memory_mib": 384,
+      "run_timeout_s": 600,
+      "retries": 0,
+      "params": {
+        "workload": "pi",
+        "args": {
+          "steps": 1000
+        },
+        "seed": 0
+      }
+    },
+    "sim-1": {
+      "type": "simulate",
+      "inputs": [
+        {
+          "task": "build",
+          "output": "component"
+        }
+      ],
+      "cpu": 0.25,
+      "memory_mib": 384,
+      "run_timeout_s": 600,
+      "retries": 0,
+      "params": {
+        "workload": "pi",
+        "args": {
+          "steps": 1000
+        },
+        "seed": 1
+      }
+    },
+    "sim-2": {
+      "type": "simulate",
+      "inputs": [
+        {
+          "task": "build",
+          "output": "component"
+        }
+      ],
+      "cpu": 0.25,
+      "memory_mib": 384,
+      "run_timeout_s": 600,
+      "retries": 0,
+      "params": {
+        "workload": "pi",
+        "args": {
+          "steps": 1000
+        },
+        "seed": 2
+      }
+    },
+    "sim-3": {
+      "type": "simulate",
+      "inputs": [
+        {
+          "task": "build",
+          "output": "component"
+        }
+      ],
+      "cpu": 0.25,
+      "memory_mib": 384,
+      "run_timeout_s": 600,
+      "retries": 0,
+      "params": {
+        "workload": "pi",
+        "args": {
+          "steps": 1000
+        },
+        "seed": 3
+      }
+    },
+    "agg": {
+      "type": "aggregate",
+      "cpu": 1,
+      "memory_mib": 512,
+      "run_timeout_s": 600,
+      "params": {
+        "aggregation": "digest_list"
+      },
+      "inputs": [
+        {
+          "task": "sim-0",
+          "output": "result"
+        },
+        {
+          "task": "sim-1",
+          "output": "result"
+        },
+        {
+          "task": "sim-2",
+          "output": "result"
+        },
+        {
+          "task": "sim-3",
+          "output": "result"
+        }
+      ],
+      "allow_partial": true
+    }
+  }
+}
