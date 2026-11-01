@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "functions": {
     "job_id": [
       {"args": ["acme", "sub-1"], "expect": "3a9617fa-df7c-5760-a644-42d559e0f433"},
@@ -55,5 +55,32 @@
       {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0s", "im"], "expect": "dbfb9a61af6cb721dd90604032659db61f4a38c9bf81de8fc1a98de7908220ec", "group": "boundary-entry"},
       {"args": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1.2.3", "0.1.0", ""], "raises": "ValueError"}
     ]
-  }
+  },
+  "workflow_retries": [
+    {
+      "note": "two workflow-level retries of one task, each activity running once",
+      "job_id": "3a9617fa-df7c-5760-a644-42d559e0f433",
+      "task_key": "simulate-0",
+      "resume_counter": 0,
+      "kind": "task.attempt.failed",
+      "sequence": 0,
+      "runs": [
+        {"task_attempt": 1, "identity": "r0a1", "event_id": "d35573e4-089b-5d3b-9e46-eefec9a04fa3"},
+        {"task_attempt": 2, "identity": "r0a2", "event_id": "ba1354d2-1f55-5ceb-af02-8f5e8219e544"}
+      ],
+      "artifact_vectors": ["result.yaml", "result-retry.yaml"]
+    },
+    {
+      "note": "the attempt keeps counting through a resume, so the next run is r1a3 and never r1a1",
+      "job_id": "3a9617fa-df7c-5760-a644-42d559e0f433",
+      "task_key": "simulate-0",
+      "resume_counter": 1,
+      "kind": "task.started",
+      "sequence": 0,
+      "runs": [
+        {"task_attempt": 3, "identity": "r1a3", "event_id": "a753329d-c200-5b7f-82f6-666b5674e516"}
+      ],
+      "artifact_vectors": []
+    }
+  ]
 }
