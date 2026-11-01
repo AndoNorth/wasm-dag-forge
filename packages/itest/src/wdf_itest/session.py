@@ -110,6 +110,25 @@ class Container:
     name: str
     host_ports: dict[int, int]
 
+    def exec(self, *command: str, check: bool = True) -> subprocess.CompletedProcess:
+        """Runs a command inside this container and returns its text output.
+
+        A non-zero exit raises ContainerError when `check` is set, and is returned otherwise.
+        """
+        try:
+            run = subprocess.run(
+                ["docker", "exec", self.id, *command], capture_output=True, text=True, timeout=300
+            )
+        except FileNotFoundError:
+            raise DockerUnavailable("the docker command is not on PATH") from None
+        except subprocess.TimeoutExpired:
+            raise DockerUnavailable(f"docker exec timed out after 300s in {self.name}") from None
+        if check and run.returncode != 0:
+            raise ContainerError(
+                f"{' '.join(command)} exited {run.returncode} in {self.name}: {run.stderr.strip()}"
+            )
+        return run
+
     def wait_ready(self, k: int, timeout: float = 60) -> None:
         """Waits until the loopback port of index k accepts a TCP connection."""
         deadline = time.monotonic() + timeout
@@ -174,11 +193,22 @@ class Session:
             atexit.unregister(self.close)
 
     @contextmanager
-    def container(self, image_key: str, ports: dict[int, int] | None = None, command=(), env=None):
+    def container(
+        self,
+        image_key: str,
+        ports: dict[int, int] | None = None,
+        command=(),
+        env=None,
+        tmpfs: dict[str, int] | None = None,
+        mounts: dict[str | Path, str] | None = None,
+    ):
         """Starts one container, yields it and removes it afterwards.
 
         `ports` maps a port index k below 10 to a container port, and is published on
         127.0.0.1:<19000 + slot * 10 + k>.
+        `tmpfs` maps a container path to the size cap in MiB of a memory-backed mount there,
+        which counts against the memory cap of the container.
+        `mounts` maps an existing host file or directory to a container path, mounted read-only.
         """
         if self._fd is None:
             raise ContainerError("the session is not open")
@@ -193,6 +223,13 @@ class Session:
             args += ["-p", f"127.0.0.1:{mapping[k]}:{container_port}"]
         for key, value in (env or {}).items():
             args += ["-e", f"{key}={value}"]
+        for path, size_mib in (tmpfs or {}).items():
+            args += ["--tmpfs", f"{path}:rw,size={size_mib}m"]
+        for host_path, container_path in (mounts or {}).items():
+            host = Path(host_path)
+            if not host.is_absolute() or not host.exists():
+                raise ContainerError(f"a mount source must be an existing absolute path: {host}")
+            args += ["--mount", f"type=bind,src={host},dst={container_path},readonly"]
         self._active = True
         try:
             container_id = _docker(*args, image_ref(image_key), *command)

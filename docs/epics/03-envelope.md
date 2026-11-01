@@ -358,3 +358,5 @@ Follow-ups recorded by the lanes and by this run, none of which blocks closure:
 - Make `wdf_events.metrics` readable from a package installed outside the repository, which it is not because it reads the contract by repository path.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+
+- 2026-11-01: [#168](https://github.com/AndoNorth/wasm-dag-forge/issues/168) adds the `tmpfs`, `mounts` and `Container.exec` options to the container helper, all off by default.
