@@ -1,0 +1,80 @@
+{
+  "$id": "urn:wdf:schema:state.event-row:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One row per event. The fields are the columns of contracts/state/README.md in the same order.\n\nThe attempt and the task have no default, so a writer states what the event carries.",
+  "properties": {
+    "attempt": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Attempt"
+    },
+    "body": {
+      "description": "The canonical bytes of the event, as text.",
+      "minLength": 1,
+      "title": "Body",
+      "type": "string"
+    },
+    "event_id": {
+      "pattern": "^[^#]+#[^#]+$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_time": {
+      "format": "date-time",
+      "title": "Event Time",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "source": {
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    },
+    "task_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Task Id"
+    },
+    "tenant": {
+      "minLength": 1,
+      "title": "Tenant",
+      "type": "string"
+    },
+    "type": {
+      "minLength": 1,
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "event_time",
+    "type",
+    "source",
+    "tenant",
+    "job_id",
+    "task_id",
+    "attempt",
+    "body"
+  ],
+  "title": "EventRow",
+  "type": "object"
+}

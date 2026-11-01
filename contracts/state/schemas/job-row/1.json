@@ -1,0 +1,237 @@
+{
+  "$id": "urn:wdf:schema:state.job-row:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One row per job, with the columns of contracts/state/README.md in the same order.",
+  "properties": {
+    "batch_id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Batch Id",
+      "type": "string"
+    },
+    "control_delivered_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Control Delivered At"
+    },
+    "control_seq": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Control Seq",
+      "type": "integer"
+    },
+    "created_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set by the database.",
+      "title": "Created At"
+    },
+    "fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Fingerprint",
+      "type": "string"
+    },
+    "job_class": {
+      "default": "short",
+      "enum": [
+        "short",
+        "long"
+      ],
+      "title": "Job Class",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "manifest_ref": {
+      "additionalProperties": true,
+      "title": "Manifest Ref",
+      "type": "object"
+    },
+    "manifest_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Generated from manifest_ref and never written.",
+      "title": "Manifest Sha256"
+    },
+    "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+    },
+    "pending_patch_ref": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pending Patch Ref"
+    },
+    "priority_class": {
+      "minLength": 1,
+      "title": "Priority Class",
+      "type": "string"
+    },
+    "published_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Published At"
+    },
+    "requested_action": {
+      "anyOf": [
+        {
+          "enum": [
+            "pause",
+            "resume",
+            "cancel",
+            "terminate"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Requested Action"
+    },
+    "schema_version": {
+      "minLength": 1,
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "seed": {
+      "exclusiveMaximum": 9007199254740992,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "status": {
+      "default": "accepted",
+      "enum": [
+        "accepted",
+        "admitted",
+        "running",
+        "paused",
+        "resume-pending",
+        "succeeded",
+        "partial",
+        "failed",
+        "cancelled",
+        "terminated"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "submission_key": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Submission Key",
+      "type": "string"
+    },
+    "tenant": {
+      "minLength": 1,
+      "title": "Tenant",
+      "type": "string"
+    },
+    "terminal_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set by the guarded move into a terminal status.",
+      "title": "Terminal At"
+    },
+    "traceparent": {
+      "minLength": 1,
+      "title": "Traceparent",
+      "type": "string"
+    },
+    "tracestate": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tracestate"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set by the database.",
+      "title": "Updated At"
+    }
+  },
+  "required": [
+    "job_id",
+    "tenant",
+    "submission_key",
+    "batch_id",
+    "priority_class",
+    "manifest_ref",
+    "schema_version",
+    "traceparent",
+    "seed",
+    "parameters",
+    "fingerprint"
+  ],
+  "title": "job-row 1",
+  "type": "object"
+}

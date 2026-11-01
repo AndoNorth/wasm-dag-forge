@@ -1,0 +1,16 @@
+---
+# Retention windows of the safety net. Schema: retention.schema.json, generated from the models.
+# Every entry of windows is at least twice MAX_JOB_DURATION_DAYS of wdf_compat.window, so a checkpoint outlives a full
+# length run followed by a pause of the same length. The artifact reaper sets its own windows below these.
+windows:
+  event: {drop_after_days: 14}
+  wdf-results: {expire_after_days: 28}
+  wdf-checkpoints: {expire_after_days: 14}
+# Housekeeping carries no floor, because it removes nothing a job can still need.
+# Sources and components have no age rule, and accepted_job has no retention of any kind.
+housekeeping:
+  event: {compress_after_days: 2}
+  wdf-sources: {abort_incomplete_multipart_after_days: 1}
+  wdf-components: {abort_incomplete_multipart_after_days: 1}
+  wdf-results: {abort_incomplete_multipart_after_days: 1}
+  wdf-checkpoints: {abort_incomplete_multipart_after_days: 1}
