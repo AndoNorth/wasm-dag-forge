@@ -348,6 +348,73 @@ Not provable by this epic: the wall-clock duration of a job wider than `max_para
 
 ## 8. Closure (filled at close)
 
-<commit sha, exit test run, CI run url, what was learned, what moved>
+Closed 2026-11-01 at `c9e8f96b3910b41c3413b71278f6551e992b4e74`, the commit of the last lane merge (P.4).
+All sixteen rows of the exit test of section 6 pass.
+The run is recorded with its pasted output in the PR that adds this section.
+
+Method of the run:
+
+- The export is `git archive origin/main` extracted into a scratch directory outside every git repository, and no row ran from a worktree.
+- The worker that ran it wrote none of the lanes.
+- Docker was running for row 14 only, and no cluster was started.
+- The containers of the host that were already running (a plain kind cluster among them) were not touched, and the set of containers was identical before and after row 14.
+- Rows 3 and 11 edited one line of `packages/jobdoc/src/wdf_jobdoc/models.py` in the export, and the file was restored from a copy and checked by SHA-256 each time.
+
+Results:
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1 | pass | `uv sync --frozen` exit 0, `uv lock --check` exit 0 with 42 packages resolved and no change |
+| 2 | pass | `schemagen --check` exit 0, no output |
+| 3 | pass | renaming `CompileParams.entry` gave exit 1 with `drift: contracts/job/schemas/job/1.0.json` and `drift: contracts/job/schemas/plan/1.json`, and the check is exit 0 again after the restore |
+| 4 | pass | 7 valid vectors, every one exit 0 |
+| 5 | pass | 91 invalid vectors, block A printed nothing |
+| 6 | pass | 881 passed, no `SKIPPED` line |
+| 7 | pass | 4 passed, and the four named tests are in the list |
+| 8 | pass | `same`, and `plan_hash` `0bc56175...5fa4fd4` equals the `HASHES` line of `level2-aggregate.seed-7.plan.json` |
+| 9 | pass | exit 1, one `dependency-cycle` issue at `/tasks/a` |
+| 10 | pass | exit 0 with `recompile: build`, then exit 1 with `build-changed-after-result` |
+| 11 | pass | adding a required `owner` field to `Document` failed `test_evolution_committed_schema_is_additive_over_the_models[job-1.0]` with `job/1.0.owner: new required field`, and the file was restored |
+| 12 | pass | 1 passed, none skipped |
+| 13 | pass | `template_validations: 1`, `tasks: 8`, `jobs: 100000`, `seconds: 23.49`, exit 0 |
+| 14 | pass | exit 0 in 5 min 28 s: lint, 1,336 unit tests passed, 11 integration tests passed, `nix flake check` passed, and no container labelled `wdf.dev/verify-run` remained |
+| 15 | pass | https://github.com/AndoNorth/wasm-dag-forge/actions/runs/41302655498, workflow `ci` on `main` at `c9e8f96`, conclusion success, so no `workflow_dispatch` was needed |
+| 16 | pass | `250m/384Mi` and `fits` for `ci`, `dev` and `soak` |
+
+Departures from the method:
+
+- The first export went under the firstmate data directory, which sits inside another git repository, where `nix develop` sees only tracked files.
+  The export was moved to a directory with no enclosing repository, so the flake is read as a plain path and the commands run as written.
+- Row 6 was typed once with a quoting error in the harness, which ran nothing, and the same command was then run as written.
+- The names of row 7 come from a second run of the same selection with `-v`, since `-q` does not list them.
+- Row 12 selects one test, `test_no_io_imports`, and that one test walks the sources of all four packages.
+- Row 3 names the plan schema as well as the job schema, and the row expects only the job schema.
+- The loop of row 4 printed the exit status of each file, which the row does not show.
+
+Not proven by this epic (the list of section 6 stands, and nothing below was seen to contradict it):
+
+- the wall-clock duration of a job wider than `max_parallel`, because the limit is a path bound
+- the content and tenant ownership of an aggregate index object, the bundle format and the real resolver against the object store
+- the library inside a real Temporal workflow sandbox, and the replay of old golden plans by a workflow
+- the 100,000 job call through the dispatch API, since row 13 measures the library on one WSL2 host and not an API call
+- the real pool table, the history event constants against a real workflow, and any cluster behaviour
+
+Seen during the run and not covered by a row:
+
+- Row 13 includes hashing every bound plan, which the lane recorded as about 15 s per 1,000 jobs at 512 tasks, so whether dispatch hashes each bound plan or only the manifest stays open.
+- The 60 s guard of row 13 is a regression check on one host, and a much slower runner could trip it.
+- Two lanes reported that `just ci` hit `port is already allocated` on `127.0.0.1:19000` from a container that was not theirs and passed on a rerun.
+  The run recorded here did not hit it.
+
+Follow-ups recorded by the lanes:
+
+- `docs/method.md` still lists `verify-job-model` for the envelope and validator epics (lines 220, 245 and 246) and points the exit test at "spec section 7" (line 112), where this spec numbers it section 6, as section 3 of this spec says.
+- The workload names `echo` and `pi` and the `steps` parameter of the example vectors are placeholders until the toolchain epic fixes its workload library.
+- The pointer of a problem in an argument list names the list and not the element, which a later CLI may refine.
+- The codes `placeholder-misplaced` and the other additions of the document models are cheap to rename only until a consumer pins them.
+- Whether a paused checkpoint task resumes under changed code is left to the checkpoint contract, and `changed` of the patch report is the list it consumes.
+- `patch-check --json` gained two keys beyond the pinned shape, and a strict consumer would have to allow them.
+- `check.sh` reads the live `ci` slots, so an edit of `deploy/presets/` changes what the command line accepts, while the golden plans stay on the slots fixture.
+- The `read_plan` reader knows version 1 only, and the PR that introduces version 2 adds the branch for 1.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
