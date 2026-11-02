@@ -1,0 +1,84 @@
+# App database module: one TimescaleDB StatefulSet on the infra pool with a volume claim and a generated Secret.
+module = read_yaml("module.yaml")
+pin = read_yaml("../versions.yaml")["images"][module["artifact"]["pin"]]
+name = module["name"]
+namespace = module["namespace"]
+res = module["resources"][name]
+labels = {"app": name}
+topology = read_yaml("../../contracts/topology/topology.yaml")
+pool = {"key": topology["pool_label"], "value": "infra"}
+data = "/var/lib/postgresql/data"
+
+# The Secret holds a credential generated on first use, so it is rendered by a script and never kept in a file here.
+k8s_yaml(local([os.path.abspath("../../scripts/storage/db/secrets.sh"), "render"], quiet = True))
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "apps/v1",
+    "kind": "StatefulSet",
+    "metadata": {"name": name, "namespace": namespace},
+    "spec": {
+        "serviceName": name,
+        "replicas": 1,
+        "selector": {"matchLabels": labels},
+        "template": {
+            "metadata": {"labels": labels},
+            "spec": {
+                "nodeSelector": {pool["key"]: pool["value"]},
+                "tolerations": [{
+                    "key": pool["key"],
+                    "operator": "Equal",
+                    "value": pool["value"],
+                    "effect": topology["taint_effect"],
+                }],
+                "terminationGracePeriodSeconds": 60,
+                "containers": [{
+                    "name": name,
+                    "image": "docker.io/" + module["artifact"]["pin"] + "@" + pin["digest"],
+                    # The image tunes itself to the container limit only on its first start, so the sized
+                    # settings of the footprint spike are explicit.
+                    "args": [
+                        "-c", "timescaledb.telemetry_level=off",
+                        "-c", "shared_buffers=256MB",
+                        "-c", "max_connections=25",
+                    ],
+                    "env": [
+                        {"name": "PGDATA", "value": data + "/pgdata"},
+                        {"name": "POSTGRES_PASSWORD", "valueFrom": {"secretKeyRef": {"name": name + "-credentials", "key": "POSTGRES_PASSWORD"}}},
+                    ],
+                    "ports": [{"name": "postgres", "containerPort": 5432}],
+                    # The image starts a temporary server on its socket only while it initializes, so a TCP probe
+                    # reports ready only for the final server.
+                    "readinessProbe": {
+                        "exec": {"command": ["pg_isready", "-h", "127.0.0.1", "-U", "postgres"]},
+                        "periodSeconds": 5,
+                        "failureThreshold": 24,
+                    },
+                    "resources": res,
+                    "volumeMounts": [{"name": "data", "mountPath": data}],
+                }],
+            },
+        },
+        "volumeClaimTemplates": [{
+            "metadata": {"name": "data"},
+            "spec": {
+                "accessModes": ["ReadWriteOnce"],
+                # The claim size of the footprint spike: the standard load with its WAL, plus a quarter.
+                "resources": {"requests": {"storage": "4096Mi"}},
+            },
+        }],
+    },
+}))
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "v1",
+    "kind": "Service",
+    "metadata": {"name": name, "namespace": namespace},
+    "spec": {"selector": labels, "ports": [{"name": "postgres", "port": 5432, "targetPort": "postgres"}]},
+}))
+
+k8s_resource(
+    name,
+    objects = [name + "-credentials:secret:" + namespace],
+    labels = [module["group"]],
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])],
+)
