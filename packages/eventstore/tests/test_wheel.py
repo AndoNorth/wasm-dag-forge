@@ -17,6 +17,14 @@ for name in ['layout.yaml', 'retention.yaml', 'retention.schema.json', 'event-ro
 schema = json.loads((CONTRACT / 'event-row/1.json').read_text())
 assert set(schema["properties"]) == set(EventRow.model_fields)
 
+from importlib import metadata, resources
+
+entry = metadata.entry_points(group='wdf.migrations', name='eventstore')
+assert [e.value for e in entry] == ['wdf_eventstore.migrations']
+shipped = {f.name for f in resources.files('wdf_eventstore.migrations').iterdir()}
+shipped = {n for n in shipped if n.endswith('.sql')}
+assert shipped == {'0200_event.sql', 'R__event_policies.sql'}, shipped
+
 """
 
 
