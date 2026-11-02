@@ -1,0 +1,18 @@
+name: temporaldb
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: postgres
+resources:
+  temporaldb:
+    requests:
+      cpu: 250m
+      memory: 1024Mi
+    limits:
+      cpu: "1"
+      memory: 1024Mi
+readiness:
+  resource: statefulset/temporaldb
+  condition: Ready
+profiles: [dev, full, ci]
