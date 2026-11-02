@@ -23,5 +23,5 @@ metadata:
   namespace: $namespace
 type: Opaque
 stringData:
-  password: $(cat "$file")
+  POSTGRES_PASSWORD: $(cat "$file")
 MANIFEST
