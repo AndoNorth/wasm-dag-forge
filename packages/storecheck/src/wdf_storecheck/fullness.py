@@ -109,7 +109,7 @@ def batch_delete(store: Store, bucket: str) -> str:
     reaper = store.as_role("reaper")
     prefix = f"{store.prefix}fill/"
     outcome = ""
-    for attempt in range(DELETE_ATTEMPTS):
+    for _ in range(DELETE_ATTEMPTS):
         keys = [
             item["Key"]
             for item in reaper.list_objects_v2(Bucket=bucket, Prefix=prefix).get("Contents", [])
