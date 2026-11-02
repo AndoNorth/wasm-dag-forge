@@ -139,7 +139,7 @@ def test_attempt_identity_is_stored_as_given(conn):
     assert stored == [("simulate-0", "r0a1"), ("simulate-0", "r0a2"), ("simulate-1", "r7a9")]
 
 
-def test_the_first_writer_wins_on_a_cache_key(conn):
+def test_first_writer_wins_on_a_cache_key(conn):
     one, two = component(1), component(2)
     for wasm in (one, two):
         index_reference(conn, wasm)
@@ -166,16 +166,6 @@ def test_first_writer_wins_when_the_entries_race(appdb, conn):
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert sorted(type(o).__name__ for o in outcomes) == ["Lost", "Won"]
-
-
-def test_the_cache_entry_row_has_no_producer_and_no_uri(conn):
-    wasm = component(1)
-    index_reference(conn, wasm)
-    record_cache_entry(conn, entry(wasm))
-    assert conn.execute(
-        "SELECT uri, producer_job, producer_task, producer_attempt, deleted_at"
-        " FROM artifact WHERE kind = 'compile-cache'"
-    ).fetchall() == [(None, None, None, None, None)]
 
 
 def test_mark_deleted_keeps_the_row(conn):

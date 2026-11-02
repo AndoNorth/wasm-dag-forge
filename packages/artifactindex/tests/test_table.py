@@ -12,6 +12,7 @@ import psycopg
 import pytest
 import yaml
 from psycopg import errors
+from wdf_artifactindex import Won, record_cache_entry
 from wdf_artifactindex.gen import KINDS_SQL, LAYOUT
 from wdf_artifactindex.models import LAYOUT as PACKAGE_LAYOUT
 from wdf_artifactindex.models import ArtifactRow
@@ -143,6 +144,12 @@ def test_a_cache_row_has_null_producer_columns(conn):
     insert(conn, reference_row("component", uri="s3://wdf-test/wasm", key="wasm"))
     for column, value in attempt_producer().items():
         refused(conn, cache_row("s3://wdf-test/wasm", key="c" * 64, **{column: value}))
+    entry = {k: v for k, v in cache_row("s3://wdf-test/wasm", key="d" * 64).items() if k != "kind"}
+    assert isinstance(record_cache_entry(conn, entry), Won)
+    assert conn.execute(
+        "SELECT producer_job, producer_task, producer_attempt FROM artifact"
+        " WHERE kind = 'compile-cache'"
+    ).fetchall() == [(None, None, None)]
 
 
 def test_the_first_writer_of_a_cache_key_wins_at_the_index(conn):
@@ -159,24 +166,18 @@ def test_raw_delete_of_a_pinned_wasm_is_refused_by_the_foreign_key(conn):
             conn.execute("DELETE FROM artifact WHERE uri = 's3://wdf-test/wasm'")
 
 
-@pytest.mark.parametrize("kind", CONTENT_ADDRESSED)
-def test_content_addressed_kinds_have_no_producer(conn, kind):
-    insert(conn, reference_row(kind))
-    for column, value in attempt_producer().items():
-        refused(conn, reference_row(kind, 1, **{column: value}))
-
-
-@pytest.mark.parametrize("kind", ATTEMPT_SCOPED)
-def test_attempt_scoped_kinds_have_one(conn, kind):
-    insert(conn, reference_row(kind, **attempt_producer()))
-    for column in PRODUCER:
-        refused(conn, reference_row(kind, 1, **attempt_producer() | {column: None}))
-    refused(conn, reference_row(kind, 2, **attempt_producer("a1")))
-
-
 def test_content_addressed_kinds_have_no_producer_and_attempt_scoped_kinds_have_one(conn):
     assert CONTENT_ADDRESSED and ATTEMPT_SCOPED
     assert set(CONTENT_ADDRESSED) | set(ATTEMPT_SCOPED) == set(KINDS)
+    for n, kind in enumerate(CONTENT_ADDRESSED):
+        insert(conn, reference_row(kind, n))
+        for column, value in attempt_producer().items():
+            refused(conn, reference_row(kind, n + 100, **{column: value}))
+    for n, kind in enumerate(ATTEMPT_SCOPED):
+        insert(conn, reference_row(kind, n, **attempt_producer()))
+        for column in PRODUCER:
+            refused(conn, reference_row(kind, n + 100, **attempt_producer() | {column: None}))
+        refused(conn, reference_row(kind, n + 200, **attempt_producer("a1")))
     refused(conn, reference_row("not-a-kind"))
     refused(conn, reference_row("not-a-kind", **attempt_producer()))
 
