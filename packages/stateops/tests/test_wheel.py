@@ -8,10 +8,27 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 
+PACKAGES = (
+    "wdf-stateops",
+    "wdf-jobstate",
+    "wdf-events",
+    "wdf-eventstore",
+    "wdf-compat",
+    "wdf-keys",
+    "wdf-migrate",
+    "wdf-itest",
+)
+
 PROBE = """
 import wdf_stateops
+from wdf_stateops.invariants import queries
 from wdf_stateops.stubs import STUBBED
 assert STUBBED
+from importlib import resources
+assert (resources.files('wdf_stateops.migrations') / 'R__roles.sql').is_file()
+assert len(queries()) == 5, sorted(queries())
+from wdf_stateops.bench import EVENTS_PER_JOB, job_events, job_row
+assert len(job_events(0, job_row(0))) == EVENTS_PER_JOB
 
 """
 
@@ -26,7 +43,7 @@ def run(*cmd, **kwargs) -> subprocess.CompletedProcess:
 def clean_python(tmp_path_factory) -> Path:
     work = tmp_path_factory.mktemp("wheel")
     wheels = work / "wheels"
-    for package in ("wdf-stateops",):
+    for package in PACKAGES:
         run("uv", "build", "--wheel", "--package", package, "-o", str(wheels), cwd=ROOT)
     venv = work / "venv"
     run("uv", "venv", "--python", sys.executable, str(venv))
