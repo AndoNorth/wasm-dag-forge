@@ -1,25 +1,21 @@
-"""The stubs raise the lane error for exactly the names of STUBBED."""
+"""Every function of the package is implemented, so the list of stubbed names is empty."""
 
 import inspect
 
-import pytest
 import wdf_eventstore
-from wdf_eventstore import stubs
+from wdf_eventstore import STUBBED
 
 FUNCTIONS = [
-    name for name, f in inspect.getmembers(stubs, inspect.isfunction) if not name.startswith("_")
+    getattr(wdf_eventstore, name)
+    for name in wdf_eventstore.__all__
+    if inspect.isfunction(getattr(wdf_eventstore, name))
 ]
 
 
-def test_every_stubbed_function_is_listed_and_every_listed_function_raises():
-    assert sorted(FUNCTIONS) == sorted(n for n in stubs.STUBBED if n in FUNCTIONS)
+def test_no_name_is_stubbed():
+    assert STUBBED == ()
 
 
-@pytest.mark.parametrize("name", FUNCTIONS)
-def test_a_stub_raises_the_lane_error(name):
-    with pytest.raises(NotImplementedError, match="^not implemented: owned by lane E$"):
-        getattr(stubs, name)(*[None] * len(inspect.signature(getattr(stubs, name)).parameters))
-
-
-def test_the_package_exports_each_stub():
-    assert all(hasattr(wdf_eventstore, name) for name in FUNCTIONS)
+def test_no_function_raises_the_lane_error():
+    assert {f.__name__ for f in FUNCTIONS} == {"chunk_count", "events_for_job", "insert_events"}
+    assert all("not implemented" not in inspect.getsource(f) for f in FUNCTIONS)
