@@ -12,6 +12,8 @@ PROBE = """
 import wdf_stateops
 from wdf_stateops.stubs import STUBBED
 assert STUBBED
+from importlib import resources
+assert (resources.files('wdf_stateops.migrations') / 'R__roles.sql').is_file()
 
 """
 
