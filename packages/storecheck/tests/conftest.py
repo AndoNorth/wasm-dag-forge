@@ -26,6 +26,10 @@ class Running:
     product: str
     endpoint: str
     credentials: dict[str, Creds]
+    container_id: str = ""
+
+    def exec_prefix(self) -> list[str]:
+        return ["docker", "exec", "-i", self.container_id]
 
     def store(self) -> Store:
         return Store(self.endpoint, self.credentials)
@@ -56,7 +60,7 @@ def anonymous_volumes(container_id: str) -> list[str]:
 
 
 @contextmanager
-def running(t1, product: str, directory):
+def running(t1, product: str, directory, tmpfs: dict[str, int] | None = None):
     """One container of the product, yielding its endpoint and the credential of every role."""
     credentials = generate_credentials()
     if product == "seaweedfs":
@@ -65,8 +69,15 @@ def running(t1, product: str, directory):
         container = t1.container(
             PRODUCTS[product],
             ports={0: 8333},
-            command=["server", "-s3", f"-s3.config={IDENTITIES}", "-dir=/data", "-volume.max=0"],
+            command=[
+                "server",
+                "-s3",
+                f"-s3.config={IDENTITIES}",
+                "-dir=/data",
+                "-volume.max=0",
+            ],
             mounts={config: IDENTITIES},
+            tmpfs=tmpfs,
         )
     else:
         root = credentials[ADMIN]
@@ -75,6 +86,7 @@ def running(t1, product: str, directory):
             ports={0: 9000},
             command=["/data"],
             env={"RUSTFS_ACCESS_KEY": root.access_key, "RUSTFS_SECRET_KEY": root.secret_key},
+            tmpfs=tmpfs,
         )
     volumes: list[str] = []
     try:
@@ -84,7 +96,7 @@ def running(t1, product: str, directory):
             wait_until_serving(endpoint, credentials[ADMIN])
             if product == "rustfs":
                 provision_rustfs(endpoint, credentials)
-            yield Running(product, endpoint, credentials)
+            yield Running(product, endpoint, credentials, started.id)
     finally:
         if volumes:
             subprocess.run(["docker", "volume", "rm", *volumes], capture_output=True)
@@ -100,4 +112,12 @@ def store(request, t1, tmp_path_factory):
 @pytest.fixture
 def start(t1, tmp_path):
     """Starts a container of a product for one test, as a context manager."""
-    return lambda product: running(t1, product, tmp_path)
+    return lambda product, tmpfs=None: running(t1, product, tmp_path, tmpfs)
+
+
+@pytest.fixture(scope="module")
+def start_capped(t1, tmp_path_factory):
+    """Starts a container of a product with a size-capped data volume, for a whole test module."""
+    return lambda product, size_mib: running(
+        t1, product, tmp_path_factory.mktemp(product), {"/data": size_mib}
+    )

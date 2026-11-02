@@ -224,7 +224,7 @@ class Session:
         for key, value in (env or {}).items():
             args += ["-e", f"{key}={value}"]
         for path, size_mib in (tmpfs or {}).items():
-            args += ["--tmpfs", f"{path}:rw,size={size_mib}m"]
+            args += ["--tmpfs", f"{path}:rw,mode=1777,size={size_mib}m"]
         for host_path, container_path in (mounts or {}).items():
             host = Path(host_path)
             if not host.is_absolute() or not host.exists():
