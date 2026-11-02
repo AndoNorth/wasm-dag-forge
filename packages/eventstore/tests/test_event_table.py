@@ -39,12 +39,6 @@ def row(db, event_id="/wdf/workflow#1", time="2026-10-30T12:00:00.123456Z", **ex
     return db.execute(f"INSERT INTO event ({columns}) VALUES ({marks})", list(values.values()))
 
 
-@pytest.fixture
-def db(appdb):
-    with psycopg.connect(appdb, autocommit=True) as connection:
-        yield connection
-
-
 def model_columns() -> list[tuple[str, str, bool]]:
     """Name, SQL type and nullability of each model field, in the order of the model."""
     schema = EventRow.model_json_schema()
