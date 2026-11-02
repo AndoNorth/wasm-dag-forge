@@ -1,0 +1,19 @@
+name: appdb-migrate
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: timescale/timescaledb
+resources:
+  appdb-migrate:
+    requests:
+      cpu: 1m
+      memory: 1Mi
+    limits:
+      cpu: 1m
+      memory: 1Mi
+readiness:
+  command: [scripts/storage/db/migrate.sh, status]
+profiles: [dev, full, ci]
+depends_on:
+  - infra/appdb

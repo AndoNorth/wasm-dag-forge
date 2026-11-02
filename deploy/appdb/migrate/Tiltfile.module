@@ -1,0 +1,10 @@
+# Host-side helper: applies the schema migrations to the app database once it is ready.
+# Nothing of it runs in the cluster, so the manifest resources entry is nominal and the one resource is a local_resource.
+module = read_yaml("module.yaml")
+
+local_resource(
+    module["name"],
+    cmd = [os.path.abspath("../../../scripts/storage/db/migrate.sh"), "apply"],
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])],
+    labels = [module["group"]],
+)
