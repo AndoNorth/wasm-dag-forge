@@ -27,7 +27,7 @@ The Nix installation, flakes setting and Docker installation are the steps that 
 nix develop
 ```
 
-This realises the 15 flake tools plus `wasmtime` and `wasm-tools`, then sources `scripts/env.sh`.
+This realises the 16 flake tools plus `wasmtime` and `wasm-tools`, then sources `scripts/env.sh`.
 A one-off command runs without an interactive shell:
 
 ```sh
@@ -43,7 +43,7 @@ Later entries take seconds.
 
 ## Recipes
 
-`just --list` prints exactly 17 names.
+`just --list` prints exactly 19 names.
 Recipes that are not built yet print `not implemented: owned by #N` and exit 3.
 No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 
@@ -56,6 +56,8 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 | `itest [domain]` | real | - | `pytest -m integration`, optionally limited to `packages/<domain>` |
 | `ci` | real | - | `lint`, `verify-lint`, `test`, `itest`, `nix flake check` |
 | `verify-lint` | real | - | checks each `verify-<domain>` skill has a `SKILL.md` named after its directory, passes when none exist |
+| `pre-push` | real | - | the fast gate that the pre-push hook runs, see [Git hooks](#git-hooks) |
+| `hooks-status` | real | - | prints whether the git hooks are installed for this checkout |
 | `verify` | stub | cluster | end-to-end verifier run |
 | `verify-clean` | stub | cluster | removes verifier evidence |
 | `up` | stub | cluster | create the cluster |
@@ -147,6 +149,42 @@ Config lives in `ruff.toml`, `.yamllint`, `.shellcheckrc` and `.editorconfig`, a
 `scripts/fixtures/lint-bad/` holds one bad file per linter.
 `scripts/lint.sh --self-test` proves each linter rejects its fixture, and `scripts/lint.sh --expect-fail <file>` does the same for one file.
 
+## Git hooks
+
+Entering the shell installs the git hooks, so `nix develop` and `nix develop -c <command>` are the only steps needed.
+Every checkout and every linked worktree gets them on its first entry, because the shims live in the common git dir and each checkout links the rendered hook config as `.pre-commit-config.yaml` (git-ignored).
+The hooks come from `git-hooks.nix` and run through `prek`.
+The one config in `flake.nix` also builds `checks.pre-commit`, which `nix flake check` runs over the whole tree as part of `just ci`, so the local hooks and CI use the same tool list.
+
+| Stage | Runs | On |
+| --- | --- | --- |
+| pre-commit | ruff format, ruff check, yamllint, shellcheck, actionlint, nixfmt | staged files |
+| pre-commit | trailing whitespace, end of file, merge conflict markers, large files | staged files |
+| pre-push | `just pre-push`: `scripts/lint.sh`, `verify-lint`, the lint self-test | the whole tree |
+
+The formatters and whitespace fixers rewrite a file and fail the commit, so staging the rewritten file and committing again passes.
+The lint fixtures, the byte-exact `contracts/**/vectors/` files and the generated draw.io diagrams are excluded.
+The pre-push gate is a subset of `just ci`, because the unit and integration tests and the flake check take minutes.
+The full `just ci` stays the CI gate.
+
+Bypass either stage for one command with `--no-verify`:
+
+```sh
+git commit --no-verify
+git push --no-verify
+```
+
+Check that the hooks are installed:
+
+```sh
+nix develop -c just hooks-status
+```
+
+It prints `ok config`, `ok pre-commit` and `ok pre-push` and exits 0, and prints `missing <part>` with the fix and exits 1 otherwise.
+A `core.hooksPath` set in a git config file is never overwritten.
+The shell then installs nothing and `hooks-status` reports it.
+A checkout that never entered the shell has no linked config, so its shims do nothing and never block a commit.
+
 ## Version pins
 
 | Pin | File | Bump |
@@ -196,7 +234,7 @@ On a clean checkout, with the host prerequisites in place:
 
 - [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 17 tools resolve first to the flake`.
   Only `warn memory-vs-preset: no preset file yet` is acceptable until cluster presets exist.
-- [ ] `nix develop -c just --list` prints exactly 17 recipe names.
+- [ ] `nix develop -c just --list` prints exactly 19 recipe names.
 - [ ] `nix develop -c just ci` exits 0, ending with `all checks passed!` from `nix flake check`.
   The tests print `notice: no tests collected` until a package adds some.
 - [ ] The reproducibility check prints one `/nix/store/...-nix-shell.drv` path and exits 0.
