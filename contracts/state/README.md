@@ -133,6 +133,24 @@ That choice stays with the reaper of the artifact epic.
 The reasons are `schema-violation`, `window-below-twice-max-job-duration`, `retention-on-job-rows` and `age-rule-on-content-addressed`.
 Vectors are under [vectors/retention/](vectors/retention/), and the file of each invalid vector sits in the directory named by its reason.
 
+## Invariants
+
+Each file under [invariants/](invariants/) is a query that returns the offending rows as a `key` column, so an empty result passes.
+`python -m wdf_stateops.invariants --dsn DSN [--open-workflows FILE]` runs them and prints one `invariant: <name>: <key>` line per offending row, where the name is the file name without `.sql`.
+It exits 0 when nothing is reported, 1 when a row is, 2 on a usage error and 3 when the database is unreachable.
+Nothing in it reads Temporal: the file lists the open workflow ids, one per line.
+Without it the two queries that compare against workflows print `skipped: <name>` and the others still run.
+
+| Name | Offending row |
+| --- | --- |
+| `running-without-workflow` | A job in `running` whose workflow id is not among the open workflows |
+| `open-workflow-without-live-row` | An open workflow id whose row is terminal or missing |
+| `published-without-receipt` | A job with a `job.published` event, or past `accepted`, and no receipt |
+| `accepted-class-differs-from-row` | An accepted event whose `jobclass` differs from the `job_class` of its row |
+| `result-ready-without-artifact` | A `task.result.ready` event whose result has no artifact row |
+
+A job at `accepted` and a dead lettered job have no workflow, so the workflow queries never report them.
+
 ## Changing the contract
 
 A change to a model, a window or a column table after the first merge is a contract-change PR with a consumer list and a bump of `VERSION`.

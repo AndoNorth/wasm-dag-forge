@@ -829,6 +829,18 @@ requires-dist = [
 name = "wdf-stateops"
 version = "0.0.0"
 source = { editable = "packages/stateops" }
+dependencies = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "wdf-jobstate" },
+    { name = "wdf-keys" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "psycopg", extras = ["binary"] },
+    { name = "wdf-jobstate", editable = "packages/jobstate" },
+    { name = "wdf-keys", editable = "packages/keys" },
+]
 
 [[package]]
 name = "wdf-storecheck"
