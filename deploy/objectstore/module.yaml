@@ -1,0 +1,18 @@
+name: objectstore
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: chrislusf/seaweedfs
+resources:
+  objectstore:
+    requests:
+      cpu: 250m
+      memory: 704Mi
+    limits:
+      cpu: 440m
+      memory: 704Mi
+readiness:
+  resource: statefulset/objectstore
+  condition: Ready
+profiles: [dev, full, ci]

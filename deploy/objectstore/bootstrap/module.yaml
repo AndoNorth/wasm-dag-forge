@@ -1,0 +1,19 @@
+name: objectstore-bootstrap
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: chrislusf/seaweedfs
+resources:
+  objectstore-bootstrap:
+    requests:
+      cpu: 1m
+      memory: 1Mi
+    limits:
+      cpu: 1m
+      memory: 1Mi
+readiness:
+  command: [scripts/storage/store/bootstrap.sh, check]
+profiles: [dev, full, ci]
+depends_on:
+  - infra/objectstore

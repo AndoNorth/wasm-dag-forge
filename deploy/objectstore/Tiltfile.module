@@ -1,0 +1,146 @@
+# Object store module: one SeaweedFS StatefulSet on the infra pool whose pod holds the store, the admin server and the
+# lifecycle worker, so the pod is Ready only when all three are. Identities come from a generated Secret.
+module = read_yaml("module.yaml")
+pin = read_yaml("../versions.yaml")["images"][module["artifact"]["pin"]]
+name = module["name"]
+namespace = module["namespace"]
+res = module["resources"][name]
+labels = {"app": name}
+topology = read_yaml("../../contracts/topology/topology.yaml")
+pool = {"key": topology["pool_label"], "value": "infra"}
+image = "docker.io/" + module["artifact"]["pin"] + "@" + pin["digest"]
+weed = ["/usr/bin/weed", "-logtostderr=true"]
+
+# The first write to a bucket grows up to 7 volumes and each bucket is written, so a volume holds at most
+# 0.8 x claim / (7 x buckets) and the volumes of every bucket fit the claim with a fifth to spare.
+claim_mib = 10240
+buckets = read_yaml("../../contracts/artifact/layout.yaml")["buckets"]
+volume_limit_mb = claim_mib * 8 // (10 * 7 * len(buckets))
+
+# The pod budget of module.yaml split across its containers, as (memory MiB, CPU millicores) of the request and limit.
+split = {
+    "store": {"memory": 384, "cpu_request": 150, "cpu_limit": 300},
+    "admin": {"memory": 160, "cpu_request": 50, "cpu_limit": 70},
+    "worker": {"memory": 160, "cpu_request": 50, "cpu_limit": 70},
+}
+
+def total(key):
+    n = 0
+    for c in split.values():
+        n += c[key]
+    return n
+
+if (
+    "%dMi" % total("memory") != res["limits"]["memory"] or
+    "%dm" % total("cpu_request") != res["requests"]["cpu"] or
+    "%dm" % total("cpu_limit") != res["limits"]["cpu"]
+):
+    fail("the container split of %s does not add up to module.yaml" % name)
+
+def sized(c):
+    return {
+        "requests": {"cpu": "%dm" % c["cpu_request"], "memory": "%dMi" % c["memory"]},
+        "limits": {"cpu": "%dm" % c["cpu_limit"], "memory": "%dMi" % c["memory"]},
+    }
+
+# The identities are generated on first use and rendered by a script, so no credential is kept in a file here.
+watch_file("../../scripts/storage/store/identities.sh")
+k8s_yaml(local([os.path.abspath("../../scripts/storage/store/identities.sh"), "render"], quiet = True))
+
+# The admin server and the worker start only once what they talk to answers, so no fixed sleep orders them.
+def after(url, command):
+    return ["sh", "-c", "until curl -sf %s >/dev/null; do sleep 1; done; exec %s" % (url, " ".join(command))]
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "apps/v1",
+    "kind": "StatefulSet",
+    "metadata": {"name": name, "namespace": namespace},
+    "spec": {
+        "serviceName": name,
+        "replicas": 1,
+        "selector": {"matchLabels": labels},
+        "template": {
+            "metadata": {"labels": labels},
+            "spec": {
+                "nodeSelector": {pool["key"]: pool["value"]},
+                "tolerations": [{
+                    "key": pool["key"],
+                    "operator": "Equal",
+                    "value": pool["value"],
+                    "effect": topology["taint_effect"],
+                }],
+                "terminationGracePeriodSeconds": 30,
+                "containers": [
+                    {
+                        "name": "store",
+                        "image": image,
+                        # The image entrypoint hands the volume to its own user before it starts the server.
+                        "args": [
+                            "server", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-dir=/data", "-volume.max=0",
+                            "-master.volumeSizeLimitMB=%d" % volume_limit_mb,
+                        ],
+                        # A soft limit below the container limit keeps the Go heap from growing into an OOM kill.
+                        "env": [{"name": "GOMEMLIMIT", "value": "320MiB"}],
+                        "ports": [{"name": "s3", "containerPort": 8333}],
+                        "readinessProbe": {"httpGet": {"path": "/healthz", "port": "s3"}, "periodSeconds": 5},
+                        "resources": sized(split["store"]),
+                        "volumeMounts": [
+                            {"name": "data", "mountPath": "/data", "subPath": "data"},
+                            {"name": "identities", "mountPath": "/etc/seaweedfs", "readOnly": True},
+                        ],
+                    },
+                    {
+                        "name": "admin",
+                        "image": image,
+                        "command": after("http://127.0.0.1:9333/cluster/healthz", weed + [
+                            "admin", "-port=12535", "-master=127.0.0.1:9333", "-dataDir=/admin",
+                        ]),
+                        "env": [{"name": "GOMEMLIMIT", "value": "128MiB"}],
+                        # The admin server listens on loopback only, so the probe runs inside the container.
+                        "readinessProbe": {
+                            "exec": {"command": ["curl", "-sf", "http://127.0.0.1:12535/"]},
+                            "periodSeconds": 5,
+                        },
+                        "resources": sized(split["admin"]),
+                        "volumeMounts": [{"name": "data", "mountPath": "/admin", "subPath": "admin"}],
+                    },
+                    {
+                        "name": "worker",
+                        "image": image,
+                        "command": after("http://127.0.0.1:12535/", weed + [
+                            "worker", "-admin=127.0.0.1:12535", "-jobType=s3_lifecycle", "-workingDir=/worker",
+                            "-metricsPort=9327",
+                        ]),
+                        "env": [{"name": "GOMEMLIMIT", "value": "128MiB"}],
+                        "ports": [{"name": "metrics", "containerPort": 9327}],
+                        "readinessProbe": {"httpGet": {"path": "/ready", "port": "metrics"}, "periodSeconds": 5},
+                        "resources": sized(split["worker"]),
+                        "volumeMounts": [{"name": "data", "mountPath": "/worker", "subPath": "worker"}],
+                    },
+                ],
+                "volumes": [{"name": "identities", "secret": {"secretName": name + "-identities"}}],
+            },
+        },
+        "volumeClaimTemplates": [{
+            "metadata": {"name": "data"},
+            "spec": {
+                "accessModes": ["ReadWriteOnce"],
+                "resources": {"requests": {"storage": "%dMi" % claim_mib}},
+            },
+        }],
+    },
+}))
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "v1",
+    "kind": "Service",
+    "metadata": {"name": name, "namespace": namespace},
+    "spec": {"selector": labels, "ports": [{"name": "s3", "port": 8333, "targetPort": "s3"}]},
+}))
+
+k8s_resource(
+    name,
+    objects = [name + "-identities:secret:" + namespace],
+    labels = [module["group"]],
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])],
+)
