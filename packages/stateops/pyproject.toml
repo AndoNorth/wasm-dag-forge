@@ -4,11 +4,14 @@ version = "0.0.0"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "psycopg[binary]",
+    "pydantic",
+    "pyyaml",
     "wdf-events",
     "wdf-eventstore",
     "wdf-jobstate",
     "wdf-keys",
     "wdf-migrate",
+    "wdf-storecheck",
 ]
 
 [project.entry-points."wdf.migrations"]
@@ -20,6 +23,7 @@ wdf-eventstore = { workspace = true }
 wdf-jobstate = { workspace = true }
 wdf-keys = { workspace = true }
 wdf-migrate = { workspace = true }
+wdf-storecheck = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

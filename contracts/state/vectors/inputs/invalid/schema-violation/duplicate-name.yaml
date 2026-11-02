@@ -1,0 +1,8 @@
+---
+inputs:
+  - name: connections
+    unit: connections
+    source: {kind: sql, ref: select 1}
+  - name: connections
+    unit: connections
+    source: {kind: sql, ref: select 2}

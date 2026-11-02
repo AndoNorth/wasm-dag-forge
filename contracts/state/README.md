@@ -151,6 +151,28 @@ Without it the two queries that compare against workflows print `skipped: <name>
 
 A job at `accepted` and a dead lettered job have no workflow, so the workflow queries never report them.
 
+## Inputs
+
+[inputs.yaml](inputs.yaml) lists the inputs that the observability epic turns into metrics and alerts, each with a unit, a source and, where it alerts, a threshold.
+Its schema [inputs.schema.json](inputs.schema.json) is generated from the models by `python -m wdf_stateops.gen`, which fails with `--check` on drift.
+`python -m wdf_stateops.inputs --dsn DSN [--store-endpoint URL --credentials FILE]` prints `<name> <value>` per input, and `<name>{bucket=<bucket>} <value>` for the bytes of each bucket.
+Without the store flags the store inputs print `skipped: <name>` and the others still run.
+It exits 0 when every input was read, 1 when the store cannot be read, 2 on a usage error and 3 when the database is unreachable.
+
+| Input | Unit | Source |
+| --- | --- | --- |
+| `connections` | connections | `pg_stat_activity` rows of the current database |
+| `database_size` | bytes | `pg_database_size` of the current database |
+| `event_chunks` | chunks | `show_chunks('event')` |
+| `event_ingest_lag` | seconds | `now()` minus the newest `event_time`, 0 with no events |
+| `drift_rows` | rows | offending rows of the invariant queries that run without open workflows |
+| `store_bytes` | bytes | one value per bucket from `python -m wdf_storecheck run --mode capacity` |
+| `store_capacity_share` | percent | used share of the data volume from `df` in the store pod, alerting above 70 |
+
+`--store-exec` is the prefix that runs inside the store, which defaults to `kubectl --context kind-wdf -n wdf-infra exec objectstore-0 -c store --`, and the data volume is `/data`.
+`python -m wdf_stateops.inputs --check FILE` validates a file and exits 0 valid, 1 with `reason: <code>: <detail>` on stderr, and the reasons are `schema-violation` and `unknown-source`.
+Vectors are under [vectors/inputs/](vectors/inputs/), and the file of each invalid vector sits in the directory named by its reason.
+
 ## Changing the contract
 
 A change to a model, a window or a column table after the first merge is a contract-change PR with a consumer list and a bump of `VERSION`.
