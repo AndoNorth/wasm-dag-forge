@@ -9,6 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 PROBE = """
+import wdf_jobstate
 import json
 from wdf_jobstate.models import CONTRACT, JobRow
 from wdf_jobstate.models import STATUSES
