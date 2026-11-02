@@ -1,0 +1,17 @@
+---
+# The two tested products and what each is known not to do. Schema: store.schema.json, generated from the models.
+# A known gap is recorded by the contract script and fails it the day the behaviour changes either way.
+products:
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    known_gaps:
+      # A credential with Write on a bucket can also replace that bucket's lifecycle rules, so these credentials
+      # belong to platform pods only.
+      - gap: lifecycle-edit-by-writer
+        roles: [submit, indexer, compile, simulate, aggregate]
+  rustfs:
+    image: rustfs/rustfs
+    known_gaps:
+      # A full volume cannot be emptied through S3 alone, which SeaweedFS can through a batch delete.
+      - gap: delete-while-full
+        roles: [reaper]

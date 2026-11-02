@@ -1,0 +1,6 @@
+---
+products:
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    known_gaps:
+      - {gap: lifecycle-edit-by-writer, roles: [janitor]}

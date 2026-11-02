@@ -1,0 +1,4 @@
+---
+roles:
+  admin: {wdf-sources: [bucket]}
+  submit: {wdf-sources: [put]}

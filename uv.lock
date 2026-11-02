@@ -739,6 +739,16 @@ source = { editable = "packages/stateops" }
 name = "wdf-storecheck"
 version = "0.0.0"
 source = { editable = "packages/storecheck" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
 
 [[package]]
 name = "wdf-temporal"
