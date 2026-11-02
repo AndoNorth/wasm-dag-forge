@@ -831,15 +831,21 @@ version = "0.0.0"
 source = { editable = "packages/stateops" }
 dependencies = [
     { name = "psycopg", extra = ["binary"] },
+    { name = "wdf-events" },
+    { name = "wdf-eventstore" },
     { name = "wdf-jobstate" },
     { name = "wdf-keys" },
+    { name = "wdf-migrate" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "psycopg", extras = ["binary"] },
+    { name = "wdf-events", editable = "packages/events" },
+    { name = "wdf-eventstore", editable = "packages/eventstore" },
     { name = "wdf-jobstate", editable = "packages/jobstate" },
     { name = "wdf-keys", editable = "packages/keys" },
+    { name = "wdf-migrate", editable = "packages/migrate" },
 ]
 
 [[package]]
