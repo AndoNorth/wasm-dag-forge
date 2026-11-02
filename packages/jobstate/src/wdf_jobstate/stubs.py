@@ -3,9 +3,8 @@
 from typing import Any
 
 OWNER = "J"
-# Tables and functions that are not implemented yet, each emptied by the lane that delivers it.
+# Functions that are not implemented yet, each emptied by the lane that delivers it.
 STUBBED = (
-    "accepted_job",
     "insert_accepted",
     "get_job",
     "transition",

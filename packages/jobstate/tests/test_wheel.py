@@ -15,6 +15,10 @@ from wdf_jobstate.models import STATUSES
 assert len(STATUSES) == 10
 for name in ['status.yaml', 'limits.yaml', 'job-row/1.json']:
     assert (CONTRACT / name).is_file(), name
+from importlib import metadata, resources
+assert metadata.entry_points(group='wdf.migrations')['jobstate'].value == 'wdf_jobstate.migrations'
+names = {f.name for f in resources.files('wdf_jobstate.migrations').iterdir()}
+assert {'0100_accepted_job.sql', 'R__job_vocab.sql'} <= names, names
 schema = json.loads((CONTRACT / 'job-row/1.json').read_text())
 assert set(schema["properties"]) == set(JobRow.model_fields)
 
