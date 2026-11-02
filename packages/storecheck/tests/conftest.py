@@ -69,7 +69,13 @@ def running(t1, product: str, directory, tmpfs: dict[str, int] | None = None):
         container = t1.container(
             PRODUCTS[product],
             ports={0: 8333},
-            command=["server", "-s3", f"-s3.config={IDENTITIES}", "-dir=/data", "-volume.max=0"],
+            command=[
+                "server",
+                "-s3",
+                f"-s3.config={IDENTITIES}",
+                "-dir=/data",
+                "-volume.max=0",
+            ],
             mounts={config: IDENTITIES},
             tmpfs=tmpfs,
         )

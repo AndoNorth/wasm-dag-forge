@@ -24,6 +24,10 @@ MARKER_KEY = "storecheck-marker/object"
 VACUUM = "lock\nvolume.vacuum\nunlock\n"
 SEAWEEDFS_SHELL = ["weed", "shell", "-master=127.0.0.1:9333"]
 SETTLE_SECONDS = 60
+DELETE_ATTEMPTS = 6
+# The volume servers of SeaweedFS report their free space to the master every few seconds.
+HEARTBEAT_SECONDS = 6
+DELETE_PAUSE = 5
 GAP = "delete-while-full"
 
 
@@ -68,7 +72,7 @@ def run_capacity(store: Store, report: Report, product) -> None:
 class FullDisk:
     """What happened to one capped store, from the first refused put to the put after recovery."""
 
-    written: dict[str, bytes] = field(default_factory=dict)
+    written: dict[str, bytes] = field(default_factory=dict, repr=False)
     refusal: tuple[str, int] = ("", 0)
     second_refusal: tuple[str, int] = ("", 0)
     survivors_exact: int = 0
@@ -98,17 +102,33 @@ def fill(store: Store, bucket: str, run: FullDisk) -> None:
 
 
 def batch_delete(store: Store, bucket: str) -> str:
-    """The outcome of deleting every object of the fill with the reaper identity in one request."""
+    """The outcome of deleting every object of the fill with the reaper identity in one request.
+
+    A store that has only just filled can answer `ServiceUnavailable` and ask to retry.
+    """
     reaper = store.as_role("reaper")
-    keys = [
-        item["Key"]
-        for item in reaper.list_objects_v2(Bucket=bucket, Prefix=f"{store.prefix}fill/")["Contents"]
-    ]
-    try:
-        reply = reaper.delete_objects(Bucket=bucket, Delete={"Objects": [{"Key": k} for k in keys]})
-    except ClientError as error:
-        return f"error:{error_code(error) or status(error)}"
-    return ALLOWED if not reply.get("Errors") else f"error:{len(reply['Errors'])} of {len(keys)}"
+    prefix = f"{store.prefix}fill/"
+    outcome = ""
+    for attempt in range(DELETE_ATTEMPTS):
+        keys = [
+            item["Key"]
+            for item in reaper.list_objects_v2(Bucket=bucket, Prefix=prefix).get("Contents", [])
+        ]
+        if not keys:
+            return ALLOWED
+        try:
+            reply = reaper.delete_objects(
+                Bucket=bucket, Delete={"Objects": [{"Key": k} for k in keys]}
+            )
+        except ClientError as error:
+            outcome = f"error:{error_code(error) or status(error)}"
+        else:
+            errors = reply.get("Errors")
+            if not errors:
+                return ALLOWED
+            outcome = f"error:{len(errors)} of {len(keys)} ({errors[0]['Code']})"
+        time.sleep(DELETE_PAUSE)
+    return outcome
 
 
 def settle(probe) -> str:
@@ -127,6 +147,7 @@ def observe_full_disk(store: Store, product: str | None, recover_with=None) -> F
     bucket = store.buckets[0]
     run = FullDisk()
     try:
+        time.sleep(HEARTBEAT_SECONDS)
         fill(store, bucket, run)
         again = refused_put(store.admin, bucket, f"{store.prefix}fill/again", os.urandom(OBJECT))
         run.second_refusal = again or ("", 0)
