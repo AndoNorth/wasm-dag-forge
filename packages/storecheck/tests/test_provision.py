@@ -24,15 +24,10 @@ def test_a_policy_names_only_the_actions_of_the_grants():
     assert not any("wdf-results" in resource for resource, _ in actions)
 
 
-def test_seaweedfs_identities_use_policies_by_default_and_coarse_actions_when_legacy():
-    credentials = generate_credentials()
-    exact = seaweedfs_config(credentials)
+def test_seaweedfs_identities_use_one_policy_per_role():
+    exact = seaweedfs_config(generate_credentials())
     assert {p["name"] for p in exact["policies"]} == set(GRANTS) - {"admin"}
     submit = next(i for i in exact["identities"] if i["name"] == "submit")
     assert submit["policyNames"] == ["submit"] and "actions" not in submit
-    legacy = seaweedfs_config(credentials, legacy=True)
-    assert legacy["policies"] == []
-    submit = next(i for i in legacy["identities"] if i["name"] == "submit")
-    assert submit["actions"] == ["Write:wdf-sources"]
-    admin = next(i for i in legacy["identities"] if i["name"] == "admin")
+    admin = next(i for i in exact["identities"] if i["name"] == "admin")
     assert "Admin" in admin["actions"]

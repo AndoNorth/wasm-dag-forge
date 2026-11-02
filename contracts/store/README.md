@@ -1,7 +1,7 @@
 # Store contract
 
 Owner epic: #3 (durable state and artifact storage).
-Version: 1
+Version: 2
 Consumers: artifacts (#12), the contract script of this epic, the object store module, characterization (#16, #17) and the observability epic (#13).
 
 This directory pins who may do what in the object store, which lifecycle rules each bucket carries and what each tested product is known not to do.
@@ -41,8 +41,8 @@ The detection interval of the lifecycle job is 60 minutes, so a rule runs up to 
 
 [products.yaml](products.yaml) names the tested products, each by a key of the images map of `deploy/versions.yaml`, and the known gaps of each.
 
-- `lifecycle-edit-by-writer` on SeaweedFS: a credential with `Write` on a bucket can also replace that bucket's lifecycle rules, which RustFS refuses.
-  Bucket credentials belong to platform pods only, and the contract script records the gap per writing role and fails the day the behaviour changes either way.
+- SeaweedFS has no known gap when each role carries an IAM policy of exactly its grants, which refuses a lifecycle edit by a writer as RustFS does.
+  The coarse `Write` action of SeaweedFS also covers deleting and lifecycle edits, so the roles are never provisioned with it.
 - `delete-while-full` on RustFS: a full volume cannot be emptied through S3 alone, which SeaweedFS can do with a batch delete.
 
 ## Loader

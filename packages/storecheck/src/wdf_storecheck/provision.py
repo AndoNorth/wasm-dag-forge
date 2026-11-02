@@ -29,13 +29,6 @@ BUCKET_ACTIONS = {"list": ["s3:ListBucket"], "multipart": ["s3:ListBucketMultipa
 # The identity that provisions the buckets, which both products treat as a full administrator.
 ADMIN = "admin"
 SEAWEEDFS_ADMIN_ACTIONS = ["Admin", "Read", "Write", "List", "Tagging"]
-LEGACY_ACTIONS = {
-    "get": "Read",
-    "list": "List",
-    "put": "Write",
-    "multipart": "Write",
-    "delete": "Write",
-}
 
 
 def roles() -> dict[str, dict[str, list[str]]]:
@@ -62,12 +55,11 @@ def policy(grants: dict[str, list[str]]) -> dict:
     return {"Version": "2012-10-17", "Statement": statements}
 
 
-def seaweedfs_config(credentials: dict[str, Creds], legacy: bool = False) -> dict:
+def seaweedfs_config(credentials: dict[str, Creds]) -> dict:
     """The identities file of SeaweedFS.
 
-    By default each role gets a policy of exactly its grants.
-    With `legacy` each role gets the coarse Read, List and Write actions per bucket instead,
-    where Write also covers deleting objects and replacing the lifecycle rules of the bucket.
+    Each role gets a policy of exactly its grants,
+    since the coarse actions cannot tell a put from a delete.
     """
     identities, policies = [], []
     for role, creds in credentials.items():
@@ -78,10 +70,6 @@ def seaweedfs_config(credentials: dict[str, Creds], legacy: bool = False) -> dic
         grants = roles().get(role, {})
         if role == ADMIN:
             identity["actions"] = SEAWEEDFS_ADMIN_ACTIONS
-        elif legacy:
-            identity["actions"] = sorted(
-                {f"{LEGACY_ACTIONS[a]}:{b}" for b, acts in grants.items() for a in acts}
-            )
         else:
             identity["policyNames"] = [role]
             policies.append({"name": role, "document": policy(grants)})
@@ -89,8 +77,8 @@ def seaweedfs_config(credentials: dict[str, Creds], legacy: bool = False) -> dic
     return {"identities": identities, "policies": policies}
 
 
-def write_seaweedfs_config(path, credentials: dict[str, Creds], legacy: bool = False) -> None:
-    path.write_text(json.dumps(seaweedfs_config(credentials, legacy), indent=2) + "\n")
+def write_seaweedfs_config(path, credentials: dict[str, Creds]) -> None:
+    path.write_text(json.dumps(seaweedfs_config(credentials), indent=2) + "\n")
 
 
 def _admin_call(endpoint: str, root: Creds, path: str, params: dict, body: bytes = b"") -> None:

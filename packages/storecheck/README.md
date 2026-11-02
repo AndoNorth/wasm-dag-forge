@@ -32,7 +32,7 @@ The lifecycle probe puts the rules of the bucket back as it found them.
 `wdf_storecheck.provision` creates the identities of the roles for the container tests.
 Both products take the same IAM policy per role.
 SeaweedFS reads them from an identities file mounted at start, and RustFS takes them through its signed admin API.
-SeaweedFS with `legacy=True` writes the coarse `Read`, `List` and `Write` actions instead, which is the only form in which a writer can edit lifecycle rules, and in which `Write` also covers deleting.
+SeaweedFS is never given the coarse `Read`, `List` and `Write` actions, because `Write` also covers deleting and lifecycle edits.
 
 ## Tests
 

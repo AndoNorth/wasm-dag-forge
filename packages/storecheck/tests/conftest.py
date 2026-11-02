@@ -56,12 +56,12 @@ def anonymous_volumes(container_id: str) -> list[str]:
 
 
 @contextmanager
-def running(t1, product: str, directory, legacy: bool = False):
+def running(t1, product: str, directory):
     """One container of the product, yielding its endpoint and the credential of every role."""
     credentials = generate_credentials()
     if product == "seaweedfs":
         config = directory / "s3.json"
-        write_seaweedfs_config(config, credentials, legacy=legacy)
+        write_seaweedfs_config(config, credentials)
         container = t1.container(
             PRODUCTS[product],
             ports={0: 8333},
@@ -100,4 +100,4 @@ def store(request, t1, tmp_path_factory):
 @pytest.fixture
 def start(t1, tmp_path):
     """Starts a container of a product for one test, as a context manager."""
-    return lambda product, legacy=False: running(t1, product, tmp_path, legacy)
+    return lambda product: running(t1, product, tmp_path)

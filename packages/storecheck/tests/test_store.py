@@ -50,10 +50,7 @@ def test_a_wrong_secret_and_an_anonymous_client_are_refused(store):
     assert lines == ["ok access wrong-secret", "ok access anonymous"]
 
 
-def test_access_mode_fails_when_a_recorded_gap_is_closed(store):
-    """The grants of these identities never let a writer edit lifecycle rules, on either product."""
-    assert run(store.endpoint, store.credentials, "access", say=lambda line: None) == 0
+def test_access_mode_has_no_failure_and_no_known_gap(store):
     lines: list[str] = []
-    assert run(store.endpoint, store.credentials, "access", "seaweedfs", lines.append) == 1
-    closed = [line for line in lines if line.startswith("FAIL access lifecycle-edit")]
-    assert len(closed) == 5, lines
+    assert run(store.endpoint, store.credentials, "access", store.product, lines.append) == 0
+    assert not [line for line in lines if line.startswith(("FAIL", "known-gap"))], lines

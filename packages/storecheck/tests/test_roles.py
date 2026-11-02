@@ -66,9 +66,5 @@ def test_each_product_image_is_pinned_in_the_versions_file():
         assert product["image"] in images, name
 
 
-def test_seaweedfs_records_the_lifecycle_edit_gap_for_the_writing_roles():
-    gaps = load(STORE / "products.yaml")["products"]["seaweedfs"]["known_gaps"]
-    assert gaps[0]["gap"] == "lifecycle-edit-by-writer"
-    roles = load(STORE / "roles.yaml")["roles"]
-    writers = {r for r, g in roles.items() if any("put" in a for a in g.values())}
-    assert set(gaps[0]["roles"]) == writers
+def test_seaweedfs_records_no_gap_because_each_role_has_its_own_policy():
+    assert load(STORE / "products.yaml")["products"]["seaweedfs"]["known_gaps"] == []
