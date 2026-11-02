@@ -2,7 +2,6 @@
 
 How to prepare a WSL2 host so the local kind cluster stays up.
 Host prerequisites, the doctor and the recipes live in [docs/dev-setup.md](dev-setup.md) and are not repeated here.
-Breakdown: [docs/epics/02-cluster.md](epics/02-cluster.md)
 
 Checks named below are either a `just doctor` check id, written as `id`, or a manual check, labelled as such.
 The automated ones run with:

@@ -2,8 +2,8 @@
 
 Run on 2026-11-01.
 Owner: the [durable state and artifact storage epic](https://github.com/AndoNorth/wasm-dag-forge/issues/3), lane M.
-Breakdown and method: [docs/epics/05-state-storage.md](../epics/05-state-storage.md), section 4 (M.1) and [docs/method.md](../method.md).
-Throwaway code: `spikes/S8/`, run as `nix develop -c spikes/S8/run.sh`.
+Breakdown and method: [docs/delivery/epics/05-state-storage.md](../../epics/05-state-storage.md), section 4 (M.1) and [docs/delivery/method.md](../../method.md).
+Throwaway code: [code/](code/), run as `nix develop -c docs/delivery/spikes/S8/code/run.sh`.
 Every number below is a `figure <name> <value>` line of that run, and the name is given in backticks beside it.
 
 ## Result

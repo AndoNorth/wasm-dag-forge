@@ -2,7 +2,7 @@
 
 How wasm-dag-forge epics are delivered one at a time.
 Every epic goes through four steps: prepare, build, verify, close.
-Prepare produces one file, the epic breakdown spec (`docs/epics/NN-<slug>.md`).
+Prepare produces one file, the epic breakdown spec (`docs/delivery/epics/NN-<slug>.md`).
 The captain reviews that file once, and that review is the alignment step for the domain.
 Lane issues are filed on GitHub only after approval, and the other lanes start only after lane 0 is merged.
 
@@ -18,10 +18,10 @@ When a domain closes, the note and the epic are refined with what was learned.
 | Thing | Lives in | Form |
 | --- | --- | --- |
 | What a domain must deliver | the epic issue (label `epic`, GitHub Project 2) | GitHub issue |
-| How to deliver it in parallel | `docs/epics/NN-<slug>.md` | repo file, reviewed as a PR |
+| How to deliver it in parallel | `docs/delivery/epics/NN-<slug>.md` | repo file, reviewed as a PR |
 | Why the system has this shape | `docs/architecture/` (draw.io files, one note per area as each domain executes) | repo files |
 | Pinned contracts | `contracts/<name>/` | schema files, tables, test vectors, a loader test, `README.md` |
-| Spike results | `docs/spikes/S<n>-<slug>.md`, throwaway code in `spikes/S<n>/` | repo files |
+| Spike results | `docs/delivery/spikes/S<n>/<slug>.md`, throwaway code in `docs/delivery/spikes/S<n>/code/` | repo files |
 | Work units | GitHub issues labelled `lane:<x>` and `epic:<n>`, sub-issues of the epic | issue from the lane issue template |
 | Verifiers (domains that need end to end driving) | skill in `.claude/skills/verify-<domain>/`, scripts in `scripts/verify/<domain>/` | agent skill plus scripts |
 
@@ -34,8 +34,8 @@ Epic text and notes link to contracts and never copy them.
 Templates:
 
 - [Epic breakdown spec](templates/epic-breakdown.md)
-- [Lane issue](../.github/ISSUE_TEMPLATE/lane-issue.md)
-- [Pull request](../.github/pull_request_template.md)
+- [Lane issue](../../.github/ISSUE_TEMPLATE/lane-issue.md)
+- [Pull request](../../.github/pull_request_template.md)
 
 The lane issue template is a markdown template, not an issue form, because workers file with `gh-axi issue create --body-file` and issue forms apply only in the web UI.
 
@@ -44,7 +44,7 @@ The lane issue template is a markdown template, not an issue form, because worke
 ### Prepare
 
 1. The author reads the epic, its neighbours' Interfaces tables, `contracts/`, the architecture note and the verifier for the domain if one exists.
-2. The author writes `docs/epics/NN-<slug>.md` from the template.
+2. The author writes `docs/delivery/epics/NN-<slug>.md` from the template.
    The questions the captain must answer are the first section, at most five.
 3. Before review, the read-only spec agents run and their findings are fixed: `spec-coherence`, `spec-citation-verifier`, `spec-ticket-coverage`, `spec-adversary`.
 4. The captain reviews the spec PR once.
@@ -102,7 +102,7 @@ Contracts are pinned in lane 0 of the epic that produces them, merged before any
 A pinned contract has a schema or table file, test vectors, a loader test that fails if a vector breaks, a `version` and an owner epic.
 Changing it after the pin is a contract-change PR with a consumer list and a version bump.
 
-Spikes are timeboxed, each one issue labelled `spike` with a binary pass line, throwaway code in `spikes/S<n>/`, and a result file `docs/spikes/S<n>-<slug>.md` stating pass or fail, the numbers and the decision it settles.
+Spikes are timeboxed, each one issue labelled `spike` with a binary pass line, throwaway code in `docs/delivery/spikes/S<n>/code/`, and a result file `docs/delivery/spikes/S<n>/<slug>.md` stating pass or fail, the numbers and the decision it settles.
 A spike belongs to the epic whose design its answer can change, and the lanes it gates are not filed until the result is merged.
 Spikes that need a runtime but change no product file are the only work allowed alongside the one active epic.
 
@@ -121,7 +121,7 @@ Spikes that need a runtime but change no product file are the only work allowed 
 
 ## PR evidence
 
-A pull request body follows the [template](../.github/pull_request_template.md): Summary, Notable decisions, Test plan and Risks.
+A pull request body follows the [template](../../.github/pull_request_template.md): Summary, Notable decisions, Test plan and Risks.
 Every Test plan line is a checked box naming the exact command run, followed by a collapsed block holding the real output, response body or log lines, trimmed to the relevant part.
 Evidence is output that was captured, never a description of it, and a UI or rendered output carries a screenshot or rendered text.
 A criterion that cannot run yet says which later work it waits for.
@@ -267,7 +267,7 @@ The gate is `just smoke`, one level 0 job from #24 through #8, #6, #9, #10 and #
 Where each epic sits, in one line each:
 
 - #2 settles host fit, the one finding that can stop the PoC on this machine, and ships the module contract and a dummy module, while each real infra module is delivered by its owner epic.
-- The spike block is three independent spikes, one worker each, writing only under `spikes/` and `docs/spikes/`.
+- The spike block is three independent spikes, one worker each, writing only under `docs/delivery/spikes/`.
 - #4 is a pure library needing only #1, and its contracts are consumed by almost everything after it.
 - #7 can sit anywhere before #8, and sits at E10 because the S4 result is known by then and the host is free.
 - #11 defers `paced_sim` and kill-and-resume (issues 5 and 12) to #18's pass, and S6 feeds #10 budgets.
@@ -305,7 +305,7 @@ Exactly three, each with a rule that keeps it small:
 2. #17 is delivered in three passes.
    Pass 1 (smoke) is the gate and pass 2 (e2e) follows #13.
    The ladder document and pytest harness skeleton exist as lane 0 of #1, since the `test` and `itest` recipes are #1's.
-3. The spike block and pulled-forward contracts are allowed because they touch only `spikes/`, `docs/spikes/` and `contracts/`, never product code.
+3. The spike block and pulled-forward contracts are allowed because they touch only `docs/delivery/spikes/` and `contracts/`, never product code.
 
 An epic may not overlap another on product files.
 If a fourth overlap appears, the later epic's spec states why in its section 5, and the captain sees it in the one review.

@@ -11,7 +11,7 @@ The proof of concept accepts that license, and telemetry is off by setting (`tim
 
 ## Sizing
 
-Requests and limits and the 4,096 MiB volume claim come from `docs/spikes/S8-state-footprint.md`.
+Requests and limits and the 4,096 MiB volume claim come from `docs/delivery/spikes/S8/state-footprint.md`.
 `shared_buffers` and `max_connections` are set explicitly, because the image tunes itself to the container limit only on the first start of an empty volume.
 The volume lives on the host data directory of the preset, so it survives `just down` and is removed by `just nuke`.
 

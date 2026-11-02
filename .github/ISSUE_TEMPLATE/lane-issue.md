@@ -7,7 +7,7 @@ title: "[#N][lane] <verb phrase>"
 <!--
 Labels: epic:N, lane:<x>, tier:T0|T1|T2
 Parent: #N
-Spec: docs/epics/NN-<slug>.md#<anchor>
+Spec: docs/delivery/epics/NN-<slug>.md#<anchor>
 Acceptance criteria rules: each one names a command or test and an observable result.
 "Works" and "is documented" are not criteria.
 A criterion that cannot run yet says which tier it waits for, and the issue is blocked or split, never weakened.

@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 scripts/lint.sh
+scripts/check-links.sh
 echo "== verify-lint"
 scripts/lint.sh --verify-skills
 scripts/test.sh

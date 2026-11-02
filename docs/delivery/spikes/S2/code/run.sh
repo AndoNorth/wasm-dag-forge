@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Footprint spike: brings up the ci preset, replaces its components with memory-holding stand-ins from a figures table,
 # holds them while host MemAvailable is sampled, and checks the pass line. Run under the cluster lock and the dev shell:
-#   flock /tmp/wdf-cluster.lock nix develop -c spikes/S2/run.sh <figures.tsv> <out-dir> <hold-seconds>
+#   flock /tmp/wdf-cluster.lock nix develop -c docs/delivery/spikes/S2/code/run.sh <figures.tsv> <out-dir> <hold-seconds>
 # The cluster is always deleted on exit. Exit 0 pass, 1 fail, 3 aborted on host memory.
 set -uo pipefail
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)
 cd "$root" || exit 2
 [ $# -eq 3 ] && [ -f "$1" ] || { echo "usage: run.sh <figures.tsv> <out-dir> <hold-seconds>" >&2; exit 2; }
 figures=$1 out=$2 hold=$3

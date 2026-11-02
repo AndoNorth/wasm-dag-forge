@@ -37,7 +37,7 @@ Shared-file rules: <only files two lanes may touch, and the merge rule for each>
 
 ## 4. Issues
 
-One block per issue, in the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md).
+One block per issue, in the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md).
 Replaced by `#NNN` links after filing.
 
 ## 5. Order, stubs and spikes

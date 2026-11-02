@@ -6,7 +6,7 @@ Consumers: dispatch API (#24), workflow (#6), admission (#8), placement (#9), st
 
 A job is a JSON document, a template of tasks keyed by id.
 This directory pins the document schema, the error table and the vectors, and the code lives in the packages below.
-Breakdown and the rationale of every limit: [docs/epics/04-validator.md](../../docs/epics/04-validator.md).
+Breakdown and the rationale of every limit: [docs/delivery/epics/04-validator.md](../../docs/delivery/epics/04-validator.md).
 
 ## Files
 

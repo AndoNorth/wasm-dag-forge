@@ -7,8 +7,8 @@ Depends on (closed epics): Dev environment (#1, closed)
 
 Evidence marks: `[ran]` means executed on the author's host (WSL2, 2026-10-28) while preparing this spec, `[read]` means read and not re-run.
 Epic line references are not used, because the epic issue body was rewritten with the spike sizing results on 2026-10-28 and this spec was written against that version.
-Method: [docs/method.md](../method.md).
-Spike reports consulted: Temporal at 100,000 jobs (S3b) and the object store (S5), both held outside the repo until their result files land under `docs/spikes/`.
+Method: [docs/delivery/method.md](../method.md).
+Spike reports consulted: Temporal at 100,000 jobs (S3b) and the object store (S5), both held outside the repo until their result files land under `docs/delivery/spikes/`.
 
 ## 0. Decisions for the captain (max 5)
 
@@ -79,7 +79,7 @@ Shapes below are proposals made concrete in lane 0, and a change after the pin i
 | T Tilt | 1 | `Tiltfile`, `deploy/tilt/**`, `scripts/tilt/**` | [#53](https://github.com/AndoNorth/wasm-dag-forge/issues/53), [#62](https://github.com/AndoNorth/wasm-dag-forge/issues/62) | lane 0 (T.1 needs no cluster) |
 | H Host | 1 | `deploy/host/**`, `scripts/down.sh`, `scripts/nuke.sh`, `docs/cluster-host.md` | [#57](https://github.com/AndoNorth/wasm-dag-forge/issues/57), [#59](https://github.com/AndoNorth/wasm-dag-forge/issues/59), [#54](https://github.com/AndoNorth/wasm-dag-forge/issues/54) | lane 0, and A.2 for a cluster to exist |
 | W Mirror | 1 | `deploy/mirror/**` | [#61](https://github.com/AndoNorth/wasm-dag-forge/issues/61) | lane 0, and A.4 for the compile pool |
-| F Footprint | 1 | `spikes/S2/**`, `docs/spikes/S2-footprint.md` | [#63](https://github.com/AndoNorth/wasm-dag-forge/issues/63) | lanes A to W merged, runs the cluster |
+| F Footprint | 1 | `docs/delivery/spikes/S2/code/**`, `docs/delivery/spikes/S2/footprint.md` | [#63](https://github.com/AndoNorth/wasm-dag-forge/issues/63) | lanes A to W merged, runs the cluster |
 | X Exit | 1 | `.github/workflows/kind-smoke.yml` | [#65](https://github.com/AndoNorth/wasm-dag-forge/issues/65) | lanes A to W merged |
 
 Shared-file rules:
@@ -97,7 +97,7 @@ Shared-file rules:
 ## 4. Issues
 
 The `revisit` child on the dev environment epic is [#49](https://github.com/AndoNorth/wasm-dag-forge/issues/49), and it blocks lane 0.
-Each lane issue below was filed on 2026-10-28 from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #2, and its body holds the scope, owns, acceptance criteria and needs.
+Each lane issue below was filed on 2026-10-28 from the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #2, and its body holds the scope, owns, acceptance criteria and needs.
 Proposal numbering from the epic is in brackets.
 Every acceptance line is a command with an observable result.
 
@@ -154,7 +154,7 @@ Stubs:
 | --- | --- | --- |
 | `scripts/cluster/*.sh`, `Tiltfile` | exit 3 with `not implemented: owned by #2` | the recipe check (`just --list`, each stub exits 3 with owner text) runs against the stub and the real script alike, where the real one must exit 0 or 1 and never 3 |
 | `deploy/dummy/*` modules | a pinned pause-class workload per group with requests, limits and readiness | the module contract loader runs against dummy and real modules, so a real module that breaks the shape fails the same vectors |
-| ballast stand-ins in `spikes/S2/` | a pod holding its component's measured peak memory and CPU | S2's own raw output; real components are re-measured by characterization, and that comparison is the conformance check |
+| ballast stand-ins in `docs/delivery/spikes/S2/code/` | a pod holding its component's measured peak memory and CPU | S2's own raw output; real components are re-measured by characterization, and that comparison is the conformance check |
 
 Spike S2, footprint, gate G1:
 
@@ -187,7 +187,7 @@ Each command runs as written, and its real output is pasted in the PR that recor
 | 9 | from a compile pod, install the fixture wheel from the mirror with `--no-index --find-links --require-hashes`, then with an altered hash | install succeeds, the altered hash fails |
 | 10 | `nix develop -c just ci` | exit 0 |
 | 11 | the `kind-smoke` job on `main` | one green run, the exit acceptance of this epic |
-| 12 | S2 result file merged with pass or fail stated | host requirement table present, gate G1 decision recorded in `docs/spikes/S2-footprint.md` |
+| 12 | S2 result file merged with pass or fail stated | host requirement table present, gate G1 decision recorded in `docs/delivery/spikes/S2/footprint.md` |
 
 Rows 1 to 10 and 12 run on this host.
 Row 11 runs on a GitHub runner, so it adds a second host size to the evidence, and it is a different run from the local one.
@@ -226,7 +226,7 @@ The `dev` and `soak` presets, which the spec could not start on the 7.8 GiB host
 | 9 | pass | the fixture wheel installs from the mirror with `--require-hashes`, an altered hash is refused |
 | 10 | pass | `just ci` exit 0, also on `main` plus the three fix commits below |
 | 11 | pass | `kind-smoke` run 41115019941 on `main` at `0b8b522`, green, 110 s on a runner with 16,367,524 kB `MemTotal` |
-| 12 | pass | `docs/spikes/S2-footprint.md` states the result (fail on the 7.8 GiB host), holds the host requirement table and records the gate G1 decision |
+| 12 | pass | `docs/delivery/spikes/S2/footprint.md` states the result (fail on the 7.8 GiB host), holds the host requirement table and records the gate G1 decision |
 
 Presets run for real on this host:
 
@@ -260,7 +260,7 @@ Not proven:
 - Egress of the compile pool, which reached `pypi.org` from the probe pod, because a network policy is a non-goal of this epic and the mirror README states intent only.
 - Docker Desktop and non-WSL Linux, and the real Temporal, Postgres and object store footprints.
 
-Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
 
 - 2026-10-31: the slots files of `ci`, `dev` and `soak` gained a `simulate` pool entry at 250m and 384Mi, still marked `estimate: true`, as a `revisit` child of this epic.
 - 2026-11-01: the infra node of `ci` and `dev` grew to 5,120 MiB, which makes the `wdf-infra` quota 4,772 MiB, and `just up` applies the namespaces and quotas, as a `revisit` child of this epic.

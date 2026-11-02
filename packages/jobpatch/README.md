@@ -1,7 +1,7 @@
 # wdf_jobpatch
 
 Decides whether a changed plan may replace the plan of a paused job.
-The contract is [contracts/job/](../../contracts/job/README.md), and the rationale is in [docs/epics/04-validator.md](../../docs/epics/04-validator.md).
+The contract is [contracts/job/](../../contracts/job/README.md), and the rationale is in [docs/delivery/epics/04-validator.md](../../docs/delivery/epics/04-validator.md).
 
 `patch_check(old, new, completed)` takes two bound plans and the set of completed task ids, and returns a `PatchReport` with `compatible`, `issues`, `changed` and `recompile`.
 It is pure: neither plan nor the set is modified, and equal inputs give equal reports.
