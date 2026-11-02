@@ -39,3 +39,7 @@ images:
     version: 1.0.4
     # yamllint disable-line rule:line-length
     digest: sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
+  timescale/timescaledb:
+    version: 2.31.0-pg16
+    # yamllint disable-line rule:line-length
+    digest: sha256:322ae364eca3321cf2a48f1ef31213b87843413b3cf8feeebf54e999a26bb731
