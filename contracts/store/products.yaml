@@ -4,11 +4,7 @@
 products:
   seaweedfs:
     image: chrislusf/seaweedfs
-    known_gaps:
-      # A credential with Write on a bucket can also replace that bucket's lifecycle rules, so these credentials
-      # belong to platform pods only.
-      - gap: lifecycle-edit-by-writer
-        roles: [submit, indexer, compile, simulate, aggregate]
+    known_gaps: []
   rustfs:
     image: rustfs/rustfs
     known_gaps:

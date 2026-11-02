@@ -47,3 +47,14 @@ def test_a_wheel_in_a_clean_venv_loads_the_committed_contract(clean_python, tmp_
         [clean_python, "-I", "-c", PROBE], capture_output=True, text=True, cwd=tmp_path
     )
     assert probe.returncode == 0, probe.stderr
+
+
+def test_a_wheel_cli_reports_a_missing_option_as_usage(clean_python, tmp_path):
+    result = subprocess.run(
+        [clean_python, "-I", "-m", "wdf_storecheck", "run", "--mode", "base"],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 2, result.stderr
+    assert result.stderr.startswith("usage: wdf_storecheck run")

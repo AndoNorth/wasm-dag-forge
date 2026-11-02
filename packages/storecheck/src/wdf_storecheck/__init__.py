@@ -1,6 +1,6 @@
-"""The S3 contract script and the store contract loader, the script filled in by lane C."""
+"""The S3 contract script and the store contract loader."""
 
+from .cli import run
 from .models import Lifecycle, Products, Roles
-from .stubs import STUBBED, run
 
-__all__ = ["STUBBED", "Lifecycle", "Products", "Roles", "run"]
+__all__ = ["Lifecycle", "Products", "Roles", "run"]
