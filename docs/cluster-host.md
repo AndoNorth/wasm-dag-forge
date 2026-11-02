@@ -103,6 +103,11 @@ The renderer creates the directory so it belongs to the user, while the node con
 It removes only a directory that a preset in `deploy/presets/` names, and otherwise exits 4 before deleting anything.
 `WDF_DATA_DIR` names another directory for it, which makes the refusal testable and is refused for every path outside the presets.
 
+`just up` also applies the namespaces and their quotas, rendered from the preset by `scripts/cluster/namespaces.sh`, once every node is Ready.
+A preset resize needs `just nuke` first on a host that holds a cluster.
+The kubelet reservation and eviction thresholds are written when a node is created, while a container limit can be raised afterwards, so a live node ends in the `MISMATCH` of `scripts/cluster/allocatable.sh`.
+`just up` then exits 1 with a line that names `just nuke`.
+
 ## What each setting protects
 
 | Setting | Protects against | Doctor check |
