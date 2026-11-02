@@ -1,0 +1,62 @@
+name: state-modules
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - deploy/appdb/**
+      - deploy/temporaldb/**
+      - deploy/objectstore/**
+      - contracts/store/**
+      - contracts/state/**
+      - packages/storecheck/**
+      - packages/migrate/**
+      - scripts/storage/**
+      - .github/workflows/state-modules.yml
+
+permissions:
+  contents: read
+
+jobs:
+  # Setting the repository variable CI_ENABLED to false skips this job.
+  # A commit message containing [skip ci] also skips runs natively.
+  state-modules:
+    if: ${{ vars.CI_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WDF_PRESET: ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - run: nix develop -c just up
+      - run: nix develop -c scripts/tilt/run.sh ci
+      - name: Store contract script
+        shell: nix develop -c bash -euo pipefail {0}
+        run: |
+          kubectl --context kind-wdf -n wdf-infra port-forward --address 127.0.0.1 svc/objectstore 18333:8333 &
+          forward=$!
+          trap 'kill "$forward"' EXIT
+          for _ in $(seq 60); do
+            (exec 3<>/dev/tcp/127.0.0.1/18333) 2>/dev/null && break
+            sleep 1
+          done
+          credentials=$(scripts/storage/store/identities.sh path)
+          for mode in base access; do
+            uv run --frozen python -m wdf_storecheck run --endpoint http://127.0.0.1:18333 \
+              --credentials "$credentials" --mode "$mode"
+          done
+      - name: Migration check
+        run: nix develop -c scripts/storage/db/migrate.sh check
+      - name: Export cluster logs
+        if: ${{ failure() }}
+        run: nix develop -c kind export logs --name wdf "$RUNNER_TEMP/cluster-logs"
+      - name: Upload cluster logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-logs
+          path: ${{ runner.temp }}/cluster-logs
+          if-no-files-found: ignore
+      - run: nix develop -c just down
