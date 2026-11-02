@@ -510,6 +510,7 @@ name = "wdf-artifactindex"
 version = "0.0.0"
 source = { editable = "packages/artifactindex" }
 dependencies = [
+    { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "wdf-events" },
@@ -517,6 +518,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "psycopg", extras = ["binary"] },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "wdf-events", editable = "packages/events" },
