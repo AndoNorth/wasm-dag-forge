@@ -1,5 +1,5 @@
-"""The migration runner, filled in by lane 0."""
+"""The migration runner for the application database."""
 
-from .stubs import STUBBED, apply, check, status
+from .runner import LOCK_KEY, Migration, Refused, apply, check, discover, lint, status
 
-__all__ = ["STUBBED", "apply", "check", "status"]
+__all__ = ["LOCK_KEY", "Migration", "Refused", "apply", "check", "discover", "lint", "status"]

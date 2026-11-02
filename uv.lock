@@ -699,6 +699,18 @@ source = { editable = "packages/keys" }
 name = "wdf-migrate"
 version = "0.0.0"
 source = { editable = "packages/migrate" }
+dependencies = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "pytest" },
+    { name = "wdf-itest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "psycopg", extras = ["binary"] },
+    { name = "pytest" },
+    { name = "wdf-itest", editable = "packages/itest" },
+]
 
 [[package]]
 name = "wdf-plan"
