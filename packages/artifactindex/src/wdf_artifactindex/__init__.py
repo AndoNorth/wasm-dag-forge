@@ -1,18 +1,34 @@
-"""The artifact index: row model, schema generator and the library surface."""
+"""The artifact index: row model, schema generator, migrations and the library surface."""
 
-from .models import ArtifactRow
-from .stubs import (
-    STUBBED,
+from .index import (
+    CacheEntry,
+    Deleted,
+    Existing,
+    Indexed,
+    Lost,
+    Pinned,
+    WasmGone,
+    Won,
     index_reference,
     mark_deleted,
     record_cache_entry,
     references_to,
     touch_cache_entry,
 )
+from .models import ArtifactRow
+from .reference import InvalidReference
 
 __all__ = [
-    "STUBBED",
     "ArtifactRow",
+    "CacheEntry",
+    "Deleted",
+    "Existing",
+    "Indexed",
+    "InvalidReference",
+    "Lost",
+    "Pinned",
+    "WasmGone",
+    "Won",
     "index_reference",
     "mark_deleted",
     "record_cache_entry",

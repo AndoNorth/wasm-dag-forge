@@ -13,7 +13,8 @@ UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 HASH_PATTERN = "^[0-9a-f]{64}$"
 
 # The kinds are read from the layout and never retyped, and a compile cache entry is the one more.
-KINDS = (*yaml.safe_load((CONTRACT / "layout.yaml").read_text())["kinds"], "compile-cache")
+LAYOUT = yaml.safe_load((CONTRACT / "layout.yaml").read_text())
+KINDS = (*LAYOUT["kinds"], "compile-cache")
 
 Kind = Literal[KINDS]
 

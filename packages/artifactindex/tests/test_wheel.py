@@ -10,10 +10,13 @@ ROOT = Path(__file__).resolve().parents[3]
 
 PROBE = """
 import json
+from importlib import resources
 from wdf_artifactindex.models import CONTRACT, ArtifactRow
 
 for name in ['layout.yaml', 'artifact-row/1.json']:
     assert (CONTRACT / name).is_file(), name
+for name in ['0300_artifact_index.sql', 'R__artifact_kinds.sql']:
+    assert (resources.files('wdf_artifactindex.migrations') / name).is_file(), name
 schema = json.loads((CONTRACT / 'artifact-row/1.json').read_text())
 assert set(schema["properties"]) == set(ArtifactRow.model_fields)
 
