@@ -2,7 +2,13 @@
 name = "wdf-migrate"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = ["psycopg[binary]", "pytest", "wdf-itest"]
+
+[project.entry-points.pytest11]
+wdf_migrate = "wdf_migrate.fixtures"
+
+[tool.uv.sources]
+wdf-itest = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
