@@ -2,14 +2,24 @@
 name = "wdf-stateops"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = ["psycopg[binary]", "wdf-jobstate", "wdf-keys"]
+dependencies = [
+    "psycopg[binary]",
+    "wdf-events",
+    "wdf-eventstore",
+    "wdf-jobstate",
+    "wdf-keys",
+    "wdf-migrate",
+]
 
 [project.entry-points."wdf.migrations"]
 stateops = "wdf_stateops.migrations"
 
 [tool.uv.sources]
+wdf-events = { workspace = true }
+wdf-eventstore = { workspace = true }
 wdf-jobstate = { workspace = true }
 wdf-keys = { workspace = true }
+wdf-migrate = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
