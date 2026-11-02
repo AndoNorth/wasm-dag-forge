@@ -8,7 +8,7 @@ Depends on (closed epics): nothing
 
 Evidence marks: `[ran]` means executed on the author's host (WSL2, 2026-10-27) while preparing this spec, `[read]` means read and not re-run.
 Epic line references (`#1 L59`) are lines of the epic issue body as read on 2026-10-27, before the corrections in section 0.1 are applied.
-Method: [docs/method.md](../method.md).
+Method: [docs/delivery/method.md](../method.md).
 
 ## 0. Decisions
 
@@ -195,7 +195,7 @@ Every acceptance line is a command with an observable result.
 
 The dev environment has no `verify-dev-environment` skill.
 Its surface is a shell, a command table and a host preflight, so the proof is made of checks the lanes already ship.
-The verifier convention stays for domains that must be driven end to end (see [docs/method.md](../method.md#the-verifier-convention)).
+The verifier convention stays for domains that must be driven end to end (see [docs/delivery/method.md](../method.md#the-verifier-convention)).
 
 | Lane | What proves it |
 | --- | --- |
@@ -268,6 +268,6 @@ Follow-ups left:
 - `just --list` lacks descriptions.
 - A second contributor machine is unverified.
 
-Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
 
 - 2026-10-28: recipe table v2 and the `deploy/presets/` lint exclusion, see https://github.com/AndoNorth/wasm-dag-forge/issues/49.

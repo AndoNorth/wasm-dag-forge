@@ -8,9 +8,9 @@ Depends on (closed epics): Dev environment (#1, closed), Job event envelope (#4,
 Evidence marks: `[ran]` means executed on the author's host (WSL2, 2026-10-31) while preparing this spec, `[read]` means read and not re-run.
 The epic issue body was read on 2026-10-31, and this spec was written against that version.
 `main` was at `b6e11ff`, the closure of the envelope epic.
-Method: [docs/method.md](../method.md).
-Models: [docs/epics/03-envelope.md](03-envelope.md) (the most recent, fully reviewed breakdown) and [docs/epics/02-cluster.md](02-cluster.md).
-Spike results consulted: [Temporal](../spikes/temporal.md) (S3, S3b) for the 100,000 job scale, and [footprint](../spikes/S2-footprint.md) (S2) for the slot figures.
+Method: [docs/delivery/method.md](../method.md).
+Models: [docs/delivery/epics/03-envelope.md](03-envelope.md) (the most recent, fully reviewed breakdown) and [docs/delivery/epics/02-cluster.md](02-cluster.md).
+Spike results consulted: [Temporal](../spikes/temporal.md) (S3, S3b) for the 100,000 job scale, and [footprint](../spikes/S2/footprint.md) (S2) for the slot figures.
 This epic has no cluster dependency, and its own tests need no container.
 They run at tier T0 (host Python, no runtime), and the epic never starts a cluster or a container.
 Only the `just ci` gate needs Docker, for the envelope integration tests that already exist on `main`.
@@ -132,7 +132,7 @@ Non-goals for this pass:
 | Envelope | The placeholder `MAX_JOB_DURATION_DAYS` of 7, and `wdf_compat.breaking_changes(old, new)`, which walks only `properties` and `items` and so cannot see a task model held under `additionalProperties`, `$ref` or `oneOf`, which is why P.4 carries its own walker | `packages/compat/` compat v1 | none, exists [ran: both import, and the walk gap shown on hand-built schemas] |
 | Envelope | The pool names `compile`, `simulate`, `aggregate`, `infra` and `obs` | `contracts/topology/topology.yaml` topology v1 | none, exists [read] |
 | Cluster | Per-slot budgets of the compile and aggregate pools, one task per pod, marked `estimate: true`, with no simulate entry until issue R.1 adds one before lane 0 starts, and the slot check `scripts/cluster/slots.sh` with its tests `scripts/cluster/test_slots.py` | `deploy/presets/slots/<preset>.yaml` for `ci`, `dev` and `soak` at `b6e11ff`, and after R.1 with a simulate entry | none, R.1 merges before lane 0 starts |
-| Envelope | The batch manifest interface: one template manifest per batch stored by hash, per-job parameters on the row, and the contract-change rule if it changes | `docs/epics/03-envelope.md` section 2 | none |
+| Envelope | The batch manifest interface: one template manifest per batch stored by hash, per-job parameters on the row, and the contract-change rule if it changes | `docs/delivery/epics/03-envelope.md` section 2 | none |
 | Epic and Temporal | The 253 ms per 1,000 tasks validation measure [read: epic text], the 2 MiB Temporal payload limit [read: the envelope spec, from the epic text], and the 10,240 event history warning [read: Temporal documentation, not in the repo and not re-checked] | no pin, the spikes do not cover them | the estimate constants of 0.3 |
 
 No `revisit` child issue is open against the dev environment, cluster or envelope epics [ran: `gh-axi issue list --label revisit --state all` shows only the closed recipe table issue].
@@ -183,7 +183,7 @@ Departures from the method, stated so that the captain approves them knowingly:
   It edits files of that epic (the slots files, their test and one addendum line in the closure of its spec), as a contract-change style PR with a consumer list, and blocks V.3 as the method says.
 - The root `pyproject.toml` is edited once, by lane 0 (issue 0.3), to list the new workspace members, because a plain `uv run` installs only what the dev group names.
 - The verifier delta section of the template is absent because there is none (recorded decision 1), so the sections after section 5 are numbered one lower than in the template.
-- No `just/<domain>.just` module is added, and `docs/method.md` is not edited by this spec.
+- No `just/<domain>.just` module is added, and `docs/delivery/method.md` is not edited by this spec.
   A follow-up edit is needed, because its verifier table (line 220) and the tranche A rows for E3 and E4 (lines 245 and 246) still list `verify-job-model`, and line 112 points the exit test at "spec section 7", which is section 6 here.
 
 | Lane | Workers | Owns (exclusive) | Issues | Needs |
@@ -193,7 +193,7 @@ Departures from the method, stated so that the captain approves them knowingly:
 | P Plan | 1 | `packages/plan/**`, `packages/jobdoc/**` after lane 0, `contracts/job/vectors/job-params/invalid/**` | [#133](https://github.com/AndoNorth/wasm-dag-forge/issues/133), [#134](https://github.com/AndoNorth/wasm-dag-forge/issues/134), [#135](https://github.com/AndoNorth/wasm-dag-forge/issues/135), [#136](https://github.com/AndoNorth/wasm-dag-forge/issues/136) | lane 0, P.1 for P.2 and P.3, and P.1 and F.2 for P.4 |
 | H Patch | 1 | `packages/jobpatch/**`, `contracts/job/vectors/patch/**` | [#137](https://github.com/AndoNorth/wasm-dag-forge/issues/137) | P.1 and P.3 |
 | F Fixtures | 1 | `packages/jobexamples/**`, `contracts/job/vectors/valid/**`, `contracts/job/vectors/job-params/valid/**`, `contracts/job/vectors/plans/**` | [#138](https://github.com/AndoNorth/wasm-dag-forge/issues/138), [#139](https://github.com/AndoNorth/wasm-dag-forge/issues/139) | V.4, P.1 and P.3 for F.1, and F.1, P.3 and H.1 for F.2 |
-| R Revisit | 1 | `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py`, `docs/epics/02-cluster.md` (one closure addendum line only) | [#124](https://github.com/AndoNorth/wasm-dag-forge/issues/124) | nothing (merges before lane 0) |
+| R Revisit | 1 | `deploy/presets/slots/{ci,dev,soak}.yaml`, `scripts/cluster/test_slots.py`, `docs/delivery/epics/02-cluster.md` (one closure addendum line only) | [#124](https://github.com/AndoNorth/wasm-dag-forge/issues/124) | nothing (merges before lane 0) |
 | L Tools | 1 | `packages/jobtools/**` | [#140](https://github.com/AndoNorth/wasm-dag-forge/issues/140), [#141](https://github.com/AndoNorth/wasm-dag-forge/issues/141) | V.4, P.1, P.2, P.3 and H.1 for L.1, and L.1 for L.2 |
 
 Shared-file rules:
@@ -215,7 +215,7 @@ Shared-file rules:
 
 ## 4. Issues
 
-Each lane issue below was filed on 2026-10-31 from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #5 (R.1 as a `revisit` sub-issue of #2), and its body holds the scope, owns, acceptance criteria, verifier and needs.
+Each lane issue below was filed on 2026-10-31 from the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #5 (R.1 as a `revisit` sub-issue of #2), and its body holds the scope, owns, acceptance criteria, verifier and needs.
 Each issue copies its Owns line from the lane table, uses its Test line as the Verifier section, and keeps only the `just ci` and Owns checkboxes of Done means.
 Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker as the envelope spec says), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
 Acceptance lines are commands with an observable result, except the README content lines and the lines that say a result is pasted in the PR or in Closure, which the reviewer checks in the PR.
@@ -408,7 +408,7 @@ Seen during the run and not covered by a row:
 
 Follow-ups recorded by the lanes:
 
-- `docs/method.md` still lists `verify-job-model` for the envelope and validator epics (lines 220, 245 and 246) and points the exit test at "spec section 7" (line 112), where this spec numbers it section 6, as section 3 of this spec says.
+- `docs/delivery/method.md` still lists `verify-job-model` for the envelope and validator epics (lines 220, 245 and 246) and points the exit test at "spec section 7" (line 112), where this spec numbers it section 6, as section 3 of this spec says.
 - The workload names `echo` and `pi` and the `steps` parameter of the example vectors are placeholders until the toolchain epic fixes its workload library.
 - The pointer of a problem in an argument list names the list and not the element, which a later CLI may refine.
 - The codes `placeholder-misplaced` and the other additions of the document models are cheap to rename only until a consumer pins them.
@@ -417,4 +417,4 @@ Follow-ups recorded by the lanes:
 - `check.sh` reads the live `ci` slots, so an edit of `deploy/presets/` changes what the command line accepts, while the golden plans stay on the slots fixture.
 - The `read_plan` reader knows version 1 only, and the PR that introduces version 2 adds the branch for 1.
 
-Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).

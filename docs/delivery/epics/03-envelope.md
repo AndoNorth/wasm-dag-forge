@@ -7,8 +7,8 @@ Depends on (closed epics): Dev environment (#1, closed)
 
 Evidence marks: `[ran]` means executed on the author's host (WSL2, 2026-10-30) while preparing this spec, `[read]` means read and not re-run.
 The epic issue body was read on 2026-10-30, and this spec was written against that version.
-Method: [docs/method.md](../method.md).
-Model: [docs/epics/02-cluster.md](02-cluster.md).
+Method: [docs/delivery/method.md](../method.md).
+Model: [docs/delivery/epics/02-cluster.md](02-cluster.md).
 Spike results consulted: [broker client](../spikes/broker-client.md) (S4), [Temporal](../spikes/temporal.md) (S3, S3b) and [object store](../spikes/object-store.md) (S5).
 This epic has no cluster dependency.
 Its tests run at tier T0 (host Python, no runtime) and T1 (containers started by `docker run` on the host), and it never starts a cluster.
@@ -100,8 +100,8 @@ Non-goals for this pass:
 | Dev environment | Dev shell with `uv` and Python 3.13, `pytest` from `uv.lock`, and the recipes `just test`, `just itest [domain]` and `just ci` | `flake.lock`, `uv.lock`, workspace v1, recipe table v2 | none, exists [read: `scripts/test.sh`, `scripts/itest.sh`, `scripts/ci.sh`] |
 | Dev environment | `deploy/versions.yaml` images map, where each entry is `{version, digest}` and a PR touches only its own keys | schema v1 | none, exists [read] |
 | Dev environment | `scripts/lint.sh`, which runs `ruff` on every tracked `*.py` and `yamllint --strict` with a 120 column limit on every `*.yaml` | lint as in the repo | none, exists [read] |
-| Spike S4 | The structured message shape on the wire: one AMQP data section of CloudEvents JSON, durable, empty application-properties, and content type `application/cloudevents+json` | `docs/spikes/broker-client.md` | the shape is the shape of the golden events, no stub |
-| Spike S3 | Temporal 1.32.1 with Python SDK 1.34.0, and worker versioning on the workflow queue only | `docs/spikes/temporal.md` | none |
+| Spike S4 | The structured message shape on the wire: one AMQP data section of CloudEvents JSON, durable, empty application-properties, and content type `application/cloudevents+json` | `docs/delivery/spikes/broker-client.md` | the shape is the shape of the golden events, no stub |
+| Spike S3 | Temporal 1.32.1 with Python SDK 1.34.0, and worker versioning on the workflow queue only | `docs/delivery/spikes/temporal.md` | none |
 | Published CloudEvents 1.0.2 | `cloudevents.json` (JSON Schema, draft-07), the AMQP binding, the JSON format and the distributed tracing extension | tag `v1.0.2` of the specification repository [ran: all five files answered HTTP 200, and `cloudevents.json` is draft-07] | none |
 
 The S4 messages used the content type `application/cloudevents+json; charset=UTF-8` and the epic writes `charset=utf-8`.
@@ -154,7 +154,7 @@ Departures from the method, stated so that the captain approves them knowingly:
   Their content depends on the catalogue, and the method's tranche A for this epic does not name the stage contract.
 - A contract-change PR for a generated schema is not `contracts/` only, because the model and the regenerated file must change with it (see section 2).
 - No `just/<domain>.just` module is added by lane 0, because `just test`, `just itest <domain>` and `just ci` already run every test here.
-- `docs/method.md` is not edited by this spec, and a follow-up edit is needed: its verifier table (line 220) and the tranche A row for E3 (line 245) still list a verifier skill for this epic, and its definition of done points at the exit test as "spec section 7", which is section 6 in this spec and in the cluster spec.
+- `docs/delivery/method.md` is not edited by this spec, and a follow-up edit is needed: its verifier table (line 220) and the tranche A row for E3 (line 245) still list a verifier skill for this epic, and its definition of done points at the exit test as "spec section 7", which is section 6 in this spec and in the cluster spec.
 
 | Lane | Workers | Owns (exclusive) | Issues | Needs |
 | --- | --- | --- | --- | --- |
@@ -188,7 +188,7 @@ Shared-file rules:
 
 ## 4. Issues
 
-Each lane issue below was filed on 2026-10-30 from the [lane issue template](../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #4, and its body holds the scope, owns, acceptance criteria, verifier and needs.
+Each lane issue below was filed on 2026-10-30 from the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #4, and its body holds the scope, owns, acceptance criteria, verifier and needs.
 Each issue copies its Owns line from the lane table, uses its Test line as the Verifier section, and keeps only the `just ci` and Owns checkboxes of Done means.
 Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker once the T1 tests exist, as section 7 says), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
 Acceptance lines are commands with an observable result, except the README content lines, which the reviewer checks in the PR.
@@ -329,7 +329,7 @@ Departures from the method:
 Findings:
 
 - `contracts/stages/check.sh` prints `RuntimeWarning: 'wdf_stages.check' found in sys.modules after import of package 'wdf_stages'` to stderr and still exits 0, because the package imports the module that `python -m` then runs.
-- Every stale reference to the verifier and to "spec section 7" that section 3 named is still present in `docs/method.md` at lines 112, 220 and 245 on `92c76e3`.
+- Every stale reference to the verifier and to "spec section 7" that section 3 named is still present in `docs/delivery/method.md` at lines 112, 220 and 245 on `92c76e3`.
 - Row 10 ran with the default lock directory and slot 0 while no other T1 session was active, so the two-container limit and the lock wait were not exercised by this run.
 
 Not proven:
@@ -345,7 +345,7 @@ Not proven:
 
 Follow-ups recorded by the lanes and by this run, none of which blocks closure:
 
-- Edit `docs/method.md` to drop the verifier rows for this epic (lines 220 and 245) and to point the exit test at section 6 (line 112), as section 3 recorded.
+- Edit `docs/delivery/method.md` to drop the verifier rows for this epic (lines 220 and 245) and to point the exit test at section 6 (line 112), as section 3 recorded.
 - Refine `docs/architecture/13-state-envelope-artifacts.drawio` with what the lanes learned, and set the `Status` line of this spec.
 - Replace the placeholders of decision 12 (7 days and 14 days) and the single `INTRODUCED` date of the catalogue with real values, which changes `readable_days()` and may fail `check_catalogue`.
 - Confirm in the specs of #6 and #8 that the workflow input is the accepted event plus the params block.
@@ -357,6 +357,6 @@ Follow-ups recorded by the lanes and by this run, none of which blocks closure:
 - Remove by label the container of a T1 session killed with SIGKILL, which cannot clean up after itself.
 - Make `wdf_events.metrics` readable from a package installed outside the repository, which it is not because it reads the contract by repository path.
 
-Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/method.md](../method.md#revisiting-a-closed-epic)).
+Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
 
 - 2026-11-01: [#168](https://github.com/AndoNorth/wasm-dag-forge/issues/168) adds the `tmpfs`, `mounts` and `Container.exec` options to the container helper, all off by default.

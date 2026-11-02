@@ -20,7 +20,7 @@ Lifecycle rules are accepted by the store alone, but nothing expires without the
 
 ## Sizing
 
-Requests and limits come from `docs/spikes/S8-state-footprint.md`, and the pod budget of `module.yaml` is split across the three containers in `Tiltfile.module`, which refuses a split that does not add up.
+Requests and limits come from `docs/delivery/spikes/S8/state-footprint.md`, and the pod budget of `module.yaml` is split across the three containers in `Tiltfile.module`, which refuses a split that does not add up.
 The `store` container has a soft Go heap limit below its container limit, so a growing heap is collected before the kernel kills the process.
 The CPU limit of the whole pod is what is left of the `wdf-infra` quota of CPU limits, which equals the allocatable CPU of the infra node, after the other modules of the namespace.
 A change to the CPU limit of any module in `wdf-infra` is checked against that quota by running `scripts/tilt/run.sh ci` and reading the events of the namespace.

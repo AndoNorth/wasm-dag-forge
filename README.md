@@ -3,9 +3,8 @@
 A proof of concept for durable distributed job execution: batch jobs built from templates
 (compile, simulate, aggregate), run as WASM on a fixed-size local Kubernetes cluster.
 
-How to start the environment: docs/dev-setup.md (written by the dev environment epic)
+![System context](docs/architecture/01-system-context.drawio.svg)
 
-- [Delivery method](docs/method.md)
-- [Architecture diagrams](docs/architecture/)
-- [Design spikes](docs/spikes/README.md)
-- [Epic issues](https://github.com/AndoNorth/wasm-dag-forge/issues?q=label%3Aepic)
+## Getting started
+
+See [docs/dev-setup.md](docs/dev-setup.md).

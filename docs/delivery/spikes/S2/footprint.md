@@ -2,8 +2,8 @@
 
 Run on 2026-10-29.
 Owner: the [fixed-resource cluster epic](https://github.com/AndoNorth/wasm-dag-forge/issues/2), lane F.
-Breakdown and method: [docs/epics/02-cluster.md](../epics/02-cluster.md), section 5.
-Throwaway code: `spikes/S2/`.
+Breakdown and method: [docs/delivery/epics/02-cluster.md](../../epics/02-cluster.md), section 5.
+Throwaway code: [code/](code/).
 
 ## Result
 
@@ -39,8 +39,8 @@ The three runs differ only in the figures table.
 
 | Run | Figures | Purpose |
 | --- | --- | --- |
-| A | `spikes/S2/figures-literal.tsv`: Temporal 1 CPU and 1,024 MiB, its Postgres 0.5 CPU and 1,024 MiB, object store 0.1 CPU and 266 MiB, one compile and one aggregate pod at 1 CPU and 1,024 MiB | the figures of the epic as written |
-| B | `spikes/S2/figures-fit.tsv` with the compile and aggregate pods at 944 MiB and 0.9 CPU, the node allocatable | the largest pods the node numbers suggest will fit |
+| A | `docs/delivery/spikes/S2/code/figures-literal.tsv`: Temporal 1 CPU and 1,024 MiB, its Postgres 0.5 CPU and 1,024 MiB, object store 0.1 CPU and 266 MiB, one compile and one aggregate pod at 1 CPU and 1,024 MiB | the figures of the epic as written |
+| B | `docs/delivery/spikes/S2/code/figures-fit.tsv` with the compile and aggregate pods at 944 MiB and 0.9 CPU, the node allocatable | the largest pods the node numbers suggest will fit |
 | C | the same table with compile and aggregate at 890 MiB and 0.8 CPU, and the control plane container limit raised to 1,280 MiB | the largest pods the nodes actually admit |
 
 Temporal is held at its measured steady 686 MiB in runs B and C, and at its 1 GiB limit in run A.

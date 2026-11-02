@@ -2,8 +2,7 @@
 
 One Nix flake pins every tool, and `just` is the single entrypoint.
 The same commands run on a laptop, on a second contributor's machine and in CI.
-This document, `just doctor` and the CI `check` job are the verification surface of the dev environment, which has no verifier skill.
-Breakdown: [docs/epics/01-dev-environment.md](epics/01-dev-environment.md)
+This document, `just doctor` and the CI `check` job are the verification surface of the dev environment.
 
 ## Host prerequisites
 

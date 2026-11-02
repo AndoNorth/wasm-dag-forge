@@ -1,7 +1,7 @@
 # wdf_plan
 
 Compiles a validated job document to a plan and gives the plan its identity.
-The contract is [contracts/job/](../../contracts/job/README.md), and the rationale is in [docs/epics/04-validator.md](../../docs/epics/04-validator.md).
+The contract is [contracts/job/](../../contracts/job/README.md), and the rationale is in [docs/delivery/epics/04-validator.md](../../docs/delivery/epics/04-validator.md).
 
 ## Compiling
 
