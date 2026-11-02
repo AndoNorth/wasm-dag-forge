@@ -7,6 +7,7 @@ import sys
 
 import pytest
 from wdf_storecheck.checks import Report, classify, contract_roles
+from wdf_storecheck.expiry import run_days_check
 from wdf_storecheck.s3 import Creds, dump_credentials, load_credentials
 
 
@@ -36,17 +37,19 @@ def test_a_missing_option_is_a_usage_error(missing, credentials_file):
     assert result.stderr.startswith("usage: wdf_storecheck run")
 
 
-def test_a_mode_of_a_later_issue_is_a_usage_error(credentials_file):
+def test_an_unknown_mode_is_a_usage_error(credentials_file):
     result = cli(
-        "run",
-        "--endpoint",
-        "http://x",
-        "--credentials",
-        str(credentials_file),
-        "--mode",
-        "lifecycle",
+        "run", "--endpoint", "http://x", "--credentials", str(credentials_file), "--mode", "nope"
     )
     assert result.returncode == 2
+
+
+def test_recover_without_a_way_into_the_store_is_a_usage_error(credentials_file):
+    result = cli(
+        "run", "--endpoint", "http://x", "--credentials", str(credentials_file), "--mode", "recover"
+    )
+    assert result.returncode == 2
+    assert "--exec" in result.stderr
 
 
 def test_a_credentials_file_without_the_admin_role_is_a_usage_error(tmp_path):
@@ -107,3 +110,16 @@ def test_a_failed_check_is_counted_and_a_known_gap_is_not():
     report.check("bad", lambda: 1 / 0)
     assert report.failures == 1
     assert lines[-1].startswith("FAIL bad: ZeroDivisionError")
+
+
+def test_days_check_without_an_armed_state_fails_before_it_asks_the_store(tmp_path):
+    lines: list[str] = []
+    document = {"bucket": "b", "rule": "r", "armed": "a", "control": "c", "due": 1.0}
+    state = tmp_path / "missing.json"
+    report = Report(lines.append)
+    run_days_check(None, report, None, state)
+    assert report.failures == 1 and "no armed state" in lines[0]
+    state.write_text(json.dumps({**document, "due": 4e9}))
+    report = Report(lines.append)
+    run_days_check(None, report, None, state)
+    assert lines[-1].startswith("FAIL days-check: not yet due")

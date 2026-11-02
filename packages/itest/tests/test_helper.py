@@ -127,7 +127,7 @@ def test_an_unreachable_docker_fails_and_never_skips(tmp_path):
 def test_tmpfs_is_size_capped(t1):
     with t1.container("canary", command=["sleep", "60"], tmpfs={"/scratch": 8}) as c:
         info = inspect(c.id)
-        assert info["HostConfig"]["Tmpfs"] == {"/scratch": "rw,size=8m"}
+        assert info["HostConfig"]["Tmpfs"] == {"/scratch": "rw,mode=1777,size=8m"}
         assert c.exec("dd", "if=/dev/zero", "of=/scratch/fits", "bs=1M", "count=4").returncode == 0
         full = c.exec("dd", "if=/dev/zero", "of=/scratch/over", "bs=1M", "count=16", check=False)
         assert full.returncode != 0
