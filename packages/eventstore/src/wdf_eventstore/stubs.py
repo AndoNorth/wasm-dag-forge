@@ -4,7 +4,7 @@ from typing import Any
 
 OWNER = "E"
 # Tables and functions that are not implemented yet, each emptied by the lane that delivers it.
-STUBBED = ("event", "insert_events", "events_for_job", "chunk_count")
+STUBBED = ("insert_events", "events_for_job", "chunk_count")
 
 
 def _not_implemented() -> NotImplementedError:
