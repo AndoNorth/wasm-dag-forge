@@ -66,3 +66,8 @@ def events_for_job(conn: Any, job_id: str) -> list[EventRow]:
     """The rows of one job in the order the facts happened, with the stored body untouched."""
     rows = conn.execute(SELECT_JOB, (job_id,)).fetchall()
     return [EventRow(**dict(zip(EventRow.model_fields, row, strict=True))) for row in rows]
+
+
+def chunk_count(conn: Any) -> int:
+    """The chunks of the event hypertable that still exist, compressed ones included."""
+    return conn.execute("SELECT count(*) FROM show_chunks('event')").fetchone()[0]
