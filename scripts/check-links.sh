@@ -3,8 +3,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Tracked Markdown in a git checkout, found on disk otherwise (an export).
+markdown() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        git ls-files -z '*.md'
+    else
+        find . \( -name .git -o -name .venv -o -name node_modules -o -name .verify-evidence -o -name result \) -prune \
+            -o -type f -name '*.md' -print0 | sed -z 's|^\./||'
+    fi
+}
+
 # shellcheck disable=SC2016
-git ls-files -z '*.md' | python3 -c '
+markdown | python3 -c '
 import os, re, sys
 
 link = re.compile(r"\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
