@@ -1,0 +1,46 @@
+---
+# Inputs that the observability epic turns into metrics and alerts.
+# Schema: inputs.schema.json, generated from the models.
+# A source of kind sql is a query that returns one number.
+# The kind invariants counts the rows that the invariant queries report when no open workflows are given.
+# The kind store reads the object store: bytes_per_bucket is one value per bucket from the capacity mode
+# of the contract script, and capacity_share is the used share of the data volume from df inside the pod.
+# The names of the metrics belong to the observability epic.
+inputs:
+  - name: connections
+    unit: connections
+    source:
+      kind: sql
+      ref: select count(*) from pg_stat_activity where datname = current_database()
+  - name: database_size
+    unit: bytes
+    source:
+      kind: sql
+      ref: select pg_database_size(current_database())
+  - name: event_chunks
+    unit: chunks
+    source:
+      kind: sql
+      ref: select count(*) from show_chunks('event')
+  - name: event_ingest_lag
+    unit: seconds
+    source:
+      kind: sql
+      ref: select coalesce(extract(epoch from now() - max(event_time)), 0) from event
+  - name: drift_rows
+    unit: rows
+    source:
+      kind: invariants
+      ref: rows
+  - name: store_bytes
+    unit: bytes
+    source:
+      kind: store
+      ref: bytes_per_bucket
+  - name: store_capacity_share
+    unit: percent
+    source:
+      kind: store
+      ref: capacity_share
+    threshold:
+      alert_above: 70

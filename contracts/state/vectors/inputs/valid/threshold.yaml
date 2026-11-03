@@ -1,0 +1,6 @@
+---
+inputs:
+  - name: store_capacity_share
+    unit: percent
+    source: {kind: store, ref: capacity_share}
+    threshold: {alert_above: 70}

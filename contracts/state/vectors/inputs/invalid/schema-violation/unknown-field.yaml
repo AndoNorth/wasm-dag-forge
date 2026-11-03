@@ -1,0 +1,6 @@
+---
+inputs:
+  - name: connections
+    unit: connections
+    source: {kind: sql, ref: select 1}
+    metric: wdf_connections

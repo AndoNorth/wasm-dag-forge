@@ -1,0 +1,4 @@
+---
+inputs:
+  - name: connections
+    source: {kind: sql, ref: select 1}

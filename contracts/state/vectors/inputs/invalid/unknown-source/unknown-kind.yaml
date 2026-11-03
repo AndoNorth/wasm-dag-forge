@@ -1,0 +1,5 @@
+---
+inputs:
+  - name: queue_depth
+    unit: messages
+    source: {kind: broker, ref: depth}

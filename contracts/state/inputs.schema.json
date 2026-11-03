@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "Input": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Threshold"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "unit",
+        "source"
+      ],
+      "title": "Input",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "One of sql, invariants, store.",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ref": {
+          "description": "The query of a sql source and the name of any other.",
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Threshold": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_above": {
+          "title": "Alert Above",
+          "type": "number"
+        }
+      },
+      "required": [
+        "alert_above"
+      ],
+      "title": "Threshold",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:state.inputs:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "contracts/state/inputs.yaml.",
+  "properties": {
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/Input"
+      },
+      "minItems": 1,
+      "title": "Inputs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "inputs"
+  ],
+  "title": "Inputs",
+  "type": "object"
+}

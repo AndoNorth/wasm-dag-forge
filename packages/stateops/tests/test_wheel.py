@@ -16,14 +16,15 @@ PACKAGES = (
     "wdf-compat",
     "wdf-keys",
     "wdf-migrate",
+    "wdf-storecheck",
     "wdf-itest",
 )
 
 PROBE = """
 import wdf_stateops
 from wdf_stateops.invariants import queries
-from wdf_stateops.stubs import STUBBED
-assert STUBBED
+from wdf_stateops.inputs import load
+assert load().inputs
 from importlib import resources
 assert (resources.files('wdf_stateops.migrations') / 'R__roles.sql').is_file()
 assert len(queries()) == 5, sorted(queries())

@@ -1,0 +1,5 @@
+---
+inputs:
+  - name: store_objects
+    unit: objects
+    source: {kind: store, ref: object_count}
