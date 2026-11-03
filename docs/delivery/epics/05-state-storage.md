@@ -1,6 +1,6 @@
 # Epic #3: Durable state and artifact storage - breakdown
 
-Status: draft
+Status: closed 2026-11-03
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/3
 Architecture note: docs/architecture/13-state-envelope-artifacts.drawio
 Depends on (closed epics): Dev environment (#1), Fixed-resource cluster (#2), Job event envelope (#4), DAG configuration schema and validator (#5)
@@ -395,8 +395,12 @@ Not provable by this epic: the `Days` lifecycle rule on objects a day old and th
 
 Run on 2026-11-03 against `a72d86d90e9f7e191b5c3a6ba1aa7917f8ee482e`, the commit of the last lane merge (Q.3).
 Rows 1 to 5, 7 to 9, 11 to 21 and 23 pass, row 6 has two failures in the clean export (one fixed by a test change in the PR that records this run, one that passes alone and is filed), and row 22 fails from the export (filed).
-The epic is therefore not closed by this run, and the PR that records it does not close the epic issue.
+The epic was therefore not closed by this run, and the PR that recorded it did not close the epic issue.
 The pasted output of every row is in that PR.
+
+Rerun of rows 6 and 22 on 2026-11-03, after the two fixes of the PR that records it, from a `git archive` of its head (`origin/main` at `4a91433` plus the two fix commits) extracted outside any git repository: row 6 passes with 309 passed in 341.69 s and no `SKIPPED` line, and row 22 passes with exit 0 from the export.
+Every row has now passed, so the epic is closed by that PR.
+The pasted output of the rerun is in that PR.
 
 Method of the run:
 
@@ -415,7 +419,7 @@ Results:
 | 3 | pass | renaming `tenant` of `JobRow` gave exit 1 with `drift: contracts/state/schemas/job-row/1.json`, and exit 0 after the restore |
 | 4 | pass | an eleventh status gave exit 1 with `drift: contracts/state/schemas/job-row/1.json` and `drift: packages/jobstate/src/wdf_jobstate/migrations/R__job_vocab.sql`, and exit 0 after the restore |
 | 5 | pass | the five valid files exit 0, and all 25 invalid files (7 retention, 6 inputs, 12 store) exit 1 with a `reason:` line |
-| 6 | fail | 305 passed and 2 failed in 406 s with no `SKIPPED` line, see the failures below |
+| 6 | fail, then pass on the rerun | 305 passed and 2 failed in 406 s with no `SKIPPED` line, see the failures below, and 309 passed in 341.69 s with no `SKIPPED` line from the export of the rerun, run in the background as the failing run was |
 | 7 | pass, with a departure | 12 passed, and the names are listed `PASSED` only without `-q` |
 | 8 | pass | 8 passed, none skipped |
 | 9 | pass | 100,000 rows and 1,400,000 events inserted, then 0 and 0 on the second run, exit 0 |
@@ -431,7 +435,7 @@ Results:
 | 19 | pass | a value for every input, with a `store_bytes` line per bucket and `store_capacity_share` |
 | 20 | recorded | the figures below, with no pass line |
 | 21 | pass | the marker row and the marker object survived `just down` and `just up`, and `just nuke` twice left nothing |
-| 22 | fail | exit 128 from the export at `scripts/check-links.sh`, see below |
+| 22 | fail, then pass on the rerun | exit 128 from the export at `scripts/check-links.sh`, see below, and exit 0 from the export of the rerun |
 | 23 | pass, with a caveat | see the workflow runs below |
 
 Failures and departures:
@@ -439,6 +443,10 @@ Failures and departures:
 - Row 6, `test_it_passes_from_an_export_outside_any_repo`, ran `git archive` in a tree that is not a repository, so it failed in the very export that the exit test prescribes.
   The PR changes the test to copy the scanned trees, which keeps it independent of git, and the test passes in the export.
 - Row 6, `test_interrupting_a_child_test_leaves_no_container` timed out after 60 s waiting for its child in the full run, ran in 3.5 s alone, and is filed as [#218](https://github.com/AndoNorth/wasm-dag-forge/issues/218).
+  The cause was not host load.
+  A run launched in the background (a trailing `&` of a non-interactive shell) leaves SIGINT ignored, Python keeps an ignored SIGINT, and the child test inherited it, so the `SIGINT` case never interrupted the child, which slept for 600 s while the parent gave up after 60 s.
+  The same test run in the foreground passed, and run in the background on an idle host it failed every time and with the fix passed.
+  The test now restores the default SIGINT in the child.
 - Row 7 as typed passes `-q` and `-v` together, which cancel, so the run prints dots.
   The same selection with `-v` only lists all twelve names as `PASSED`, and the row text should say `-v`.
 - Row 17 expects one `known-gap` line per role that holds `Write`, and the deployed store prints none.
@@ -448,7 +456,7 @@ Failures and departures:
 - Row 18 ran with the on-demand trigger of the lifecycle job (a POST to the admin server of the store), which ended the poll in 50 s instead of the default of up to 75 minutes.
 - Row 22 stops at `scripts/check-links.sh`, which lists Markdown with `git ls-files`, so `just ci` cannot pass from an export, and it is filed as [#217](https://github.com/AndoNorth/wasm-dag-forge/issues/217).
   The lint steps before it passed.
-  `just ci` from a git checkout is the evidence for the PR instead, and it is green there.
+  `scripts/check-links.sh` now lists Markdown on disk when it runs outside a repository, as `scripts/lint.sh` does, and `just ci` passes from the export.
 - The first pass over rows 13 to 20 ran against a 24 hour old `wdf` cluster that an earlier session had left up, whose app database already held the 2,000 bench jobs, so row 10 printed `rows_inserted: 0`.
   That pass is not counted.
   The stale cluster was removed with `just nuke` (which row 21 runs anyway) and rows 13 to 20 were run again from nothing, which is the pass recorded above.
@@ -494,6 +502,6 @@ Follow-ups that this spec already knew:
 - the `Days` check half that the load epic runs, and the on-demand trigger of the lifecycle job
 - the login roles and credentials of the service epics, which receive the grants tested here
 
-New from this run: [#217](https://github.com/AndoNorth/wasm-dag-forge/issues/217) (`just ci` from an export) and [#218](https://github.com/AndoNorth/wasm-dag-forge/issues/218) (the interrupt test timeout).
+New from this run, both fixed by the rerun PR: [#217](https://github.com/AndoNorth/wasm-dag-forge/issues/217) (`just ci` from an export) and [#218](https://github.com/AndoNorth/wasm-dag-forge/issues/218) (the interrupt test timeout).
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
