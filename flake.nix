@@ -19,6 +19,34 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
+      # Each pre-push check runs only when the pushed commits changed a file that concerns it, so a push that
+      # touches no code costs almost nothing. The full `just ci` stays the CI gate.
+      pushChecks = {
+        ruff = ''\.py$|^ruff\.toml$'';
+        yamllint = ''\.ya?ml$|^\.yamllint$'';
+        shellcheck = ''\.sh$|^\.shellcheckrc$'';
+        actionlint = ''^\.github/workflows/'';
+        kubeconform = ''^deploy/.*\.ya?ml$'';
+        nixfmt = ''\.nix$'';
+        verify-lint = ''^\.claude/skills/'';
+        self-test = ''^(ruff\.toml|\.yamllint|\.shellcheckrc)$'';
+      };
+      # A change to the linter driver, the hook scripts or the pinned tools concerns every check.
+      pushShared = ''|^(scripts/lint\.sh|scripts/hooks/.*|flake\.nix|flake\.lock)$'';
+      pushHooks = pkgs.lib.mapAttrs' (
+        check: files:
+        pkgs.lib.nameValuePair "push-${check}" {
+          enable = true;
+          name = "push ${check}";
+          entry = "scripts/hooks/in-shell.sh just pre-push ${check}";
+          language = "system";
+          stages = [ "pre-push" ];
+          pass_filenames = false;
+          files = files + pushShared;
+          require_serial = true;
+        }
+      ) pushChecks;
+
       # One hook config serves the local hooks and `checks.pre-commit`, so the two cannot drift.
       # Each hook carries its tool by store path, so a commit made outside the shell still works.
       hooks = git-hooks.lib.${system}.run {
@@ -48,19 +76,8 @@
           shellcheck.enable = true;
           actionlint.enable = true;
           nixfmt.enable = true;
-
-          # The fast gate; the full `just ci` stays the CI gate.
-          pre-push-gate = {
-            enable = true;
-            name = "fast gate";
-            entry = "scripts/hooks/in-shell.sh just pre-push";
-            language = "system";
-            stages = [ "pre-push" ];
-            pass_filenames = false;
-            always_run = true;
-            require_serial = true;
-          };
-        };
+        }
+        // pushHooks;
       };
     in
     {

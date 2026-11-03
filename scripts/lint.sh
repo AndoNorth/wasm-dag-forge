@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: lint.sh | lint.sh --expect-fail <file> | lint.sh --self-test | lint.sh --verify-skills
+# Usage: lint.sh | lint.sh --only <step> | lint.sh --expect-fail <file> | lint.sh --self-test | lint.sh --verify-skills
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -52,6 +52,7 @@ lint_all() {
     step() {
         local name=$1 fn=$2
         shift 2
+        [ -z "${LINT_ONLY:-}" ] || [ "$LINT_ONLY" = "$name" ] || return 0
         mapfile -t f < <(files "$@")
         if [ ${#f[@]} -eq 0 ]; then echo "skip $name: no files"; return; fi
         echo "== $name (${#f[@]} files)"
@@ -64,9 +65,10 @@ lint_all() {
     step actionlint  run_actionlint  '.github/workflows/*.yml' '.github/workflows/*.yaml'
     # deploy/versions.yaml, deploy/presets/, deploy/tilt/, deploy/host/ports.yaml and the module manifests hold pins, presets, host ports and module shapes, not Kubernetes manifests.
     mapfile -t f < <(files 'deploy/*.yaml' 'deploy/*.yml' | grep -Ev '^deploy/(versions\.yaml|host/ports\.yaml|presets/|tilt/|.*/module\.yaml$)' || true)
-    if [ ${#f[@]} -gt 0 ]; then echo "== kubeconform (${#f[@]} files)"; linted=$((linted + ${#f[@]})); run_kubeconform "${f[@]}" || rc=1; else echo "skip kubeconform: no files"; fi
+    if [ -n "${LINT_ONLY:-}" ] && [ "$LINT_ONLY" != kubeconform ]; then :
+    elif [ ${#f[@]} -gt 0 ]; then echo "== kubeconform (${#f[@]} files)"; linted=$((linted + ${#f[@]})); run_kubeconform "${f[@]}" || rc=1; else echo "skip kubeconform: no files"; fi
     step nixfmt      run_nixfmt      '*.nix'
-    if [ "$linted" -eq 0 ] && [ -n "$(all_files | tr -d '\0')" ]; then
+    if [ -z "${LINT_ONLY:-}" ] && [ "$linted" -eq 0 ] && [ -n "$(all_files | tr -d '\0')" ]; then
         echo "error: no files linted in a tree that has files, refusing to report success" >&2
         rc=1
     fi
@@ -98,6 +100,7 @@ case "${1:-}" in
         for f in "${fixtures[@]}"; do expect_fail "$f" || rc=1; done
         [ ${#fixtures[@]} -eq 6 ] || { echo "expected 6 fixtures" >&2; rc=1; }
         exit $rc ;;
+    --only) [ $# -eq 2 ] || { echo "usage: lint.sh --only <step>" >&2; exit 2; }; LINT_ONLY=$2 lint_all ;;
     "") lint_all ;;
-    *) echo "usage: lint.sh [--expect-fail <file> | --self-test | --verify-skills]" >&2; exit 2 ;;
+    *) echo "usage: lint.sh [--only <step> | --expect-fail <file> | --self-test | --verify-skills]" >&2; exit 2 ;;
 esac

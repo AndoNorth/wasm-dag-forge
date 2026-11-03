@@ -159,10 +159,11 @@ The one config in `flake.nix` also builds `checks.pre-commit`, which `nix flake 
 | --- | --- | --- |
 | pre-commit | ruff format, ruff check, yamllint, shellcheck, actionlint, nixfmt | staged files |
 | pre-commit | trailing whitespace, end of file, merge conflict markers, large files | staged files |
-| pre-push | `just pre-push`: `scripts/lint.sh`, `verify-lint`, the lint self-test | the whole tree |
+| pre-push | `just pre-push <check>` for each of the lint steps, `verify-lint` and the lint self-test, each only when the pushed commits changed a file it concerns | the whole tree |
 
 The formatters and whitespace fixers rewrite a file and fail the commit, so staging the rewritten file and committing again passes.
 The lint fixtures, the byte-exact `contracts/**/vectors/` files and the generated draw.io diagrams are excluded.
+A push that changes only docs runs none of the pre-push checks, and `just pre-push` without a name runs them all.
 The pre-push gate is a subset of `just ci`, because the unit and integration tests and the flake check take minutes.
 The full `just ci` stays the CI gate.
 
