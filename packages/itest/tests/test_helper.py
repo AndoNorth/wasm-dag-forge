@@ -91,6 +91,8 @@ def test_interrupting_a_child_test_leaves_no_container(sig, tmp_path):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        # A backgrounded run leaves SIGINT ignored, which Python keeps and the child inherits.
+        preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_DFL),
     )
     try:
         deadline = time.monotonic() + 180
