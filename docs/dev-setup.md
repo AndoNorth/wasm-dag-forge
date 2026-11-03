@@ -26,7 +26,7 @@ The Nix installation, flakes setting and Docker installation are the steps that 
 nix develop
 ```
 
-This realises the 15 flake tools plus `wasmtime` and `wasm-tools`, then sources `scripts/env.sh`.
+This realises the flake tools plus `wasmtime` and `wasm-tools`, then sources `scripts/env.sh`.
 A one-off command runs without an interactive shell:
 
 ```sh
@@ -34,7 +34,8 @@ nix develop -c just doctor
 ```
 
 With direnv installed, `.envrc` (`use flake`, nothing else) enters the shell automatically.
-It needs a one-time `direnv allow` in the repo root.
+It needs a one-time `direnv allow` in the repo root, and it is the recommended way to work in the repo day to day.
+Both direnv and `nix develop` install the git hooks, see [Git hooks](#git-hooks).
 `just` is only available inside `nix develop`, so outside the shell every recipe runs as `nix develop -c just <recipe>`.
 
 A first realisation downloads roughly 886 MiB.
@@ -42,7 +43,7 @@ Later entries take seconds.
 
 ## Recipes
 
-`just --list` prints exactly 17 names.
+`just --list` prints every recipe name.
 Recipes that are not built yet print `not implemented: owned by #N` and exit 3.
 No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 
@@ -55,6 +56,8 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 | `itest [domain]` | real | - | `pytest -m integration`, optionally limited to `packages/<domain>` |
 | `ci` | real | - | `lint`, `verify-lint`, `test`, `itest`, `nix flake check` |
 | `verify-lint` | real | - | checks each `verify-<domain>` skill has a `SKILL.md` named after its directory, passes when none exist |
+| `pre-push` | real | - | the fast gate that the pre-push hook runs, see [Git hooks](#git-hooks) |
+| `hooks-status` | real | - | prints whether the git hooks are installed for this checkout |
 | `verify` | stub | cluster | end-to-end verifier run |
 | `verify-clean` | stub | cluster | removes verifier evidence |
 | `up` | stub | cluster | create the cluster |
@@ -123,7 +126,7 @@ Outside the flake shell the only result is `fail in-dev-shell`, because host cop
 | `repo-on-ext4` | the repo is not under `/mnt/<drive>/` and not on a 9p, drvfs, cifs or nfs mount | move the clone under the WSL home directory, a `warn` means a non-ext4 local filesystem |
 | `inotify-instances` | `fs.inotify.max_user_instances` is at least 512 | `sudo sysctl fs.inotify.max_user_instances=512`, persisted in `/etc/sysctl.d/` |
 | `memory-vs-preset` | host memory covers `memory_mib` in `deploy/presets/$WDF_PRESET.yaml` (default preset `ci`) | give WSL2 more memory in `.wslconfig`, a `warn` with `no preset file yet` is expected until cluster presets exist |
-| `path-provenance` | for all 17 tools (including `yq`, `wasmtime` and `wasm-tools`) the first match on PATH is a `/nix/store` path, not `~/.nix-profile` or `/nix/var/nix/profiles` | the detail prints `which -a` for each offender, so a profile copy ahead of the flake can be removed or PATH reordered |
+| `path-provenance` | for every pinned tool (including `yq`, `wasmtime` and `wasm-tools`) the first match on PATH is a `/nix/store` path, not `~/.nix-profile` or `/nix/var/nix/profiles` | the detail prints `which -a` for each offender, so a profile copy ahead of the flake can be removed or PATH reordered |
 
 `scripts/doctor.test.sh` is the fault-injection self-test.
 It builds fixture trees and breaks one condition at a time (no docker, cgroup v1, repo under `/mnt/c`, low inotify, shadowing `helm`, flakes disabled, low memory, outside the shell).
@@ -145,6 +148,43 @@ Lint works on a git checkout or on a `git archive` export, and it exits 1 when n
 Config lives in `ruff.toml`, `.yamllint`, `.shellcheckrc` and `.editorconfig`, and not in `pyproject.toml`.
 `scripts/fixtures/lint-bad/` holds one bad file per linter.
 `scripts/lint.sh --self-test` proves each linter rejects its fixture, and `scripts/lint.sh --expect-fail <file>` does the same for one file.
+
+## Git hooks
+
+Entering the shell installs the git hooks, so `direnv allow`, `nix develop` and `nix develop -c <command>` are the only steps needed.
+Every checkout and every linked worktree gets them on its first entry, because the shims live in the common git dir and each checkout links the rendered hook config as `.pre-commit-config.yaml` (git-ignored).
+The hooks come from `git-hooks.nix` and run through `prek`.
+The one config in `flake.nix` also builds `checks.pre-commit`, which `nix flake check` runs over the whole tree as part of `just ci`, so the local hooks and CI use the same tool list.
+
+| Stage | Runs | On |
+| --- | --- | --- |
+| pre-commit | ruff format, ruff check, yamllint, shellcheck, actionlint, nixfmt | staged files |
+| pre-commit | trailing whitespace, end of file, merge conflict markers, large files | staged files |
+| pre-push | `just pre-push <check>` for each of the lint steps, `verify-lint` and the lint self-test, each only when the pushed commits changed a file it concerns | the whole tree |
+
+The formatters and whitespace fixers rewrite a file and fail the commit, so staging the rewritten file and committing again passes.
+The lint fixtures, the byte-exact `contracts/**/vectors/` files and the generated draw.io diagrams are excluded.
+A push that changes only docs runs none of the pre-push checks, and `just pre-push` without a name runs them all.
+The pre-push gate is a subset of `just ci`, because the unit and integration tests and the flake check take minutes.
+The full `just ci` stays the CI gate.
+
+Bypass either stage for one command with `--no-verify`:
+
+```sh
+git commit --no-verify
+git push --no-verify
+```
+
+Check that the hooks are installed:
+
+```sh
+nix develop -c just hooks-status
+```
+
+It prints `ok config`, `ok pre-commit` and `ok pre-push` and exits 0, and prints `missing <part>` with the fix and exits 1 otherwise.
+A `core.hooksPath` set in a git config file is never overwritten.
+The shell then installs nothing and `hooks-status` reports it.
+A checkout that never entered the shell has no linked config, so its shims do nothing and never block a commit.
 
 ## Version pins
 
@@ -193,9 +233,9 @@ Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` 
 
 On a clean checkout, with the host prerequisites in place:
 
-- [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints `ok path-provenance: 17 tools resolve first to the flake`.
+- [ ] `nix develop -c just doctor` exits 0, prints no `fail` line, and prints an `ok path-provenance` line saying the tools resolve first to the flake.
   Only `warn memory-vs-preset: no preset file yet` is acceptable until cluster presets exist.
-- [ ] `nix develop -c just --list` prints exactly 17 recipe names.
+- [ ] `nix develop -c just --list` prints the recipe table above, one name per recipe.
 - [ ] `nix develop -c just ci` exits 0, ending with `all checks passed!` from `nix flake check`.
   The tests print `notice: no tests collected` until a package adds some.
 - [ ] The reproducibility check prints one `/nix/store/...-nix-shell.drv` path and exits 0.

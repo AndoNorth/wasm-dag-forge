@@ -9,3 +9,9 @@ lint:
 
 ci:
     scripts/ci.sh
+
+pre-push *check:
+    scripts/hooks/pre-push.sh {{ check }}
+
+hooks-status:
+    scripts/hooks/status.sh

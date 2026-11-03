@@ -33,5 +33,8 @@ When a domain closes, refine the note and the epic with what was learned.
 - Diagrams are draw.io files in docs/architecture/.
 - Design specs use the spec template.
 
+## Running commands
+Run project commands through `nix develop -c <command>`, so the pinned tools are used and the git hooks are installed.
+
 ## Safety
 Never commit secrets, and bind published ports to 127.0.0.1 only.
