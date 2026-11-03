@@ -34,7 +34,8 @@ nix develop -c just doctor
 ```
 
 With direnv installed, `.envrc` (`use flake`, nothing else) enters the shell automatically.
-It needs a one-time `direnv allow` in the repo root.
+It needs a one-time `direnv allow` in the repo root, and it is the recommended way to work in the repo day to day.
+Both direnv and `nix develop` install the git hooks, see [Git hooks](#git-hooks).
 `just` is only available inside `nix develop`, so outside the shell every recipe runs as `nix develop -c just <recipe>`.
 
 A first realisation downloads roughly 886 MiB.
@@ -150,7 +151,7 @@ Config lives in `ruff.toml`, `.yamllint`, `.shellcheckrc` and `.editorconfig`, a
 
 ## Git hooks
 
-Entering the shell installs the git hooks, so `nix develop` and `nix develop -c <command>` are the only steps needed.
+Entering the shell installs the git hooks, so `direnv allow`, `nix develop` and `nix develop -c <command>` are the only steps needed.
 Every checkout and every linked worktree gets them on its first entry, because the shims live in the common git dir and each checkout links the rendered hook config as `.pre-commit-config.yaml` (git-ignored).
 The hooks come from `git-hooks.nix` and run through `prek`.
 The one config in `flake.nix` also builds `checks.pre-commit`, which `nix flake check` runs over the whole tree as part of `just ci`, so the local hooks and CI use the same tool list.
