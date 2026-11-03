@@ -391,20 +391,109 @@ Not provable by this epic: the `Days` lifecycle rule on objects a day old and th
 - Estimates, not measurements, in worker-days: M.1 (1), R.1 (0.5), R.2 (0.5), lane 0 (4), lane J (2.5), lane E (3), lane A (1.5), lane D (2), lane O (2), lane C (4), lane Q (3.5), lane X (0.5), exit test (1).
   That is about 26 worker-days of effort and about 11 days elapsed along lane 0, lane E, lane Q, C.2, X.1 and the exit test, with the cluster lock, the two container slots and `uv.lock` rebases as the main sources of slip.
 
-## 8. Closure (filled at close)
+## 8. Closure
 
-Not yet run.
-At close the closing worker also refines the architecture note `docs/architecture/13-state-envelope-artifacts.drawio` with the infra node resize, the app database with TimescaleDB, the object store choice and its roles, and re-exports the diagrams (`scripts/export-diagrams.sh --check` clean).
-No lane owns the note, so this is a close step and not a lane issue.
-At close this section holds the commit of the last lane merge, the run of the exit test with its pasted output in the PR that records it, the fsync figures of D.1, the measured insert and ingest rates of Q.2, the S8 numbers that resized the infra node, the URLs of the two green workflow runs on `main`, and what moved.
-It also records the follow-ups that this spec already knows:
+Run on 2026-11-03 against `a72d86d90e9f7e191b5c3a6ba1aa7917f8ee482e`, the commit of the last lane merge (Q.3).
+Rows 1 to 5, 7 to 9, 11 to 21 and 23 pass, row 6 has two failures in the clean export (one fixed by a test change in the PR that records this run, one that passes alone and is filed), and row 22 fails from the export (filed).
+The epic is therefore not closed by this run, and the PR that records it does not close the epic issue.
+The pasted output of every row is in that PR.
+
+Method of the run:
+
+- The export is `git archive origin/main` extracted into a scratch directory with no enclosing git repository, and no row ran from a worktree.
+- The worker that ran it wrote none of the lanes.
+- The host is the 20 GiB WSL2 VM with Docker running, the cluster lock taken for the whole of rows 10 and 13 to 21, and the containers that belong to other work were not touched.
+- Rows 3 and 4 edited one file in the export and restored it from a copy, and the check passed again after each restore.
+- No container of the run was left behind, and `just nuke` after row 21 left no node, no registry and no data directory.
+
+Results:
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1 | pass | `uv sync --frozen` exit 0, `uv lock --check` exit 0 with 55 packages resolved |
+| 2 | pass | no `DRIFT` line for the five packages |
+| 3 | pass | renaming `tenant` of `JobRow` gave exit 1 with `drift: contracts/state/schemas/job-row/1.json`, and exit 0 after the restore |
+| 4 | pass | an eleventh status gave exit 1 with `drift: contracts/state/schemas/job-row/1.json` and `drift: packages/jobstate/src/wdf_jobstate/migrations/R__job_vocab.sql`, and exit 0 after the restore |
+| 5 | pass | the five valid files exit 0, and all 25 invalid files (7 retention, 6 inputs, 12 store) exit 1 with a `reason:` line |
+| 6 | fail | 305 passed and 2 failed in 406 s with no `SKIPPED` line, see the failures below |
+| 7 | pass, with a departure | 12 passed, and the names are listed `PASSED` only without `-q` |
+| 8 | pass | 8 passed, none skipped |
+| 9 | pass | 100,000 rows and 1,400,000 events inserted, then 0 and 0 on the second run, exit 0 |
+| 10 | pass | on an empty cluster, 2,000 rows and 28,000 events the first time and 0 and 0 the second, exit 0 both times |
+| 11 | pass | exit 0 for `ci`, `dev` and `soak`, every slot `fits`, and `limits.memory: 4772Mi` for `wdf-infra` |
+| 12 | pass | exit 0, `ok memory-vs-preset: host 20002 MiB >= preset ci 10880 MiB` |
+| 13 | pass | four namespaces listed, and the node container ids are identical before and after the second `just up` |
+| 14 | pass | `SUCCESS. All workloads are healthy.`, no `FailedCreate` event, and `true true true` for `objectstore-0` |
+| 15 | pass | `10`, `off` and `2` |
+| 16 | pass | `wdf_migrate check` exit 0 |
+| 17 | pass, with a departure | `14 of 14 base checks passed`, and the access mode has no `FAIL` line and no `known-gap` line |
+| 18 | pass, with a departure | `expired: 1 of 1, controls kept: 3 of 3`, exit 0 |
+| 19 | pass | a value for every input, with a `store_bytes` line per bucket and `store_capacity_share` |
+| 20 | recorded | the figures below, with no pass line |
+| 21 | pass | the marker row and the marker object survived `just down` and `just up`, and `just nuke` twice left nothing |
+| 22 | fail | exit 128 from the export at `scripts/check-links.sh`, see below |
+| 23 | pass, with a caveat | see the workflow runs below |
+
+Failures and departures:
+
+- Row 6, `test_it_passes_from_an_export_outside_any_repo`, ran `git archive` in a tree that is not a repository, so it failed in the very export that the exit test prescribes.
+  The PR changes the test to copy the scanned trees, which keeps it independent of git, and the test passes in the export.
+- Row 6, `test_interrupting_a_child_test_leaves_no_container` timed out after 60 s waiting for its child in the full run, ran in 3.5 s alone, and is filed as [#218](https://github.com/AndoNorth/wasm-dag-forge/issues/218).
+- Row 7 as typed passes `-q` and `-v` together, which cancel, so the run prints dots.
+  The same selection with `-v` only lists all twelve names as `PASSED`, and the row text should say `-v`.
+- Row 17 expects one `known-gap` line per role that holds `Write`, and the deployed store prints none.
+  Its roles carry policies of exactly their grants and never the coarse `Write` action, so every lifecycle edit is refused (five `lifecycle-edit ... the edit is refused` lines), which is the stronger outcome.
+  The `known-gap` branch stays for a store whose roles do hold `Write`, and the row text should say so.
+  The access mode ran with `--product seaweedfs`.
+- Row 18 ran with the on-demand trigger of the lifecycle job (a POST to the admin server of the store), which ended the poll in 50 s instead of the default of up to 75 minutes.
+- Row 22 stops at `scripts/check-links.sh`, which lists Markdown with `git ls-files`, so `just ci` cannot pass from an export, and it is filed as [#217](https://github.com/AndoNorth/wasm-dag-forge/issues/217).
+  The lint steps before it passed.
+  `just ci` from a git checkout is the evidence for the PR instead, and it is green there.
+- The first pass over rows 13 to 20 ran against a 24 hour old `wdf` cluster that an earlier session had left up, whose app database already held the 2,000 bench jobs, so row 10 printed `rows_inserted: 0`.
+  That pass is not counted.
+  The stale cluster was removed with `just nuke` (which row 21 runs anyway) and rows 13 to 20 were run again from nothing, which is the pass recorded above.
+- The CI run of the `ci` workflow at the last lane merge failed in `test_recover_needs_vacuum_on_seaweedfs` (`put_after_recovery` was `refused`), and the other workflows at that commit passed.
+  Three runs of the file on an idle host passed in 65 to 97 s against 402 s on the runner, so the cause was not reproduced.
+  The vacuum is reported to the store through a heartbeat and the test waits 60 s for it, so a slow runner is the likely cause, which is the same class as the heartbeat overshoot that the fixture already retries.
+  The fixture now starts the sequence again on a fresh volume when the recovery is not seen, and this is a guess at the cause and not a measured one.
+
+Measured figures:
+
+- Batch bench on 100,000 jobs: the first run inserted the rows in 102.13 s (979 rows per second) and the events in 656.51 s (1,980 events per second), and the second run found every row and event a duplicate in 132.02 s and 624.45 s.
+  The tables took 94,134,272 bytes for `accepted_job` and 1,413,939,200 bytes for `event` uncompressed, which is about 15,080 bytes per job against the 16,252 of the footprint spike, in 100 and 7 chunks.
+- Batch bench on 2,000 jobs through the port-forward into the cluster: 3.54 s for the rows (565 per second) and 13.01 s for the events (1,999 per second).
+- fsync of the app database volume (`pg_test_fsync`, 8 kB, one write): `open_datasync` 1,732 ops per second (577 us), `fdatasync` 1,702 (588 us), `fsync` 1,355 (738 us) and `open_sync` 1,364 (733 us), with `fsync_writethrough` not available.
+  The `df` line of the data volume reads the host file system, `/dev/sdd` of 1,006.9 GB with 280.1 GB used and 29 percent used, because the default storage class does not enforce the claim size.
+- Metric inputs on the cluster after the 2,000 job bench: `database_size` 40,254,487 bytes, `event_chunks` 1, `connections` 2, `drift_rows` 6000, `store_bytes` 0 in each of the four buckets and `store_capacity_share` 29.309, which is the share of that host file system.
+- S8 figures that resized the infra node: the node is 5,120 MiB for `ci` and `dev` and the `wdf-infra` quota 4,772 MiB, the app database peaked at 642 MiB and the store at 533 MiB with its heap bounded, and the quota that `namespaces.sh render ci` prints equals the table.
+
+Workflow runs on `main`:
+
+- `ci`: https://github.com/AndoNorth/wasm-dag-forge/actions/runs/41637427818 is green at `f56dddb`, the commit before the last lane merge.
+  The run at `a72d86d` ([41637454168](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/41637454168)) failed on the test above and was not re-run, so the caveat of row 23 is that no `ci` run is green at the last lane merge.
+- `state-modules`: https://github.com/AndoNorth/wasm-dag-forge/actions/runs/41637454223 is green at `a72d86d`.
+
+Architecture note: `docs/architecture/13-state-envelope-artifacts.drawio` now shows the app database with its guarded status and `published_at`, TimescaleDB in the same database with compression and expiry by policy, SeaweedFS with one role per service, and the infra node and quota, and `scripts/export-diagrams.sh --check` is clean.
+
+Inputs for the next epics:
+
+- Contract versions at close: `contracts/state` 1, `contracts/store` 2, `contracts/artifact` 2, `contracts/events` 3, `contracts/job` 2 and `contracts/status` 1.
+- The service epics that need a login role receive the `NOLOGIN` group roles of `R__roles.sql`, and the credentials of the database and the store live in the state directory of the cluster scripts (`scripts/storage/db/secrets.sh`, `scripts/storage/store/identities.sh path`).
+- The dispatch API epic ([#24](https://github.com/AndoNorth/wasm-dag-forge/issues/24)) and the load epic take the batch rates above as the library baseline, 979 rows and 1,980 events per second on this host, and measure the real event rows per job and the insert rate themselves.
+- The lifecycle check of the load epic can use the on-demand trigger of the lifecycle job and does not need the 60 minute detection interval.
+
+Not proven by this epic (the list of section 6 stands, and nothing seen in the run contradicted it): the `Days` lifecycle rule on objects a day old and the abort of incomplete multipart uploads, disk behaviour on a real volume claim and a restart while full, an outage of the database or the store, growth over a multi-day soak, the grants as used by real services, prefix-level restriction of a role, the drift comparison with Temporal visibility, fsync on another host, replication and backup, and a job duration above 7 days.
+
+Follow-ups that this spec already knew:
 
 - scaling the maximum job duration beyond 7 days changes `max_job_duration_days`, the compat window and every window of `retention.yaml`, and the retention loader fails first on a window below twice the maximum, which is the intended tripwire
-- the upper-bound check of the declared job class, which the shipped validator lacks (it has only `unknown-class`), a follow-up outside this epic that comes with a closure addendum line in `docs/delivery/epics/04-validator.md` recording that decision 8 there is superseded
-- the reconciliation of the accepted event's `jobclass` attribute with the validator's `classes` (the golden `job.accepted` vector carries `jobclass: simulate`, outside `[short, long]`), which needs a contract and vector change by the envelope and validator owners and is outside this epic
-- the ten-kind rule of the library and of `wdf_events.models`, which keeps the library from indexing a kind that a later `layout.yaml` adds although the table accepts it, and which the envelope owners change when a kind is added
+- the upper-bound check of the declared job class, which the shipped validator lacks (it has only `unknown-class`), a follow-up outside this epic, and decision 8 of the validator epic is recorded as superseded by a closure addendum line in `docs/delivery/epics/04-validator.md`
+- the reconciliation of the accepted event's `jobclass` with the validator's `classes`, filed as [#216](https://github.com/AndoNorth/wasm-dag-forge/issues/216)
+- the ten-kind rule of the library and of `wdf_events.models`, filed as [#215](https://github.com/AndoNorth/wasm-dag-forge/issues/215)
 - the follow-up edit of `docs/delivery/method.md` that three specs now name
-- the `Days` check half that #16 runs, and the on-demand trigger of the lifecycle job if it needed a wait
+- the `Days` check half that the load epic runs, and the on-demand trigger of the lifecycle job
 - the login roles and credentials of the service epics, which receive the grants tested here
+
+New from this run: [#217](https://github.com/AndoNorth/wasm-dag-forge/issues/217) (`just ci` from an export) and [#218](https://github.com/AndoNorth/wasm-dag-forge/issues/218) (the interrupt test timeout).
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).

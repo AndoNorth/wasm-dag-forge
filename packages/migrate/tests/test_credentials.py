@@ -1,8 +1,8 @@
 """The deploy and contract trees never hold a credential."""
 
 import re
+import shutil
 import subprocess
-import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -76,14 +76,8 @@ def test_empty_trees_pass(tmp_path):
     assert offences(tmp_path) == []
 
 
-def test_it_passes_from_an_export_outside_any_repo(tmp_path):
-    archive = tmp_path / "export.tar"
-    subprocess.run(
-        ["git", "-C", str(ROOT), "archive", "-o", str(archive), "HEAD"],
-        check=True,
-        capture_output=True,
-    )
+def test_it_passes_from_a_copy_outside_any_repo(tmp_path):
     export = tmp_path / "export"
-    with tarfile.open(archive) as tar:
-        tar.extractall(export, filter="data")
+    for tree in TREES:
+        shutil.copytree(ROOT / tree, export / tree, ignore=shutil.ignore_patterns("__pycache__"))
     assert offences(export) == []

@@ -418,3 +418,5 @@ Follow-ups recorded by the lanes:
 - The `read_plan` reader knows version 1 only, and the PR that introduces version 2 adds the branch for 1.
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
+
+- 2026-11-03: decision 8 (a class hint derived from the critical path, with the submitter's override winning) is superseded by decision 8 of [the state and storage epic](05-state-storage.md), under which the submitter declares the class, `short` by default, and the validator is to check an upper bound that it does not yet have.
