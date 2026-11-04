@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "Directories": {
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "pattern": "^[a-z]+$",
+          "title": "Input",
+          "type": "string"
+        },
+        "output": {
+          "pattern": "^[a-z]+$",
+          "title": "Output",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input",
+        "output"
+      ],
+      "title": "Directories",
+      "type": "object"
+    },
+    "LogTail": {
+      "additionalProperties": false,
+      "properties": {
+        "cap_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Cap Bytes",
+          "type": "integer"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "cap_bytes"
+      ],
+      "title": "LogTail",
+      "type": "object"
+    },
+    "Output": {
+      "additionalProperties": false,
+      "properties": {
+        "cap_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Cap Bytes",
+          "type": "integer"
+        },
+        "file": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "File",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "kind",
+        "cap_bytes"
+      ],
+      "title": "Output",
+      "type": "object"
+    },
+    "TaskType": {
+      "additionalProperties": false,
+      "properties": {
+        "outputs": {
+          "items": {
+            "$ref": "#/$defs/Output"
+          },
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "outputs"
+      ],
+      "title": "TaskType",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:artifact:staging:3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "staging.yaml: the scratch directory of a task, its declared outputs and the size caps.",
+  "properties": {
+    "directories": {
+      "$ref": "#/$defs/Directories"
+    },
+    "input_file": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Input File",
+      "type": "string"
+    },
+    "kind_caps": {
+      "additionalProperties": {
+        "exclusiveMinimum": 0,
+        "type": "integer"
+      },
+      "title": "Kind Caps",
+      "type": "object"
+    },
+    "log_tail": {
+      "$ref": "#/$defs/LogTail"
+    },
+    "missing_output": {
+      "description": "A code of failures.yaml.",
+      "pattern": "^[A-Z][A-Z_]*$",
+      "title": "Missing Output",
+      "type": "string"
+    },
+    "non_regular": {
+      "const": "skip-and-list",
+      "title": "Non Regular",
+      "type": "string"
+    },
+    "task_types": {
+      "additionalProperties": {
+        "$ref": "#/$defs/TaskType"
+      },
+      "title": "Task Types",
+      "type": "object"
+    },
+    "undeclared": {
+      "const": "skip-and-list",
+      "title": "Undeclared",
+      "type": "string"
+    }
+  },
+  "required": [
+    "directories",
+    "input_file",
+    "undeclared",
+    "non_regular",
+    "missing_output",
+    "log_tail",
+    "kind_caps",
+    "task_types"
+  ],
+  "title": "contracts/artifact staging.yaml",
+  "type": "object"
+}

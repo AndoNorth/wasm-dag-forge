@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "Failure": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_class": {
+          "enum": [
+            "retryable",
+            "non-retryable"
+          ],
+          "title": "Attempt Class",
+          "type": "string"
+        },
+        "cause": {
+          "minLength": 1,
+          "title": "Cause",
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[A-Z][A-Z_]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "escalates_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The code that this failure becomes once its retry rule is spent.",
+          "title": "Escalates To"
+        },
+        "retry": {
+          "enum": [
+            "backoff-within-deadline",
+            "refetch-once",
+            "fallback-to-previous-checkpoint",
+            "none"
+          ],
+          "title": "Retry",
+          "type": "string"
+        },
+        "surface": {
+          "$ref": "#/$defs/Surface"
+        }
+      },
+      "required": [
+        "code",
+        "cause",
+        "retry",
+        "attempt_class",
+        "surface"
+      ],
+      "title": "Failure",
+      "type": "object"
+    },
+    "Surface": {
+      "additionalProperties": false,
+      "description": "What a failure looks like to a caller: its exception and the start of the event reason.",
+      "properties": {
+        "event_reason": {
+          "description": "The start of the reason of a task.attempt.failed event, the code and a colon.",
+          "pattern": "^[A-Z][A-Z_]*: $",
+          "title": "Event Reason",
+          "type": "string"
+        },
+        "exception": {
+          "pattern": "^[A-Z][A-Za-z]*$",
+          "title": "Exception",
+          "type": "string"
+        }
+      },
+      "required": [
+        "exception",
+        "event_reason"
+      ],
+      "title": "Surface",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:artifact:failures:3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "failures.yaml: every artifact failure with its cause, retry rule, class and surface.",
+  "properties": {
+    "codes": {
+      "items": {
+        "$ref": "#/$defs/Failure"
+      },
+      "minItems": 1,
+      "title": "Codes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "codes"
+  ],
+  "title": "contracts/artifact failures.yaml",
+  "type": "object"
+}

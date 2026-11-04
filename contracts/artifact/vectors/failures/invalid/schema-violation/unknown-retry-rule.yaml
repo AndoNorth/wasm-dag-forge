@@ -1,0 +1,11 @@
+---
+# A retry rule outside the vocabulary.
+codes:
+  - code: STORE_UNAVAILABLE
+    cause: The store is unreachable or answers with a fault that is not a missing object, a hash mismatch or a refused
+      credential, including during the verification of a checkpoint.
+    retry: retry-forever
+    attempt_class: retryable
+    surface:
+      exception: StoreUnavailable
+      event_reason: 'STORE_UNAVAILABLE: '
