@@ -1,6 +1,6 @@
 # Epic #12: Artifact passing - breakdown
 
-Status: draft
+Status: approved
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/12
 Architecture note: docs/architecture/13-state-envelope-artifacts.drawio
 Depends on (closed epics): Dev environment (#1), Fixed-resource cluster (#2), Job event envelope (#4), DAG configuration schema and validator (#5), Durable state and artifact storage (#3)
@@ -289,8 +289,8 @@ Shared-file rules:
 
 ## 4. Issues
 
-Each block below is a lane issue in the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), and is replaced by `#NNN` links after filing.
-Each issue copies its Owns line from the lane table and uses its Test line as the Verifier section.
+Each lane issue below was filed on 2026-11-04 from the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #12 (R.1 as a `revisit` sub-issue of #4 and it is the existing issue #215 re-parented, R.2, S.1 and S.2 as `revisit` sub-issues of #3), and its body holds the scope, owns, acceptance criteria, verifier and needs.
+Each issue copies its Owns line from the lane table, names its tests as the Verifier section, and keeps only the `just ci` and Owns checkboxes of Done means.
 Done means, for every issue: `just ci` is green on the branch (it runs `just itest`, so every lane's gate needs Docker), the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files of section 3 changed.
 Acceptance lines are commands with an observable result, and a line that states a document or a property names the command that shows it.
 Commands are written without the `nix develop -c uv run --frozen` prefix that every Python command takes, and T2 commands run under `flock /tmp/wdf-cluster.lock env WDF_CLUSTER_LOCK_HELD=1 ...` as the cluster epic says.
@@ -316,6 +316,8 @@ Commands are written without the `nix develop -c uv run --frozen` prefix that ev
 
 ### Consumes and produces per issue
 
+The template's Consumes / produces section of each filed issue is its row below, with the pinned rows of section 2 and the stub names of section 5.
+
 | Issue | Consumes | Produces |
 | --- | --- | --- |
 | R.1 | artifact v2 layout, `wdf_events.models`, compat v1 | `wdf_events.layout`, the generated `reference.schema.json` |
@@ -336,259 +338,25 @@ Commands are written without the `nix develop -c uv run --frozen` prefix that ev
 | P.3 | P.1, P.2, `temporalio`, the dev server image | the Schedule, workflow, activity and `schedule` commands |
 | F.1 | C.1, K.1 | `faults`, `store-outage.sh` |
 
-### Issue blocks
+### Filed issues
 
-#### R.1 Reference models derive their kinds from the layout (revisit of #4, issue 215)
-
-Lane R, tier T0, with the events package tests that `just ci` already runs.
-Needs: nothing.
-Scope: `wdf_events.models` builds `ContentReference`, `AttemptReference` and the bucket pattern from `layout.yaml` read through package data (D5), through one reader `wdf_events.layout()` that `wdf_artifactindex` reuses in S.1.
-The narrowings stay and a test holds each to the layout.
-`reference.schema.json` is generated from the models.
-A test records, with `wdf_compat.breaking_changes`, whether adding a kind widens the event schema `task.requested` compatibly, so the rule for a kind addition (a minor or a contract-change) is executable.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/events -q -rs` passes with no skip, including `test_kinds_come_from_the_layout` (models built from a layout with an added kind validate a reference of it) and `test_narrowings_name_existing_kinds`
-- [ ] `uv run --frozen python -m wdf_events.schemagen --check` exits 0 and `git diff --stat contracts/` is empty after a regeneration, so no existing schema byte changed
-- [ ] with one enum value removed from `reference.schema.json` in a scratch copy, the same command exits 1 naming `contracts/artifact/reference.schema.json`
-- [ ] `uv run --frozen pytest packages/events -q -k wheel` passes, so the built wheel reads the layout from package data
-
-#### R.2 Store contract version 3, the reusable store fixture and a second container per session (revisit of #3 and #4)
-
-Lane R, tier T1, and T2 in the exit test.
-Needs: nothing.
-Scope: `aggregate` gains `get` on `wdf-sources` (the aggregate task opens its index object there) and `compile` gains `put` and `multipart` on `wdf-results` (its log tail, D8) in `roles.yaml`.
-The `running` function and the `store` fixture of `packages/storecheck/tests/conftest.py` become the plugin `wdf_storecheck.fixtures`, registered through the `pytest11` entry point as `wdf_itest` and `wdf_migrate` are, with a `store_session` fixture that starts one SeaweedFS for a session.
-SeaweedFS in the fixture runs with `GOMEMLIMIT=512MiB`, which S8 found necessary for 100,000 objects within the 1 GiB cap.
-`wdf_itest.Session` takes a `containers` count (1 or 2) and `Session.container` accepts a `name`, so a session that declares two holds two containers with different names (for example a store and a database), within the host cap of two containers across the host.
-A session takes all the host lock files it declares up front, without hold-and-wait: when it cannot get all of them it releases what it got and retries with randomized backoff until the timeout, so two sessions that each want two cannot deadlock and one runs after the other.
-The `t1` fixture declares two when any collected test carries the marker `pair` (a test that needs a store and a database together) and one otherwise, and the plugin registers the markers `pair` and `isolated`.
-A test marked `isolated` also carries `integration`, starts containers of its own and runs in a separate pytest invocation, `pytest -m isolated`, which holds at most two containers.
-The plugin deselects every `isolated` test in `pytest_collection_modifyitems` unless the marker expression names `isolated` outside a `not isolated`, so `just itest` (`-m integration`), `just test` (`-m "not integration"`) and a run with no expression all leave them out, `-m isolated` runs them, and the isolated set is named in the acceptance of its issue and in the exit test.
-Each named container gets its own host port index, because the store and database fixtures both publish port index 0 today and would collide in one session, and closing or failing one container removes only that container and not every container of the run label, as `remove_containers()` does today.
-A third container in one session, or a second container with a name already in use, raises `ContainerError`, and the existing lock tests still hold.
-No other lane edits `packages/itest` in this epic.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `contracts/store/check.sh contracts/store/roles.yaml` exits 0 and `VERSION` reads 3
-- [ ] `uv run --frozen pytest packages/storecheck -q -rs` passes with no skip on both products, where the access matrix derives its expected outcomes from `roles.yaml`, so both new grants are observed and no expectation is edited by hand
-- [ ] `uv run --frozen python -m wdf_storecheck.gen --check` exits 0
-- [ ] `uv run --frozen pytest packages/storecheck -q -k plugin_fixture` passes, which resolves `store` and `store_session` from the entry point and not from a `conftest.py`
-- [ ] `uv run --frozen pytest packages/itest -q -k isolated_deselect` passes, which runs a sample isolated test through the plugin with no expression, with `-m integration`, with `-m "not integration"` and with `-m "not isolated"` (deselected each time, never skipped) and with `-m isolated` (collected)
-- [ ] `uv run --frozen pytest packages/itest -q -k "second_container or three_containers or two_sessions_that_each_want_two"` passes: two named containers in one session on different host ports, closing the first leaves the second running, a third raising `ContainerError`, two concurrent sessions never holding more than two containers between them, and two sessions that each declare two both finishing, one after the other, with no `LockTimeout` and no session holding one file while waiting for the other (the child session helper of `test_locks`)
-- [ ] `uv run --frozen pytest packages/storecheck packages/migrate -q -k "store_and_database_together"` passes, a test marked `pair` that uses `store_session` and `appdb_server` in one pytest session
-- [ ] `uv run --frozen pytest packages/storecheck -q -k wheel` passes
-- [ ] T2, recorded by the exit test: `scripts/storage/store/identities.sh render` shows both grants and the deployed store passes the access mode (row 10)
-
-#### S.1 Artifact use links, cache entry changes and the index additions (revisit of #3)
-
-Lane S, tier T1.
-Needs: R.1 (for the last step, which makes `wdf_artifactindex` read the layout through `wdf_events.layout()`).
-Scope: migration `0301_artifact_use.sql` adds table `artifact_use (job_id uuid, artifact_row_id bigint references artifact (row_id), created_at, last_linked_at, primary key (job_id, artifact_row_id))` and the nullable columns `build_info_uri` (a foreign key to `artifact (uri)`) and `purged_at` to `artifact`.
-The unique index `artifact_cache_key` is not touched, so the migration only adds a table and columns and the runner applies it with its default flags and no `--allow-contract`, which is also what the `appdb` fixture and the cluster job pass.
-`invalidate_cache_entry` and the expiry soft delete the entry and set its `cache_key` to the retired key (the lowercase hex SHA-256 over the string `old_key:row_id`, which is 64 hex characters and so passes the table's check and the `ArtifactRow` pattern, and not a hash followed by a suffix, which would fail both), because the table's check requires a 64 hex key on a cache entry and a null key is refused, and replacing the check or the index would need a contract migration and the flag, which `scripts/**` does not carry in this epic and which the previous release's `record_cache_entry` conflict clause would not survive.
-The original key is then free, and `record_cache_entry` is unchanged: it conflicts on `artifact_cache_key` as before.
-`CacheEntry` gains `build_info_uri`, `record_cache_entry` writes it, and `mark_deleted` returns `Pinned` while a live entry names the object as its wasm or its build-info.
-The functions of section 2 are added.
-`index_reference` revives a soft deleted or purged row and returns `Revived`.
-`link_use` is idempotent, runs under the row lock, clears the tombstone of a tombstoned row (a revive), refuses a missing or purged row, and on an existing use row sets `last_linked_at` to now, so a retried submission, which reuses the same `job_id` because it derives from the tenant and the submission key, renews the protection.
-`tombstone` marks a live row deleted.
-`purge` takes the row lock, evaluates `unreferenced_content` again, and records `purged_at` only for a row that is still tombstoned past the interval and still unreferenced, and is skipped otherwise.
-`unreferenced_content` is the whole live reference rule as one statement: no live cache entry names the blob (as wasm or build-info), no use row names it unless its job row exists and is terminal (a use row of a job that has no row yet protects the blob for the unreferenced grace counted from the use row's `last_linked_at`, so dispatch can link before it inserts the job and a job that was never inserted stops protecting after the grace), no non-terminal job row holds it as `manifest_ref` or `pending_patch_ref`, and it is older than the grace.
-`lookup_cache_entry`, `invalidate_cache_entry`, `expired_cache_entries`, `checkpoints_of` and `previous_checkpoint` complete the set, and `touch_cache_entry` is unchanged because a retired key never matches a lookup.
-The state contract moves to version 2 with the table, the columns and the exported schemas `artifact-row/2.json` and `artifact-use/1.json`, generated by the package's `gen`.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactindex -q -rs` passes with no skip, including `test_unreferenced_content_respects_live_jobs`, `test_paused_job_holds_its_inputs`, `test_cache_entry_pins_wasm_and_build_info`, `test_record_again_after_invalidation_and_after_expiry` (the same key records again, the new entry is live and the old row keeps its wasm and build-info), `test_link_after_tombstone_revives_the_row`, `test_purge_evaluates_references_again_under_the_lock`, `test_link_of_a_purged_row_is_refused`, `test_index_reference_revives_a_purged_row`, `test_use_row_of_a_job_without_a_row_protects_the_blob_until_the_grace`, `test_retried_link_renews_a_stale_use_row` and `test_from_empty_and_from_previous_release` (the migration applied with the runner's default flags, none, from the schema of the earlier release and from nothing)
-- [ ] `uv run --frozen python -m wdf_artifactindex.gen --check` exits 0, and exits 1 naming `schemas/artifact-row/2.json` when a column is renamed in the model in a scratch copy
-- [ ] `uv run --frozen python -m wdf_migrate check --dsn DSN` exits 0 against a database with every package's migrations applied (the test starts one)
-- [ ] `uv run --frozen pytest packages/artifactindex -q -k wheel` passes, with the migrations read as package data
-
-#### S.2 Grants, progress tables, retention invariant and metric inputs (revisit of #3)
-
-Lane S, tiers T1 and T2.
-Needs: S.1 and 0.1 (the failure codes).
-Scope: migration `0400_reaper_progress.sql` in `packages/stateops`, numbered in the range 0400 to 0499 that this spec allocates to `packages/stateops` adds `reaper_job (job_id, results_done_at, checkpoints_done_at)` and `reaper_cursor (name, position, updated_at)`.
-`R__roles.sql` gives `wdf_reaper` the read of the job columns it needs (`job_id`, `tenant`, `batch_id`, `status`, `terminal_at`, `manifest_ref`, `pending_patch_ref`), the read of `artifact_use`, the update of `deleted_at` and `purged_at`, and the select, insert and update of the two progress tables, and gives `wdf_artifacts` the select and insert on `artifact_use` and the update of its column `last_linked_at` (the renewal of a link is an update under either spelling of the statement), `build_info_uri` in its insert column list of `artifact`, and the update of `last_used_at`, `deleted_at`, `purged_at` and `cache_key` (a revive, an invalidation and the retired key), and `wdf_reaper` the update of `cache_key` as well because it expires cache entries, and the catalog test holds the file to the writers table of `contracts/state/README.md`, which S.2 extends with the same grants.
-The dispatch API (#24) writes the index and use rows of its inputs through a second connection that logs in as a member of `wdf_artifacts`, the artifact role, and not through its own `wdf_dispatch` login, which has no grant on `artifact`.
-The invariant `deleted-artifact-of-live-job` reports a soft deleted row that a use row of a non-terminal job, or of a job without a row whose `last_linked_at` is younger than the grace, names, and a soft deleted attempt-scoped row of a non-terminal job that is not a checkpoint.
-The inputs of section 0.4 are added to `inputs.yaml`, and the input model, the schema and the loader gain the labelled form of the sql source that `artifact_failures` needs.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/stateops -q -rs` passes with no skip, including the grants test (the reaper stand-in login can read what it needs and cannot update `status` or any other column, `wdf_artifacts` cannot soft delete outside its columns, and only the reaper role writes the progress tables) and `test_retention_invariant_reports_a_seeded_violation`, `test_record_cache_entry_works_under_the_real_wdf_artifacts_login` (the insert with `build_info_uri`, then `invalidate_cache_entry` and a second record of the key), `test_reaper_login_can_expire_an_entry_and_retire_its_key` and `test_put_content_flow_works_under_the_wdf_artifacts_login` (index, revive and link, as the dispatch connection does) and `test_retried_link_renews_under_the_wdf_artifacts_login` (the same job and blob pair linked twice, so a retried submission or a retried commit renews `last_linked_at`)
-- [ ] `uv run --frozen python -m wdf_stateops.inputs --check contracts/state/inputs.yaml` exits 0, and every file under `contracts/state/vectors/inputs/invalid/` exits 1 with a `reason:` line, including a labelled source without a label column
-- [ ] `uv run --frozen pytest packages/stateops -q -k "artifact_failures or cache_hits or reaper_overdue or labelled"` passes against seeded events and rows, and `artifact_failures` returns one value per code
-- [ ] `uv run --frozen python -m wdf_stateops.gen --check` exits 0
-- [ ] T2, recorded by the exit test: `python -m wdf_stateops.inputs --dsn DSN` on the cluster prints every new input (row 17)
-
-#### 0.1 Failure taxonomy, staging and limits contracts
-
-Lane 0, tier T0.
-Needs: nothing.
-Scope: `failures.yaml` (code, cause, retry rule, attempt failure class, surface), `staging.yaml` (per task type: declared outputs with file name, kind and cap, the directory names, the undeclared rule, the log tail cap, the per kind caps of D3), their generated schemas, vectors, the loader `python -m wdf_artifactclient.contract --check` and `python -m wdf_artifactclient.gen`, and the README sections.
-`CHECKPOINT_CORRUPT` is defined as a hash or size mismatch or a missing object of a checkpoint, and every other store fault of a verification is `STORE_UNAVAILABLE`.
-The artifact contract moves to version 3.
-The loader checks that the declared outputs of each task type equal those of `contracts/job/registry.json`, so the registry stays the source.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen python -m wdf_artifactclient.contract --check contracts/artifact/failures.yaml` and the same for `staging.yaml` exit 0
-- [ ] every file under `contracts/artifact/vectors/failures/invalid/` and `vectors/staging/invalid/` exits 1 with a `reason:` line of the directory name
-- [ ] `uv run --frozen python -m wdf_artifactclient.gen --check` exits 0
-- [ ] `contracts/artifact/check.sh` still exits 0 for every valid reference vector and 1 for every invalid one, so the version bump broke no consumer
-- [ ] `test "$(cat contracts/artifact/VERSION)" = 3` exits 0 and `grep -q "Consumers" contracts/artifact/README.md` exits 0, where that section names every consumer of section 2
-
-#### 0.2 Aggregate index format and reaper windows contracts
-
-Lane 0, tier T0.
-Needs: 0.1.
-Scope: `index.schema.json` (the header line and the entry line), `retention.yaml` with the values of decision 16 and the loader rules of section 0.4, vectors for both, and the README sections.
-The retention loader reads the safety net of `contracts/state/retention.yaml` and the terminal set of `contracts/status/status.yaml` through package data.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `python -m wdf_artifactclient.contract --check contracts/artifact/retention.yaml` exits 0, and each invalid vector under `vectors/retention/invalid/` exits 1 with the reason named by its directory (`window-above-safety-net`, `cache-window-below-twice-max-job-duration`, `keep-below-two`, `failed-shorter-than-succeeded`, `unknown-status`, `schema-violation`)
-- [ ] a valid index vector of three entries (succeeded, failed, missing) passes, and each invalid vector under `vectors/index/invalid/` exits 1 (`entry-without-reference`, `reference-with-failure-status`, `wrong-kind`, `header-not-first`)
-- [ ] `python -m wdf_artifactclient.gen --check` exits 0
-
-#### 0.3 Client and reaper package skeletons
-
-Lane 0, tiers T0 and T1 (the wheel test).
-Needs: 0.1.
-Scope: `packages/artifactclient/` and `packages/artifactreaper/` with `pyproject.toml`, the module files of section 3 as stubs that raise `NotImplementedError("not implemented: owned by lane C")` and the same for K, P and F, the `STUBBED` conformance tests, the contract files read as package data, the plugin `wdf_artifactclient.testing` (a stand-in guest and a stand-in worker that run a Python callable against a scratch directory), the root `pyproject.toml` edit and the lock.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv sync --frozen` and `uv lock --check` exit 0
-- [ ] `uv run --frozen pytest packages/artifactclient packages/artifactreaper -q -rs` passes, where every stub is listed in its `STUBBED` and accepted only as `NotImplementedError`
-- [ ] `uv run --frozen pytest packages/artifactclient packages/artifactreaper -q -k wheel` passes, so each built wheel loads its contract files and imports from a clean environment
-
-#### C.1 Streaming put and get with typed errors and retries
-
-Lane C, tiers T0 and T1.
-Needs: lane 0, R.1, R.2.
-Scope: `keys.py` (`content_key` and `attempt_key` built from the layout, refusing what the layout would refuse), `errors.py` (the typed errors of `failures.yaml`), `client.py` (the surface of section 0.4: streaming hash, the spool for a stream source, `If-None-Match`, multipart above one part with abort on any failure, the retry policy of 4 tries with a doubling delay and jitter bounded by the deadline, classification of a store response into a typed error, the `deadline` and `progress` arguments), the `put_content` path without a connection, and `verify`.
-The retry numbers are estimates and live in one `RetryPolicy`.
-A put against a store on a size capped tmpfs maps to `OUTPUT_UPLOAD_FAILED` after the retries and leaves the existing objects readable.
-The package README records, per product, whether `If-None-Match` is honoured and whether a single part returns an MD5 entity tag.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -k "test_keys or test_client"` passes on both products with no skip, including `test_round_trip_at_the_part_boundary` (0 byte, 1 byte, one part, one part plus one byte, 40 MiB), `test_flipped_byte_is_corrupt_then_lost`, `test_deleted_object_is_not_found_then_lost`, `test_wrong_credentials_are_forbidden_and_not_retried`, `test_multipart_abort_leaves_no_parts`, `test_stream_is_read_chunk_by_chunk` and `test_heartbeat_gap_during_a_large_transfer`
-- [ ] `uv run --frozen pytest packages/artifactclient -q -m isolated -k test_client` passes, which holds `test_full_store_maps_to_output_upload_failed` (a store on a size capped tmpfs of its own)
-- [ ] the hypothesis test `test_distinct_producers_never_share_a_key` passes, and every key the builders produce for every kind passes `wdf_artifactindex.reference.validate`
-- [ ] `uv run --frozen python -m wdf_artifactclient verify ...` prints `code: ARTIFACT_LOST` and `cause: ARTIFACT_CORRUPT` and exits 1 for a stored object with a flipped byte, and exits 0 for an intact one
-- [ ] the retry policy test with a fake clock shows no retry of a not found, a forbidden or a corrupt, a retry of every other store fault, and total sleep never beyond the deadline
-- [ ] `grep -c "If-None-Match" packages/artifactclient/README.md` prints a number above 0, with the per product facts under it
-- [ ] `uv run --frozen pytest packages/artifactclient -q -k wheel` passes
-
-#### C.2 Commit by reference and the zombie test
-
-Lane C, tier T1 (marked `pair`, store and database in one session, through R.2).
-Needs: C.1, S.1.
-Scope: `commit.py` (`commit`, with both reference classes of section 0.4), the index-first order, the link after the bytes and the revive handling of `put_content` with a connection and `job_id`, and the zombie and tenant tests.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -k commit` passes, including `test_zombie_upload_changes_nothing` (attempts `r0a1` and `r0a2` upload, `r0a2` is committed, `r0a1` uploads again late, the consumer reads the bytes of `r0a2`, and no row names the prefix of `r0a1`), `test_commit_refuses_another_attempt_job_or_task`, `test_content_addressed_commit_links_the_job`, `test_commit_revives_a_tombstoned_row_when_the_object_exists`, `test_commit_after_the_object_was_purged_fails_retryably_and_changes_nothing` and `test_reused_attempt_is_caught_by_the_hash` (an overwrite of a committed key is read as `ARTIFACT_CORRUPT`, which shows why an identity is never reused)
-- [ ] `test_put_content_with_a_connection_requires_a_job_id` and `test_put_content_links_the_job_after_the_bytes` pass, the second under the `wdf_artifacts` stand-in login
-- [ ] `test_revive_before_put_never_leaves_a_live_row_without_an_object` passes with a hook that interleaves a purge between the index step and the put of `put_content` with a connection, run for every ordering of the two steps
-
-#### C.3 Task I/O staging and the output tail
-
-Lane C, tier T1.
-Needs: C.1.
-Scope: `staging.py` as in section 2, from `staging.yaml`, and the stand-in guest tests.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -k staging` passes, including `test_declared_outputs_of_every_task_type_match_the_registry`, `test_missing_declared_output_is_output_missing`, `test_undeclared_file_is_not_uploaded_and_is_listed`, `test_symlink_and_directory_are_ignored`, `test_compile_outputs_are_content_addressed_and_simulate_output_is_attempt_scoped`, `test_tail_keeps_the_last_cap_bytes_even_on_failure`, `test_failed_compile_uploads_its_tail_under_the_compile_role` and `test_a_thousand_small_outputs`
-- [ ] `test_staged_inputs_are_read_only_and_named_by_reference` passes, with `input.json` written by the caller and not by the library
-- [ ] `test_staging_accepts_any_runner_callable` passes with the stand-in guest, and the staging tests take the runner as a fixture parameter, so #10's real runner passes the same tests
-
-#### K.1 Checkpoints
-
-Lane K, tier T1 (marked `pair`).
-Needs: C.1, S.1.
-Scope: `checkpoint.py` as in section 0.4 (D6 and D7).
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -k checkpoint` passes, including `test_write_then_verify`, `test_interrupted_write_is_invisible` (the data object exists and `checkpoint.json` does not), `test_flipped_data_byte_is_checkpoint_corrupt`, `test_missing_metadata_is_checkpoint_corrupt`, `test_store_outage_during_verify_is_store_unavailable_and_retried` (a client pointed at a closed loopback port, never `CHECKPOINT_CORRUPT`, and the shared store is not stopped), `test_prune_plan_keeps_the_newest_and_never_fewer_than_two`, `test_previous_checkpoint_after_corruption` and `test_reference_fits_a_heartbeat_detail` (under 400 bytes, and a `task.checkpoint.committed` event built from it validates)
-- [ ] `test_metadata_round_trips_wasm_hash_and_opaque_fields` passes
-
-#### K.2 Aggregate index object
-
-Lane K, tiers T0 and T1.
-Needs: C.1, 0.2.
-Scope: `aggregate.py` and `bench.py` as in section 2.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -k "aggregate or bench"` passes, including `test_index_bytes_are_the_same_for_equal_sets_in_order` (hypothesis over permutations that the test sorts before calling, so equal sets give equal bytes and hash), `test_out_of_order_or_repeated_entries_are_refused`, `test_partial_policy_refuse_and_allow`, `test_foreign_tenant_result_is_refused`, `test_aggregate_never_lists` (a counter on the store client shows zero listing calls while a thousand results are opened), `test_missing_or_corrupt_result_names_its_entry` and `test_hundred_thousand_entries_build_in_bounded_memory` (the builder and the reader hold no list of the entries and write to and read from a stream)
-- [ ] `uv run --frozen python -m wdf_artifactclient.bench --results 1000 --twice` exits 0 and prints `results_verified: 1000` and an equal `index_sha256` for both runs, and the full size run is row 8 of the exit test
-
-#### K.3 Compile cache client
-
-Lane K, tier T1 (marked `pair`).
-Needs: C.2, S.1.
-Scope: `cache.py` as in section 0.4 (decision 18).
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -k cache` passes, including `test_first_writer_wins_between_two_builds`, `test_record_again_after_invalidation_and_after_expiry`, `test_lookup_miss_when_the_wasm_is_missing_or_the_wrong_size`, `test_lookup_error_is_raised_and_never_a_miss` (the database connection closed, and a client pointed at a closed loopback port, so the shared store is never stopped), `test_corrupt_cached_wasm_is_lost_and_invalidation_makes_a_miss`, `test_entry_names_wasm_and_build_info` and `test_cache_hit_links_wasm_and_build_info_to_the_job`
-- [ ] the stand-in workflow test records the compile attempt through `commit` and then `record`, so the order that decision 18 states is the one tested
-
-#### P.1 Reaper core: results, checkpoints, prune and cache expiry
-
-Lane P, tier T1 (marked `pair`).
-Needs: 0.2, C.1, K.1, S.2.
-Scope: `reap_once` passes 1 to 4 of the algorithm in section 0.4 and the `run-once` command, with the advisory lock, the progress tables and the `--now` and `--dry-run` options, under the `wdf_reaper` stand-in login and the `reaper` store role.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactreaper -q -rs -k test_reap` passes, including `test_paused_and_admitted_jobs_are_never_touched_by_any_pass` (at any age, including a paused job with more checkpoints than the keep count), `test_results_and_checkpoint_windows_apply_separately` (a succeeded job loses its checkpoints after 1 day and its results after 7), `test_failed_job_is_kept_longer_than_a_succeeded_one`, `test_window_boundaries_by_status`, `test_zombie_prefix_of_a_terminal_job_is_removed`, `test_summary_under_the_aggregate_prefix_is_removed`, `test_running_job_is_pruned_to_the_keep_count_and_keeps_its_newest`, `test_pass_after_a_crash_between_mark_and_delete_completes`, `test_done_marker_skips_a_finished_job_without_listing_it`, `test_selection_excludes_jobs_beyond_the_hard_expiry`, `test_heartbeat_is_sent_per_batch_of_objects` (a job with 5,000 objects sends at least ten), `test_two_overlapping_runs_do_not_double_work` and `test_cache_entries_expire_by_last_use`
-- [ ] `python -m wdf_artifactreaper run-once --dry-run ...` prints the counters and changes no row or object (the test compares a listing before and after)
-
-#### P.2 Content-addressed collection and the orphan sweep
-
-Lane P, tier T1 (marked `pair`, and `isolated` for the orphan sweep).
-Needs: P.1, C.2, K.3.
-Scope: passes 5 and 6 of the algorithm, with the two phases, the injectable hook points that the race tests use, and the cursor of the orphan sweep.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactreaper -q -rs -k collect` passes against the session store and the module scoped `appdb_server`, never a store of its own, and it deletes only objects that its own rows name, including `test_a_wasm_named_by_a_live_cache_entry_is_never_collected`, `test_the_loser_of_a_cache_race_is_collected_after_the_grace`, `test_a_paused_jobs_inputs_are_kept` (every input class of the table below decision 20 in section 0.1, written only through the real callers: dispatch `put_content` with its connection, `commit` of a compile attempt, `cache.use` of a hit, and `put_index` with `commit`, and no hand written link row), `test_nothing_younger_than_the_grace_is_tombstoned`, `test_reap_races_resubmit` (a resubmit of identical bytes against the collector in every ordering of index, tombstone, link, job insert and purge, including revive then tombstone then link, link then tombstone then job insert, and a stale use row (link long ago, a retried submission, tombstone, job insert), ends with either a live linked row and its object or a purged row and no live link, never a live row without an object and never an object purged under a live link), `test_purge_is_skipped_after_a_revive`, `test_link_then_tombstone_then_job_insert_leaves_the_row_live` and `test_stale_use_row_then_retry_then_tombstone_then_job_insert_leaves_the_row_live`
-- [ ] `uv run --frozen pytest packages/artifactreaper -q -rs -m isolated -k orphan` passes with a store and a database of its own (two containers), because the sweep lists a whole bucket, including `test_orphan_object_is_deleted_after_the_grace` (no row, a tombstoned row, and a purged row whose object was uploaded again), `test_a_committed_object_and_a_young_object_are_kept` and `test_sweep_skips_an_object_whose_row_went_live` and `test_sweep_does_not_delete_a_tombstoned_object_inside_the_tombstone_interval`
-- [ ] after a full run on a store holding every kind, `python -m wdf_stateops.invariants --dsn DSN` exits 0, which is the soak invariant of the epic's risk list
-
-#### P.3 Temporal Schedule
-
-Lane P, tier T1 (Temporal dev server container only, the activity under test calls an injected pass function, so the session holds one container).
-Needs: P.1, P.2.
-Scope: the workflow, the activity and `schedule ensure|trigger|worker`, as in section 0.4.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactreaper -q -rs -k schedule` passes against the dev server of `temporalio/temporal` and an in-process worker, including `test_ensure_twice_leaves_one_schedule`, `test_trigger_runs_one_pass_and_returns_its_report`, `test_overlapping_trigger_is_skipped`, `test_activity_failure_is_retried` and `test_paused_schedule_runs_nothing`
-- [ ] `grep -c "service image" packages/artifactreaper/README.md` prints a number above 0, where that section says the worker is run by hand against the cluster
-
-#### F.1 Fault hooks
-
-Lane F, tier T1 (the scenarios are marked `isolated`, the table test is T0), and T2 in the exit test.
-Needs: C.1, K.1.
-Scope: `faults.py` and `scripts/artifacts/store-outage.sh`, and a table driven test that reads `failures.yaml` and fails when a code has no scenario that provokes it.
-Owns: as the lane table.
-Acceptance:
-
-- [ ] `uv run --frozen pytest packages/artifactclient -q -rs -m isolated -k faults` passes with a store of its own, because the scenarios stop, fill and corrupt it, including one scenario per code: a flipped byte gives `ARTIFACT_CORRUPT` then `ARTIFACT_LOST`, a deleted object gives `ARTIFACT_NOT_FOUND` then `ARTIFACT_LOST`, a stopped store container gives `STORE_UNAVAILABLE` within the deadline, a corrupted checkpoint gives `CHECKPOINT_CORRUPT` and the previous one verifies, a full store gives `OUTPUT_UPLOAD_FAILED`, a missing declared output gives `OUTPUT_MISSING`, wrong credentials give `STORE_FORBIDDEN`
-- [ ] `uv run --frozen pytest packages/artifactclient -q -k every_code_of_the_taxonomy_has_a_scenario` passes in the default set, a T0 test that compares the scenario table with `failures.yaml` and starts no container, so it runs in `just test` and exit row 6 lists it `PASSED`
-- [ ] `shellcheck scripts/artifacts/store-outage.sh` is clean (it runs in `just lint`)
-- [ ] T2, recorded by the exit test: `store-outage.sh stop` then `verify` gives `STORE_UNAVAILABLE`, and `start` then `verify` gives exit 0 (row 15)
+- [#215](https://github.com/AndoNorth/wasm-dag-forge/issues/215) **R.1 Reference models derive their kinds from the layout** Lane R, tier T0, with the events package tests that `just ci` already runs. Needs: nothing. Blocks: S.1, C.1. A `revisit` child of #4.
+- [#222](https://github.com/AndoNorth/wasm-dag-forge/issues/222) **R.2 Store contract version 3, the reusable store fixture and a second container per session** Lane R, tier T1, and T2 in the exit test. Needs: nothing. Blocks: C.1. A `revisit` child of #3 (and it touches #4).
+- [#223](https://github.com/AndoNorth/wasm-dag-forge/issues/223) **S.1 Artifact use links, cache entry changes and the index additions** Lane S, tier T1. Needs: R.1. Blocks: S.2, C.2, K.1, K.3. A `revisit` child of #3.
+- [#224](https://github.com/AndoNorth/wasm-dag-forge/issues/224) **S.2 Grants, progress tables, retention invariant and metric inputs** Lane S, tier T1 and T2. Needs: S.1, 0.1. Blocks: P.1. A `revisit` child of #3.
+- [#225](https://github.com/AndoNorth/wasm-dag-forge/issues/225) **0.1 Failure taxonomy, staging and limits contracts** Lane 0, tier T0. Needs: nothing. Blocks: S.2, 0.2, 0.3, C.1.
+- [#226](https://github.com/AndoNorth/wasm-dag-forge/issues/226) **0.2 Aggregate index format and reaper windows contracts** Lane 0, tier T0. Needs: 0.1. Blocks: C.1, K.2, P.1.
+- [#227](https://github.com/AndoNorth/wasm-dag-forge/issues/227) **0.3 Client and reaper package skeletons** Lane 0, tier T0 and T1 (the wheel test). Needs: 0.1. Blocks: C.1.
+- [#228](https://github.com/AndoNorth/wasm-dag-forge/issues/228) **C.1 Streaming put and get with typed errors and retries** Lane C, tier T0 and T1. Needs: 0.1, 0.2, 0.3, R.1, R.2. Blocks: C.2, C.3, K.1, K.2, P.1, F.1.
+- [#229](https://github.com/AndoNorth/wasm-dag-forge/issues/229) **C.2 Commit by reference and the zombie test** Lane C, tier T1 (marked `pair`, store and database in one session, through R.2). Needs: C.1, S.1. Blocks: K.3, P.2.
+- [#230](https://github.com/AndoNorth/wasm-dag-forge/issues/230) **C.3 Task I/O staging and the output tail** Lane C, tier T1. Needs: C.1.
+- [#231](https://github.com/AndoNorth/wasm-dag-forge/issues/231) **K.1 Checkpoints** Lane K, tier T1 (marked `pair`). Needs: C.1, S.1. Blocks: P.1, F.1.
+- [#232](https://github.com/AndoNorth/wasm-dag-forge/issues/232) **K.2 Aggregate index object** Lane K, tier T0 and T1. Needs: C.1, 0.2.
+- [#233](https://github.com/AndoNorth/wasm-dag-forge/issues/233) **K.3 Compile cache client** Lane K, tier T1 (marked `pair`). Needs: C.2, S.1. Blocks: P.2.
+- [#234](https://github.com/AndoNorth/wasm-dag-forge/issues/234) **P.1 Reaper core: results, checkpoints, prune and cache expiry** Lane P, tier T1 (marked `pair`). Needs: 0.2, C.1, K.1, S.2. Blocks: P.2, P.3.
+- [#235](https://github.com/AndoNorth/wasm-dag-forge/issues/235) **P.2 Content-addressed collection and the orphan sweep** Lane P, tier T1 (marked `pair`, and `isolated` for the orphan sweep). Needs: P.1, C.2, K.3. Blocks: P.3.
+- [#236](https://github.com/AndoNorth/wasm-dag-forge/issues/236) **P.3 Temporal Schedule** Lane P, tier T1 (Temporal dev server container only, the activity under test calls an injected pass function, so the session holds one container). Needs: P.1, P.2.
+- [#237](https://github.com/AndoNorth/wasm-dag-forge/issues/237) **F.1 Fault hooks** Lane F, tier T1 (the scenarios are marked `isolated`, the table test is T0), and T2 in the exit test. Needs: C.1, K.1.
 
 ## 5. Order, stubs and spikes
 
