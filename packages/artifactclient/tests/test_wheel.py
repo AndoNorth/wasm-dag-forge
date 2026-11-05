@@ -50,7 +50,14 @@ def run(*cmd, **kwargs) -> subprocess.CompletedProcess:
 def clean_python(tmp_path_factory) -> Path:
     work = tmp_path_factory.mktemp("wheel")
     wheels = work / "wheels"
-    for package in ("wdf-artifactclient", "wdf-compat", "wdf-events", "wdf-keys", "wdf-storecheck"):
+    for package in (
+        "wdf-artifactclient",
+        "wdf-artifactindex",
+        "wdf-compat",
+        "wdf-events",
+        "wdf-keys",
+        "wdf-storecheck",
+    ):
         run("uv", "build", "--wheel", "--package", package, "-o", str(wheels), cwd=ROOT)
     venv = work / "venv"
     run("uv", "venv", "--python", sys.executable, str(venv))

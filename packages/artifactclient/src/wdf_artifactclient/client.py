@@ -14,6 +14,7 @@ import tempfile
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
 from typing import BinaryIO
@@ -21,6 +22,7 @@ from typing import BinaryIO
 import yaml
 from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import BaseModel, TypeAdapter
+from wdf_artifactindex import RowPurged, index_reference, link_use
 from wdf_events.models import ArtifactReference, AttemptReference, ContentReference, ProducerRef
 from wdf_storecheck.s3 import Creds, error_code, status
 from wdf_storecheck.s3 import client as s3_client
@@ -53,6 +55,8 @@ FULL_STORE_STATUS = 500
 # What a call to the store can raise: a response, a transport failure or a failed transfer.
 STORE_ERRORS = (ClientError, BotoCoreError, ConnectionError, TimeoutError)
 ETAG_MD5 = re.compile("^[0-9a-f]{32}$")
+# Rounds of index, put and link, for a row that a purge removed between the steps. An estimate.
+INDEX_ROUNDS = 3
 
 
 class TooLarge(ValueError):
@@ -119,6 +123,10 @@ def classify(error: Exception) -> tuple[ArtifactError, int]:
             return ArtifactNotFound("the store has no such object"), http
         return StoreUnavailable(f"the store answered {http} {code}"), http
     return StoreUnavailable(f"{type(error).__name__}: {error}"), 0
+
+
+def wall_now() -> datetime:
+    return datetime.now(UTC)
 
 
 @cache
@@ -284,23 +292,45 @@ class ArtifactClient:
         deadline: float | None = None,
         progress: Progress | None = None,
     ) -> ContentReference:
-        """Stores bytes under the key of their own hash. An object that exists is a success."""
-        if conn is not None:
-            if job_id is None:
-                raise ValueError("job_id is required with conn")
-            raise NotImplementedError("indexing through a connection is not delivered yet")
+        """Stores bytes under the key of their own hash. An object that exists is a success.
+
+        With a connection the row is indexed first, then the bytes are sent, then the job is linked,
+        so a revived row is never left without its object. The caller's transaction decides when
+        the rows become durable.
+        """
+        if (conn is None) != (job_id is None):
+            raise ValueError("conn and job_id come together: the job is linked through conn")
         if kind_spec(kind)["class"] != CONTENT:
             raise ValueError(f"{kind} is not content-addressed")
         limit = Deadline(self.retry, deadline)
         prepared = Prepared(source, kind_caps()[kind], self.chunk_bytes, limit)
         try:
             prepared.hash_through(limit)
-            key = content_key(kind, prepared.sha256)
-            sha256, size = self._upload(bucket_of(kind), key, prepared, prepared, limit, progress)
+            bucket, key = bucket_of(kind), content_key(kind, prepared.sha256)
+            reference = ContentReference(
+                uri=f"s3://{bucket}/{key}",
+                sha256=prepared.sha256,
+                size=prepared.size,
+                name=name,
+                kind=kind,
+            )
+            if conn is None:
+                self._upload(bucket, key, prepared, prepared, limit, progress)
+            else:
+                self._put_indexed(conn, reference, job_id, prepared, limit, progress)
         finally:
             prepared.close()
-        return ContentReference(
-            uri=f"s3://{bucket_of(kind)}/{key}", sha256=sha256, size=size, name=name, kind=kind
+        return reference
+
+    def _put_indexed(self, conn, reference, job_id, prepared, limit, progress) -> None:
+        bucket, key = split_uri(reference.uri)
+        for _ in range(INDEX_ROUNDS):
+            index_reference(conn, reference)
+            self._upload(bucket, key, prepared, prepared, limit, progress)
+            if not isinstance(link_use(conn, job_id, reference.uri, wall_now()), RowPurged):
+                return
+        raise OutputUploadFailed(
+            f"{reference.uri} was purged again after each of {INDEX_ROUNDS} puts"
         )
 
     def put_attempt(

@@ -7,6 +7,7 @@ dependencies = [
     "pydantic",
     "pytest",
     "pyyaml",
+    "wdf-artifactindex",
     "wdf-compat",
     "wdf-events",
     "wdf-storecheck",
@@ -16,6 +17,7 @@ dependencies = [
 wdf_artifactclient = "wdf_artifactclient.testing"
 
 [tool.uv.sources]
+wdf-artifactindex = { workspace = true }
 wdf-compat = { workspace = true }
 wdf-events = { workspace = true }
 wdf-storecheck = { workspace = true }
