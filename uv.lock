@@ -641,11 +641,21 @@ name = "wdf-artifactreaper"
 version = "0.0.0"
 source = { editable = "packages/artifactreaper" }
 dependencies = [
+    { name = "psycopg", extra = ["binary"] },
     { name = "pyyaml" },
+    { name = "wdf-artifactclient" },
+    { name = "wdf-artifactindex" },
+    { name = "wdf-storecheck" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyyaml" }]
+requires-dist = [
+    { name = "psycopg", extras = ["binary"] },
+    { name = "pyyaml" },
+    { name = "wdf-artifactclient", editable = "packages/artifactclient" },
+    { name = "wdf-artifactindex", editable = "packages/artifactindex" },
+    { name = "wdf-storecheck", editable = "packages/storecheck" },
+]
 
 [[package]]
 name = "wdf-compat"
