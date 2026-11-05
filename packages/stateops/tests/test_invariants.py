@@ -3,11 +3,11 @@
 import subprocess
 import sys
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 import pytest
-from wdf_artifactindex import index_reference
+from wdf_artifactindex import index_reference, link_use, mark_deleted
 from wdf_events import build_event
 from wdf_eventstore import events_for_job, insert_events
 from wdf_jobstate import JobRow, get_job, insert_accepted, mark_published, transition
@@ -198,6 +198,63 @@ def test_accepted_event_class_differing_from_the_row_is_reported(db):
     assert lines(report) == [
         f"invariant: accepted-class-differs-from-row: {event.source}#{event.id}"
     ]
+
+
+def blob(n: int) -> dict:
+    digest = f"{n:064x}"
+    return {
+        "uri": f"s3://wdf-sources/sha256/{digest[:2]}/{digest}",
+        "sha256": digest,
+        "size": 1,
+        "name": "b",
+        "kind": "source",
+    }
+
+
+def deleted(db, ref: dict) -> None:
+    mark_deleted(db, ref["uri"], datetime.now(UTC))
+
+
+def test_retention_invariant_reports_a_seeded_violation(db):
+    now = datetime.now(UTC)
+    live, finished, ghost, stale = make_row(), make_row(), make_row(), make_row()
+    for row in (live, finished):
+        publish(db, row)
+    run(db, live)
+    run(db, finished)
+    transition(db, finished.job_id, "running", "succeeded")
+
+    held, released, fresh, old = blob(1), blob(2), blob(3), blob(4)
+    for ref, job, at in (
+        (held, live.job_id, now),
+        (released, finished.job_id, now),
+        (fresh, ghost.job_id, now),
+        (old, stale.job_id, now - timedelta(days=3)),
+    ):
+        index_reference(db, ref)
+        link_use(db, job, ref["uri"], at)
+        deleted(db, ref)
+
+    output = result_reference(live)
+    index_reference(db, output)
+    mark_deleted(db, output["uri"], now)
+    finished_output = result_reference(finished)
+    index_reference(db, finished_output)
+    mark_deleted(db, finished_output["uri"], now)
+    checkpoint = {
+        **output,
+        "uri": f"s3://wdf-checkpoints/acme/b/{live.job_id}/seed-7/sim/r0a1/s1/checkpoint.json",
+        "kind": "checkpoint",
+        "name": "checkpoint.json",
+    }
+    index_reference(db, checkpoint)
+    mark_deleted(db, checkpoint["uri"], now)
+
+    report = check_invariants(db)
+    reported = sorted(
+        key for name, key in report.violations if name == "deleted-artifact-of-live-job"
+    )
+    assert reported == sorted([held["uri"], fresh["uri"], output["uri"]])
 
 
 def test_row_and_event_commit_or_roll_back_together(appdb):

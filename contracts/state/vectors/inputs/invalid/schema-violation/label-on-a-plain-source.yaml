@@ -1,0 +1,5 @@
+---
+inputs:
+  - name: total
+    unit: rows
+    source: {kind: sql, ref: select 1, label: code}

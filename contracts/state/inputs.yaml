@@ -2,6 +2,10 @@
 # Inputs that the observability epic turns into metrics and alerts.
 # Schema: inputs.schema.json, generated from the models.
 # A source of kind sql is a query that returns one number.
+# A source of kind sql_labelled names a label column and returns one row per label, the label first and then the number.
+# A query may use the named parameters of wdf_stateops.windows: the windows of the reaper per status as a JSON object
+# keyed by status, the hard expiry of the results and checkpoint buckets as intervals, the unreferenced grace as an
+# interval and the codes of contracts/artifact/failures.yaml as a text array.
 # The kind invariants counts the rows that the invariant queries report when no open workflows are given.
 # The kind store reads the object store: bytes_per_bucket is one value per bucket from the capacity mode
 # of the contract script, and capacity_share is the used share of the data volume from df inside the pod.
@@ -44,3 +48,61 @@ inputs:
       ref: capacity_share
     threshold:
       alert_above: 70
+  - name: artifact_failures
+    unit: failures
+    source:
+      kind: sql_labelled
+      label: code
+      ref: >-
+        select c.code, count(f.code) from unnest(%(failure_codes)s::text[]) as c(code)
+        left join (select substring(body::jsonb #>> '{data,reason}' from '^([A-Z][A-Z_]*): ') as code
+        from event where type = 'dev.wdf.task.attempt.failed.v1') f on f.code = c.code
+        group by c.code order by c.code
+  - name: checkpoint_age_seconds
+    unit: seconds
+    source:
+      kind: sql
+      ref: >-
+        select coalesce(extract(epoch from now() - min(newest)), 0) from (
+        select max(a.created_at) as newest from artifact a
+        join accepted_job j on j.job_id = a.producer_job
+        join job_status s on s.status = j.status
+        where a.kind = 'checkpoint' and a.deleted_at is null and not s.terminal
+        group by j.job_id) newest_per_job
+  - name: reaper_deleted
+    unit: rows
+    source:
+      kind: sql
+      ref: select count(*) from artifact where deleted_at > now() - interval '1 hour'
+  - name: reaper_overdue
+    unit: rows
+    source:
+      kind: sql
+      ref: >-
+        select count(*) from artifact a
+        join accepted_job j on j.job_id = a.producer_job
+        join job_status s on s.status = j.status
+        left join reaper_job r on r.job_id = j.job_id
+        where s.terminal and a.deleted_at is null and (
+        (a.bucket = 'wdf-results' and r.results_done_at is null
+        and j.terminal_at + make_interval(days => (%(windows)s::jsonb -> j.status ->> 'results_days')::int) < now()
+        and j.terminal_at + %(results_expiry)s > now())
+        or (a.bucket = 'wdf-checkpoints' and r.checkpoints_done_at is null
+        and j.terminal_at + make_interval(days => (%(windows)s::jsonb -> j.status ->> 'checkpoints_days')::int) < now()
+        and j.terminal_at + %(checkpoints_expiry)s > now()))
+  - name: cache_hits
+    unit: tasks
+    source:
+      kind: sql
+      ref: >-
+        select count(*) from event where type = 'dev.wdf.task.skipped.v1'
+        and body::jsonb #>> '{data,reason}' = 'compile-cache-hit'
+  - name: cache_misses
+    unit: tasks
+    source:
+      kind: sql
+      ref: >-
+        select count(distinct (s.job_id, s.task_id)) from event s
+        where s.type = 'dev.wdf.task.started.v1' and exists (
+        select 1 from event r where r.type = 'dev.wdf.task.requested.v1' and r.job_id = s.job_id
+        and r.task_id = s.task_id and r.body::jsonb #>> '{data,task_type}' = 'compile')
