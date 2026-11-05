@@ -1,4 +1,4 @@
-"""The row model of artifact, the source of contracts/state/schemas/artifact-row/1.json."""
+"""The row models of artifact and artifact_use, the source of contracts/state/schemas."""
 
 from datetime import datetime
 from importlib import resources
@@ -46,3 +46,22 @@ class ArtifactRow(BaseModel):
     componentize_py_version: str | None = None
     wit_version: str | None = None
     last_used_at: datetime | None = None
+    build_info_uri: str | None = Field(
+        default=None, description="The build-info a cache entry names, null for a reference."
+    )
+    purged_at: datetime | None = Field(
+        default=None, description="Set when the object was removed from the store."
+    )
+
+
+class ArtifactUse(BaseModel):
+    """The link of a job to a content-addressed blob that it holds, as in the state README."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: str = Field(pattern=UUID_PATTERN)
+    artifact_row_id: int
+    created_at: datetime | None = Field(default=None, description="Set by the database.")
+    last_linked_at: datetime | None = Field(
+        default=None, description="Moved forward each time the job links the blob again."
+    )

@@ -13,10 +13,13 @@ from pathlib import Path
 
 import yaml
 
-from .models import ArtifactRow
+from .models import ArtifactRow, ArtifactUse
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-SCHEMA = Path("contracts/state/schemas/artifact-row/1.json")
+SCHEMAS = {
+    Path("contracts/state/schemas/artifact-row/2.json"): (ArtifactRow, "artifact-row", 2),
+    Path("contracts/state/schemas/artifact-use/1.json"): (ArtifactUse, "artifact-use", 1),
+}
 LAYOUT = Path("contracts/artifact/layout.yaml")
 KINDS_SQL = Path("packages/artifactindex/src/wdf_artifactindex/migrations/R__artifact_kinds.sql")
 
@@ -24,11 +27,11 @@ CACHE_KIND = "compile-cache"
 PRODUCER = ("producer_job", "producer_task", "producer_attempt")
 
 
-def render() -> str:
-    schema = ArtifactRow.model_json_schema()
+def render(model: type = ArtifactRow, name: str = "artifact-row", version: int = 2) -> str:
+    schema = model.model_json_schema()
     schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-    schema["$id"] = "urn:wdf:schema:state.artifact-row:1"
-    schema["title"] = "artifact-row 1"
+    schema["$id"] = f"urn:wdf:schema:state.{name}:{version}"
+    schema["title"] = f"{name} {version}"
     return json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
@@ -73,7 +76,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     layout = yaml.safe_load((args.root / LAYOUT).read_text())
-    files = {SCHEMA: render(), KINDS_SQL: render_kinds(layout)}
+    files = {path: render(*spec) for path, spec in SCHEMAS.items()}
+    files[KINDS_SQL] = render_kinds(layout)
     drifted = []
     for relative, text in files.items():
         path = args.root / relative

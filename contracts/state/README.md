@@ -1,7 +1,7 @@
 # State contract
 
 Owner epic: #3 (durable state and artifact storage).
-Version: 1
+Version: 2
 Consumers: dispatch (#24), admission (#8), workflow (#6), broker (#7), artifacts (#12), observability (#13) and the characterization and soak epics (#16, #17).
 
 This directory pins the shape of the three table families of the platform, the retention windows of the safety net and the loader of those windows.
@@ -96,9 +96,38 @@ The producer columns are null exactly for the content-addressed kinds, and set f
 | `componentize_py_version` | `text` | Null unless a cache entry |
 | `wit_version` | `text` | Null unless a cache entry |
 | `last_used_at` | `timestamptz` | Null unless a cache entry |
+| `build_info_uri` | `text` | References `artifact (uri)` with no cascade, null unless a cache entry |
+| `purged_at` | `timestamptz` | Null until the object was removed from the store, and only on a soft deleted row |
 
-A cache entry counts as a reference to its wasm.
-The foreign key refuses a raw delete of that row, and the library refuses to soft delete a wasm that a live entry names.
+A cache entry counts as a reference to its wasm and to its build-info.
+The foreign keys refuse a raw delete of those rows, and the library refuses to soft delete an object that a live entry names.
+`build_info_uri` and `purged_at` were added in version 2 and are nullable, so the previous release keeps working against them.
+
+An invalidated or expired cache entry is soft deleted and its `cache_key` becomes a retired key.
+The retired key is the lower-case hex SHA-256 over the string `old_key:row_id`, so it is 64 hex characters and passes the shape check and the pattern of the row model.
+The unique index on the cache key is unchanged, the original key is free to be recorded again, and the old row keeps its wasm and build-info.
+A retired key never matches a lookup or a touch.
+
+## Table `artifact_use`
+
+One row per job and content-addressed blob that the job holds, written by the caller that gives the job the blob.
+The job row need not exist yet, so the table has no foreign key to `accepted_job`.
+A row of a job that has no job row yet holds the blob for the unreferenced grace counted from `last_linked_at`.
+A row of a job whose row is not terminal holds the blob, and a row of a terminal job holds nothing.
+A retried submission reuses its job id and so links again, which moves `last_linked_at` forward.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `job_id` | `uuid` | Part of the primary key, the value of `wdf_keys.job_id(tenant, submission_key)` |
+| `artifact_row_id` | `bigint` | Part of the primary key, references `artifact (row_id)` with no cascade |
+| `created_at` | `timestamptz` | When the job first linked the blob |
+| `last_linked_at` | `timestamptz` | When the job last linked the blob, never moved back |
+
+## Reference rule
+
+A content-addressed row is unreferenced when no live cache entry names it as its wasm or build-info, no use row holds it, no job row that is not terminal names it as its `manifest_ref` or `pending_patch_ref`, and it is older than the unreferenced grace.
+`unreferenced_content` is that rule as one statement, and `tombstone` and `purge` evaluate it again under the row lock of the row they change.
+`link_use` and `index_reference` take the same lock and make a tombstoned row live again, so a reference that arrives after the tombstone is never lost, and a purged row is revived only by putting its object again through `index_reference`.
 
 ## Writers
 
@@ -112,8 +141,8 @@ A status value cannot be restricted by a grant, so the trigger and the library k
 | Request cancel, pause, resume or terminate, and a row-only move of a job that never started | the control API, role `wdf_control` | `request_action`, `mark_delivered`, `transition(..., row_only=True)` and their events |
 | Claim a job | admission, role `wdf_admission` | `transition(accepted, admitted)` and `insert_events` for the admitted event |
 | Project running, paused and the terminal statuses | the workflow, role `wdf_workflow` | `transition` and `insert_events` for every event except submit, control and admission events |
-| Index a committed reference and a cache entry | the artifact client, role `wdf_artifacts` | `index_reference`, `record_cache_entry`, `touch_cache_entry` |
-| Soft delete an expired reference | the reaper, role `wdf_reaper` | `mark_deleted` |
+| Index a committed reference and a cache entry, link a job to a blob, retire a cache entry | the artifact client, role `wdf_artifacts` | `index_reference`, `record_cache_entry`, `touch_cache_entry`, `link_use`, `invalidate_cache_entry` |
+| Soft delete an expired reference, expire cache entries, purge a tombstoned row | the reaper, role `wdf_reaper` | `mark_deleted`, `tombstone`, `expired_cache_entries`, `purge` |
 
 ## Retention
 
