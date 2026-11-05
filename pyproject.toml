@@ -11,6 +11,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 wdf-artifactclient = { workspace = true }
 wdf-artifactindex = { workspace = true }
+wdf-artifactreaper = { workspace = true }
 wdf-compat = { workspace = true }
 wdf-events = { workspace = true }
 wdf-eventstore = { workspace = true }
@@ -35,6 +36,7 @@ dev = [
     "pytest",
     "wdf-artifactclient",
     "wdf-artifactindex",
+    "wdf-artifactreaper",
     "wdf-compat",
     "wdf-events",
     "wdf-eventstore",

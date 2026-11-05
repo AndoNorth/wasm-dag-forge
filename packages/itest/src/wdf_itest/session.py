@@ -1,6 +1,7 @@
 import atexit
 import fcntl
 import os
+import random
 import signal
 import socket
 import subprocess
@@ -72,24 +73,42 @@ def _holders() -> str:
     return "; ".join(held)
 
 
-def _acquire_lock(run_id: str, timeout: float, poll: float = 0.5) -> int:
+def _acquire_locks(run_id: str, count: int, timeout: float, poll: float = 0.5) -> list[int]:
+    """Takes `count` lock files together, or none of them.
+
+    A session that got fewer than it needs releases what it got before it sleeps, so two sessions
+    that each want two never wait on each other while holding one, and the randomized sleep keeps
+    them from retrying in step.
+    """
     deadline = time.monotonic() + timeout
     while True:
+        fds: list[int] = []
         for path in lock_paths():
+            if len(fds) == count:
+                break
             fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 os.close(fd)
                 continue
-            os.ftruncate(fd, 0)
-            os.write(fd, f"pid={os.getpid()} run={run_id}\n".encode())
-            return fd
+            fds.append(fd)
+        if len(fds) == count:
+            for fd in fds:
+                os.ftruncate(fd, 0)
+                os.write(fd, f"pid={os.getpid()} run={run_id}\n".encode())
+            return fds
+        for fd in fds:
+            os.close(fd)
         if time.monotonic() >= deadline:
             raise LockTimeout(
-                f"waited {timeout:.0f}s for a free T1 lock file, holders: {_holders()}"
+                f"waited {timeout:.0f}s for {count} free T1 lock file(s), holders: {_holders()}"
             )
-        time.sleep(poll)
+        time.sleep(poll * random.uniform(0.5, 1.5))
+
+
+def _acquire_lock(run_id: str, timeout: float, poll: float = 0.5) -> int:
+    return _acquire_locks(run_id, 1, timeout, poll)[0]
 
 
 def _docker(*args: str, timeout: float = 300) -> str:
@@ -145,23 +164,41 @@ class Container:
 
 
 class Session:
-    """Holds a T1 lock file for its whole life and starts containers one at a time."""
+    """Holds the T1 lock files it declares for its whole life and starts named containers.
 
-    def __init__(self):
+    `containers` is 1 or 2 and is both the number of lock files taken up front and the number of
+    containers that may run at once.
+    A session opened while another is open in the same process shares that session's lock files,
+    container cap and host ports, because the process already holds the host's share and a second
+    request for files would wait on the process itself.
+    """
+
+    _open: "Session | None" = None
+
+    def __init__(self, containers: int = 1):
+        if not 1 <= containers <= LOCK_COUNT:
+            raise ValueError(f"containers must be 1 to {LOCK_COUNT}, got {containers}")
+        self.containers = containers
         self.slot = slot_from_env()
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         self.run_id = os.environ.get("WDF_RUN_ID") or f"{stamp}-{self.slot}"
         self.timeout = float(os.environ.get("WDF_T1_LOCK_TIMEOUT", LOCK_TIMEOUT_SECONDS))
-        self._fd: int | None = None
-        self._active = False
+        self._outer: Session | None = None
+        self._fds: list[int] = []
+        self._lanes: dict[str, int] = {}
         self._count = 0
 
     def __enter__(self):
+        if Session._open is not None:
+            self._outer = Session._open
+            self.run_id = self._outer.run_id
+            return self
         try:
             _docker("info", timeout=30)
         except ContainerError as exc:
             raise DockerUnavailable(f"the docker daemon is unreachable: {exc}") from None
-        self._fd = _acquire_lock(self.run_id, self.timeout)
+        self._fds = _acquire_locks(self.run_id, self.containers, self.timeout)
+        Session._open = self
         atexit.register(self.close)
         try:
             signal.signal(signal.SIGTERM, self._terminate)
@@ -183,14 +220,24 @@ class Session:
             _docker("rm", "-f", *ids)
 
     def close(self) -> None:
-        if self._fd is None:
+        if self._outer is not None:
+            self._outer = None
             return
+        if not self._fds:
+            return
+        Session._open = None
         try:
             self.remove_containers()
         finally:
-            os.close(self._fd)
-            self._fd = None
+            for fd in self._fds:
+                os.close(fd)
+            self._fds = []
             atexit.unregister(self.close)
+
+    def _remove_container(self, docker_name: str) -> None:
+        ids = _docker("ps", "-aq", "--filter", f"name=^{docker_name}$").split()
+        if ids:
+            _docker("rm", "-f", *ids)
 
     @contextmanager
     def container(
@@ -201,23 +248,43 @@ class Session:
         env=None,
         tmpfs: dict[str, int] | None = None,
         mounts: dict[str | Path, str] | None = None,
+        name: str | None = None,
     ):
-        """Starts one container, yields it and removes it afterwards.
+        """Starts one container, yields it and removes it, and only it, afterwards.
 
-        `ports` maps a port index k below 10 to a container port, and is published on
-        127.0.0.1:<19000 + slot * 10 + k>.
+        `name` identifies the container within the session, and a name that is running is refused.
+        `ports` maps a port index k to a container port.
+        A session of one container publishes it on 127.0.0.1:<19000 + slot * 10 + k> for k below 10.
+        A session of two gives each running container half of the slot, so two containers that both
+        ask for index 0 get different host ports, and k is then below 5.
         `tmpfs` maps a container path to the size cap in MiB of a memory-backed mount there,
         which counts against the memory cap of the container.
         `mounts` maps an existing host file or directory to a container path, mounted read-only.
         """
-        if self._fd is None:
+        if self._outer is not None:
+            with self._outer.container(image_key, ports, command, env, tmpfs, mounts, name) as c:
+                yield c
+            return
+        if not self._fds:
             raise ContainerError("the session is not open")
-        if self._active:
-            raise ContainerError("one container at a time, stop the running one first")
+        name = name or f"c{self._count + 1}"
+        if name in self._lanes:
+            raise ContainerError(f"a container named {name!r} is already running in this session")
+        if len(self._lanes) >= self.containers:
+            raise ContainerError(
+                "one container at a time, stop the running one first"
+                if self.containers == 1
+                else f"at most {self.containers} containers at a time, stop a running one first"
+            )
+        width = PORTS_PER_SLOT // self.containers
+        lane = min(set(range(self.containers)) - set(self._lanes.values()))
+        for k in ports or {}:
+            if not 0 <= k < width:
+                raise ValueError(f"port index k must be 0 to {width - 1}, got {k}")
         self._count += 1
-        name = f"wdf-{self.run_id}-{self._count}"
-        mapping = {k: host_port(self.slot, k) for k in (ports or {})}
-        args = ["run", "-d", "--name", name, "--label", f"{RUN_LABEL}={self.run_id}"]
+        docker_name = f"wdf-{self.run_id}-{self._count}"
+        mapping = {k: host_port(self.slot, lane * width + k) for k in (ports or {})}
+        args = ["run", "-d", "--name", docker_name, "--label", f"{RUN_LABEL}={self.run_id}"]
         args += ["--memory", MEMORY_CAP, "--memory-swap", MEMORY_CAP]
         for k, container_port in (ports or {}).items():
             args += ["-p", f"127.0.0.1:{mapping[k]}:{container_port}"]
@@ -230,12 +297,12 @@ class Session:
             if not host.is_absolute() or not host.exists():
                 raise ContainerError(f"a mount source must be an existing absolute path: {host}")
             args += ["--mount", f"type=bind,src={host},dst={container_path},readonly"]
-        self._active = True
+        self._lanes[name] = lane
         try:
             container_id = _docker(*args, image_ref(image_key), *command)
-            yield Container(container_id, name, mapping)
+            yield Container(container_id, docker_name, mapping)
         finally:
             try:
-                self.remove_containers()
+                self._remove_container(docker_name)
             finally:
-                self._active = False
+                del self._lanes[name]

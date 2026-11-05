@@ -21,7 +21,9 @@ def test_a_policy_names_only_the_actions_of_the_grants():
     assert ("arn:aws:s3:::wdf-sources", "s3:ListBucket") in actions
     assert ("arn:aws:s3:::wdf-components/*", "s3:PutObject") in actions
     assert not any("Delete" in action for _, action in actions)
-    assert not any("wdf-results" in resource for resource, _ in actions)
+    assert ("arn:aws:s3:::wdf-results/*", "s3:PutObject") in actions
+    assert not any("wdf-results/*" in r and a == "s3:GetObject" for r, a in actions)
+    assert not any("wdf-checkpoints" in resource for resource, _ in actions)
 
 
 def test_seaweedfs_identities_use_one_policy_per_role():
