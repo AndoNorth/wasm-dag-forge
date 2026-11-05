@@ -27,7 +27,7 @@ def test_the_consumers_section_names_every_consumer():
 
 
 def test_the_readme_describes_the_new_files_and_the_loader():
-    for name in ("failures.yaml", "staging.yaml"):
+    for name in ("failures.yaml", "staging.yaml", "retention.yaml", "index.schema.json"):
         assert name in README
     assert "python -m wdf_artifactclient.contract --check" in README
     assert "python -m wdf_artifactclient.gen" in README

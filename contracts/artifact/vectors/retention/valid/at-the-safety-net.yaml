@@ -1,0 +1,11 @@
+---
+# A window equal to the safety net is valid.
+statuses:
+  succeeded: {results_days: 7, checkpoints_days: 1}
+  partial: {results_days: 14, checkpoints_days: 3}
+  failed: {results_days: 28, checkpoints_days: 14}
+  cancelled: {results_days: 3, checkpoints_days: 1}
+  terminated: {results_days: 3, checkpoints_days: 1}
+checkpoint_keep: 2
+cache_unused_days: 14
+content: {unreferenced_grace_days: 2, tombstone_interval_hours: 1, orphan_grace_days: 2}

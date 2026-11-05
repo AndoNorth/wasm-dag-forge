@@ -14,14 +14,23 @@ import yaml
 from wdf_artifactclient.contract import check
 from wdf_artifactclient.models import CONTRACT
 
-for name in ("failures.yaml", "staging.yaml"):
+for name in ("failures.yaml", "staging.yaml", "retention.yaml"):
     check(yaml.safe_load((CONTRACT / name).read_text()))
 for name in (
     "__main__", "aggregate", "bench", "cache", "checkpoint", "client", "commit", "errors",
     "faults", "keys", "staging", "testing",
 ):
     importlib.import_module(f"wdf_artifactclient.{name}")
-for name in ("layout.yaml", "registry.json", "failures.schema.json", "staging.schema.json"):
+for name in (
+    "layout.yaml",
+    "registry.json",
+    "status.yaml",
+    "state-retention.yaml",
+    "failures.schema.json",
+    "staging.schema.json",
+    "retention.schema.json",
+    "index.schema.json",
+):
     assert (CONTRACT / name).is_file(), name
 """
 
@@ -36,7 +45,8 @@ def run(*cmd, **kwargs) -> subprocess.CompletedProcess:
 def clean_python(tmp_path_factory) -> Path:
     work = tmp_path_factory.mktemp("wheel")
     wheels = work / "wheels"
-    run("uv", "build", "--wheel", "--package", "wdf-artifactclient", "-o", str(wheels), cwd=ROOT)
+    for package in ("wdf-artifactclient", "wdf-compat", "wdf-events", "wdf-keys"):
+        run("uv", "build", "--wheel", "--package", package, "-o", str(wheels), cwd=ROOT)
     venv = work / "venv"
     run("uv", "venv", "--python", sys.executable, str(venv))
     python = venv / "bin/python"
@@ -52,9 +62,17 @@ def test_a_wheel_in_a_clean_venv_loads_the_committed_contract(clean_python, tmp_
     assert probe.returncode == 0, probe.stderr
 
 
-def test_a_wheel_loader_checks_a_file_away_from_the_repository(clean_python, tmp_path):
-    contract = tmp_path / "failures.yaml"
-    contract.write_text((ROOT / "contracts/artifact/failures.yaml").read_text())
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "failures.yaml",
+        "retention.yaml",
+        "vectors/index/valid/three-entries.jsonl",
+    ],
+)
+def test_a_wheel_loader_checks_a_file_away_from_the_repository(clean_python, tmp_path, relative):
+    contract = tmp_path / Path(relative).name
+    contract.write_text((ROOT / "contracts/artifact" / relative).read_text())
     result = subprocess.run(
         [clean_python, "-I", "-m", "wdf_artifactclient.contract", "--check", str(contract)],
         capture_output=True,

@@ -1,0 +1,180 @@
+{
+  "$defs": {
+    "AttemptReference": {
+      "additionalProperties": false,
+      "description": "An attempt-scoped object, which names the attempt that wrote it.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "result",
+            "output",
+            "log-tail",
+            "summary",
+            "checkpoint"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-(sources|components|results|checkpoints)/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "AttemptReference",
+      "type": "object"
+    },
+    "IndexEntry": {
+      "additionalProperties": false,
+      "description": "One input of the aggregate task, in task id order.",
+      "properties": {
+        "reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttemptReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The result reference, present exactly when the status is succeeded."
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "failed",
+            "missing"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "task": {
+          "description": "The task id of the input.",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task",
+        "status"
+      ],
+      "title": "IndexEntry",
+      "type": "object"
+    },
+    "IndexHeader": {
+      "additionalProperties": false,
+      "description": "Line 1 of an aggregate index object.",
+      "properties": {
+        "job": {
+          "description": "The job that the index feeds.",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job",
+          "type": "string"
+        },
+        "partial": {
+          "description": "Whether the reader may accept an entry that did not succeed.",
+          "enum": [
+            "refuse",
+            "allow"
+          ],
+          "title": "Partial",
+          "type": "string"
+        },
+        "schema": {
+          "const": "wdf.artifact.index/1",
+          "title": "Schema",
+          "type": "string"
+        },
+        "task": {
+          "description": "The aggregate task that reads the index.",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        },
+        "tenant": {
+          "pattern": "^[^/]+$",
+          "title": "Tenant",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "job",
+        "tenant",
+        "task",
+        "partial"
+      ],
+      "title": "IndexHeader",
+      "type": "object"
+    },
+    "ProducerRef": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "pattern": "^r[0-9]+a[0-9]+$",
+          "title": "Attempt",
+          "type": "string"
+        },
+        "job": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job",
+          "type": "string"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "task",
+        "attempt"
+      ],
+      "title": "ProducerRef",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:artifact:index:3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/IndexHeader"
+    },
+    {
+      "$ref": "#/$defs/IndexEntry"
+    }
+  ],
+  "description": "A line of an aggregate index object, which is a header on line 1 and an entry after it.",
+  "title": "contracts/artifact index.yaml"
+}

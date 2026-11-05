@@ -1,0 +1,21 @@
+---
+# The windows of the artifact reaper. Schema: retention.schema.json, generated from the models.
+# Every window is in days from the terminal_at of the job and is at most the safety net of
+# contracts/state/retention.yaml for its bucket, so the reaper acts before the lifecycle rule of the store.
+# A status that is not terminal has no entry: a paused job keeps its objects until the safety net removes them.
+statuses:
+  succeeded: {results_days: 7, checkpoints_days: 1}
+  partial: {results_days: 14, checkpoints_days: 3}
+  failed: {results_days: 14, checkpoints_days: 3}
+  cancelled: {results_days: 3, checkpoints_days: 1}
+  terminated: {results_days: 3, checkpoints_days: 1}
+# The newest checkpoints of a running job that a prune keeps.
+checkpoint_keep: 2
+# A compile cache entry expires when it was not used for this long, which is twice the maximum job duration.
+cache_unused_days: 14
+# Content-addressed blobs: a row nothing references is tombstoned after the grace, and its object is deleted after the
+# interval. An object without a live row is an orphan once it is older than the orphan grace.
+content:
+  unreferenced_grace_days: 2
+  tombstone_interval_hours: 1
+  orphan_grace_days: 2

@@ -1,5 +1,6 @@
 """The loader accepts the committed files and each invalid vector fails with its reason."""
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -9,9 +10,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 ARTIFACT = ROOT / "contracts/artifact"
-COMMITTED = [ARTIFACT / "failures.yaml", ARTIFACT / "staging.yaml"]
-VALID = sorted(ARTIFACT.glob("vectors/[fs]*/valid/*.yaml"))
-INVALID = sorted(ARTIFACT.glob("vectors/[fs]*/invalid/*/*.yaml"))
+COMMITTED = [ARTIFACT / "failures.yaml", ARTIFACT / "staging.yaml", ARTIFACT / "retention.yaml"]
+VECTORS = ARTIFACT / "vectors"
+CONTRACTS = ("failures", "staging", "retention", "index")
+VALID = sorted(p for c in CONTRACTS for p in (VECTORS / c).glob("valid/*.*"))
+INVALID = sorted(p for c in CONTRACTS for p in (VECTORS / c).glob("invalid/*/*.*"))
 REASONS = {
     "failures": {"schema-violation", "duplicate-code", "unknown-code"},
     "staging": {
@@ -22,6 +25,22 @@ REASONS = {
         "unknown-task-type",
         "output-not-in-registry",
         "unknown-code",
+    },
+    "retention": {
+        "schema-violation",
+        "window-above-safety-net",
+        "cache-window-below-twice-max-job-duration",
+        "keep-below-two",
+        "failed-shorter-than-succeeded",
+        "unknown-status",
+    },
+    "index": {
+        "schema-violation",
+        "entry-without-reference",
+        "reference-with-failure-status",
+        "wrong-kind",
+        "header-not-first",
+        "out-of-order",
     },
 }
 
@@ -107,3 +126,44 @@ def test_the_object_caps_are_the_pinned_figures():
         "log-tail": 64 * 1024,
         "checkpoint": 64 * mib,
     }
+
+
+def test_the_windows_are_those_of_the_decision():
+    retention = yaml.safe_load(COMMITTED[2].read_text())
+    days = {s: (w["results_days"], w["checkpoints_days"]) for s, w in retention["statuses"].items()}
+    assert days == {
+        "succeeded": (7, 1),
+        "partial": (14, 3),
+        "failed": (14, 3),
+        "cancelled": (3, 1),
+        "terminated": (3, 1),
+    }
+    assert retention["checkpoint_keep"] == 2
+    assert retention["cache_unused_days"] == 14
+    assert retention["content"] == {
+        "unreferenced_grace_days": 2,
+        "tombstone_interval_hours": 1,
+        "orphan_grace_days": 2,
+    }
+
+
+def test_the_three_entry_index_holds_each_status_in_task_order():
+    lines = (VECTORS / "index/valid/three-entries.jsonl").read_text().splitlines()
+    entries = [json.loads(line) for line in lines[1:]]
+    assert [e["status"] for e in entries] == ["succeeded", "failed", "missing"]
+    assert [e["task"] for e in entries] == sorted(e["task"] for e in entries)
+    assert [("reference" in e) for e in entries] == [True, False, False]
+
+
+def test_the_same_entries_give_the_same_bytes_whatever_the_key_order(tmp_path):
+    from wdf_artifactclient.contract import canonical
+
+    path = VECTORS / "index/valid/three-entries.jsonl"
+    lines = [json.loads(line) for line in path.read_text().splitlines()]
+    shuffled = "".join(json.dumps(dict(reversed(v.items()))) + "\n" for v in lines)
+    assert "".join(canonical(v) + "\n" for v in lines) == path.read_text()
+    other = tmp_path / "shuffled.jsonl"
+    other.write_text(shuffled)
+    result = check(other)
+    assert result.returncode == 1
+    assert result.stderr.startswith("reason: schema-violation:")
