@@ -18,6 +18,7 @@ from wdf_artifactclient.errors import CheckpointCorrupt, StoreUnavailable
 from wdf_artifactclient.keys import split_uri
 from wdf_events import build_event, from_bytes, to_bytes
 from wdf_events.models import ProducerRef
+from wdf_storecheck.fixtures import running
 from wdf_storecheck.s3 import client as s3_client
 
 JOB = "123e4567-e89b-42d3-a456-426614174000"
@@ -45,20 +46,21 @@ def naps():
 
 
 @pytest.fixture
-def worker(store_session, naps):
-    return ArtifactClient(
-        store_session.endpoint, store_session.credentials["simulate"], naps.policy
-    )
+def worker(seaweed, naps):
+    return ArtifactClient(seaweed.endpoint, seaweed.credentials["simulate"], naps.policy)
 
 
 @pytest.fixture
-def admin(store_session):
-    return s3_client(store_session.endpoint, store_session.credentials["admin"])
+def admin(seaweed):
+    return s3_client(seaweed.endpoint, seaweed.credentials["admin"])
 
 
-@pytest.fixture(autouse=True, scope="module")
-def buckets(store_session):
-    store_session.store().create_buckets()
+@pytest.fixture(scope="module")
+def seaweed(t1, tmp_path_factory):
+    """One SeaweedFS container for this module, which is gone before the next module runs."""
+    with running(t1, "seaweedfs", tmp_path_factory.mktemp("store")) as started:
+        started.store().create_buckets()
+        yield started
 
 
 @pytest.fixture
@@ -200,15 +202,13 @@ def test_a_reference_that_is_not_the_metadata_object_is_refused(worker, tenant):
         verify_checkpoint(worker, data_ref)
 
 
-def test_store_outage_during_verify_is_store_unavailable_and_retried(
-    worker, tenant, naps, store_session
-):
+def test_store_outage_during_verify_is_store_unavailable_and_retried(worker, tenant, naps, seaweed):
     reference = write(worker, tenant)
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         closed = probe.getsockname()[1]
     lost = ArtifactClient(
-        f"http://127.0.0.1:{closed}", store_session.credentials["simulate"], naps.policy
+        f"http://127.0.0.1:{closed}", seaweed.credentials["simulate"], naps.policy
     )
     with pytest.raises(StoreUnavailable) as raised:
         verify_checkpoint(lost, reference)

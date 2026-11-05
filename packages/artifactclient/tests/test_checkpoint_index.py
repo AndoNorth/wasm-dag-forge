@@ -10,6 +10,7 @@ from wdf_artifactclient.errors import CheckpointCorrupt
 from wdf_artifactclient.keys import split_uri
 from wdf_artifactindex import checkpoints_of, index_reference, previous_checkpoint
 from wdf_events.models import CheckpointReference, ProducerRef
+from wdf_storecheck.fixtures import running
 from wdf_storecheck.s3 import client as s3_client
 
 pytestmark = [pytest.mark.integration, pytest.mark.pair]
@@ -18,14 +19,17 @@ JOB = "223e4567-e89b-42d3-a456-426614174000"
 META = {"format_version": 1, "progress": 0, "wasm_sha256": hashlib.sha256(b"c").hexdigest()}
 
 
-@pytest.fixture(autouse=True, scope="module")
-def buckets(store_session):
-    store_session.store().create_buckets()
+@pytest.fixture(scope="module")
+def seaweed(t1, tmp_path_factory):
+    """One SeaweedFS container for this module, which is gone before the next module runs."""
+    with running(t1, "seaweedfs", tmp_path_factory.mktemp("store")) as started:
+        started.store().create_buckets()
+        yield started
 
 
-def test_previous_checkpoint_after_corruption(store_session, appdb):
-    worker = ArtifactClient(store_session.endpoint, store_session.credentials["simulate"])
-    admin = s3_client(store_session.endpoint, store_session.credentials["admin"])
+def test_previous_checkpoint_after_corruption(seaweed, appdb):
+    worker = ArtifactClient(seaweed.endpoint, seaweed.credentials["simulate"])
+    admin = s3_client(seaweed.endpoint, seaweed.credentials["admin"])
     references = [
         write_checkpoint(
             worker,
