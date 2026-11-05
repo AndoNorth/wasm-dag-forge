@@ -5,6 +5,7 @@ requires-python = "==3.13.*"
 [manifest]
 members = [
     "wasm-dag-forge",
+    "wdf-artifactclient",
     "wdf-artifactindex",
     "wdf-compat",
     "wdf-events",
@@ -538,6 +539,7 @@ source = { virtual = "." }
 dev = [
     { name = "hypothesis" },
     { name = "pytest" },
+    { name = "wdf-artifactclient" },
     { name = "wdf-artifactindex" },
     { name = "wdf-compat" },
     { name = "wdf-events" },
@@ -564,6 +566,7 @@ dev = [
 dev = [
     { name = "hypothesis" },
     { name = "pytest" },
+    { name = "wdf-artifactclient", editable = "packages/artifactclient" },
     { name = "wdf-artifactindex", editable = "packages/artifactindex" },
     { name = "wdf-compat", editable = "packages/compat" },
     { name = "wdf-events", editable = "packages/events" },
@@ -582,6 +585,21 @@ dev = [
     { name = "wdf-stateops", editable = "packages/stateops" },
     { name = "wdf-storecheck", editable = "packages/storecheck" },
     { name = "wdf-temporal", editable = "packages/temporal" },
+]
+
+[[package]]
+name = "wdf-artifactclient"
+version = "0.0.0"
+source = { editable = "packages/artifactclient" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
 ]
 
 [[package]]

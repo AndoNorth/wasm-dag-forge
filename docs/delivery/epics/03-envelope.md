@@ -361,3 +361,5 @@ Closure addenda, one dated line each, are added after close when a `revisit` chi
 
 - 2026-11-01: [#168](https://github.com/AndoNorth/wasm-dag-forge/issues/168) adds the `tmpfs`, `mounts` and `Container.exec` options to the container helper, all off by default.
 - 2026-11-04: [#222](https://github.com/AndoNorth/wasm-dag-forge/issues/222) lets a `wdf_itest` session declare two containers with names, taking both host lock files together, and adds the markers `pair` and `isolated`.
+- 2026-11-04: [#215](https://github.com/AndoNorth/wasm-dag-forge/issues/215) derives the kinds, the buckets and the bucket pattern of the reference models from `contracts/artifact/layout.yaml` through `wdf_events.layout()`, and generates `contracts/artifact/reference.schema.json` from them with `python -m wdf_events.schemagen`.
+  The narrowings stay, each held to the layout by a test, and no schema under `contracts/events/` changed.

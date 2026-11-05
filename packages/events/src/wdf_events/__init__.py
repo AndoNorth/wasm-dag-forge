@@ -1,5 +1,6 @@
 """Platform event models, canonical serializer and checks."""
 
+from .artifact_layout import layout
 from .build import build_event
 from .codec import MAX_BYTES, format_time, from_bytes, to_bytes
 from .errors import EventError, EventTooLarge, SchemaInvalid, UnsupportedMajor
@@ -19,6 +20,7 @@ __all__ = [
     "check_task_request",
     "format_time",
     "from_bytes",
+    "layout",
     "to_bytes",
     "to_event_row",
 ]

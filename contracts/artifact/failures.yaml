@@ -1,0 +1,70 @@
+---
+# Every artifact failure: its cause, how the client retries it, its class as an attempt failure and its surface.
+# Schema: failures.schema.json. A retry rule is spent inside the client, and the class is what the attempt reports.
+# A task.attempt.failed event carries the surface prefix at the start of its reason.
+codes:
+  - code: STORE_UNAVAILABLE
+    cause: >-
+      The store is unreachable or answers with a fault that is not a missing object, a hash mismatch or a refused
+      credential, including during the verification of a checkpoint.
+    retry: backoff-within-deadline
+    attempt_class: retryable
+    surface:
+      exception: StoreUnavailable
+      event_reason: "STORE_UNAVAILABLE: "
+  - code: STORE_FORBIDDEN
+    cause: The store refuses the credential of the role with a 403 or a bad signature, a fault of the platform.
+    retry: none
+    attempt_class: non-retryable
+    surface:
+      exception: StoreForbidden
+      event_reason: "STORE_FORBIDDEN: "
+  - code: ARTIFACT_NOT_FOUND
+    cause: The object that a reference names is absent from the store.
+    retry: refetch-once
+    attempt_class: non-retryable
+    escalates_to: ARTIFACT_LOST
+    surface:
+      exception: ArtifactNotFound
+      event_reason: "ARTIFACT_NOT_FOUND: "
+  - code: ARTIFACT_CORRUPT
+    cause: The size or the SHA-256 of the bytes read differs from the reference.
+    retry: refetch-once
+    attempt_class: non-retryable
+    escalates_to: ARTIFACT_LOST
+    surface:
+      exception: ArtifactCorrupt
+      event_reason: "ARTIFACT_CORRUPT: "
+  - code: ARTIFACT_LOST
+    cause: An object stayed missing or corrupt after the one refetch, and the failure carries the first cause.
+    retry: none
+    attempt_class: non-retryable
+    surface:
+      exception: ArtifactLost
+      event_reason: "ARTIFACT_LOST: "
+  - code: OUTPUT_UPLOAD_FAILED
+    cause: >-
+      An output could not be stored, because a full store keeps answering with a 500 after the retries or because an
+      output that was uploaded is gone from the store at the commit.
+    retry: backoff-within-deadline
+    attempt_class: retryable
+    surface:
+      exception: OutputUploadFailed
+      event_reason: "OUTPUT_UPLOAD_FAILED: "
+  - code: OUTPUT_MISSING
+    cause: A declared output of the task type is absent from the output directory or is not a regular file.
+    retry: none
+    attempt_class: non-retryable
+    surface:
+      exception: OutputMissing
+      event_reason: "OUTPUT_MISSING: "
+  - code: CHECKPOINT_CORRUPT
+    cause: >-
+      A checkpoint has a hash or size mismatch or a missing object, and never a store fault, which is
+      STORE_UNAVAILABLE.
+    retry: fallback-to-previous-checkpoint
+    attempt_class: non-retryable
+    escalates_to: ARTIFACT_LOST
+    surface:
+      exception: CheckpointCorrupt
+      event_reason: "CHECKPOINT_CORRUPT: "

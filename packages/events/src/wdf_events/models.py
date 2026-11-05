@@ -4,6 +4,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .artifact_layout import layout
+
 UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 
 
@@ -156,31 +158,38 @@ class SkippedData(BaseModel):
     cache_key: str = Field(pattern="^[0-9a-f]{64}$")
 
 
-BUCKETS = "(sources|components|results|checkpoints)"
+def reference_models(doc: dict[str, Any]) -> tuple[type[BaseModel], type[BaseModel]]:
+    """The content-addressed and the attempt-scoped reference models of a layout document."""
+    kinds = doc["kinds"]
+    buckets = "|".join(b.removeprefix("wdf-") for b in doc["buckets"])
+    content = tuple(k for k, v in kinds.items() if v["class"] == "content-addressed")
+    scoped = tuple(k for k, v in kinds.items() if v["class"] == "attempt-scoped")
+
+    class Reference(BaseModel):
+        """The fields every artifact reference has, as contracts/artifact/reference.schema.json."""
+
+        model_config = ConfigDict(extra="forbid")
+
+        uri: str = Field(pattern=f"^s3://wdf-({buckets})/.+$")
+        sha256: str = Field(pattern="^[0-9a-f]{64}$")
+        size: int = Field(ge=0)
+        name: str = Field(min_length=1, max_length=255, pattern="^[^/]+$")
+
+    class ContentReference(Reference):
+        """A content-addressed object, which has no producer."""
+
+        kind: Literal[content]
+
+    class AttemptReference(Reference):
+        """An attempt-scoped object, which names the attempt that wrote it."""
+
+        kind: Literal[scoped]
+        producer: ProducerRef
+
+    return ContentReference, AttemptReference
 
 
-class _Reference(BaseModel):
-    """The fields every artifact reference has, as contracts/artifact/reference.schema.json."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    uri: str = Field(pattern=f"^s3://wdf-{BUCKETS}/.+$")
-    sha256: str = Field(pattern="^[0-9a-f]{64}$")
-    size: int = Field(ge=0)
-    name: str = Field(min_length=1, max_length=255, pattern="^[^/]+$")
-
-
-class ContentReference(_Reference):
-    """A content-addressed object, which has no producer."""
-
-    kind: Literal["manifest", "source", "index", "component", "build-info"]
-
-
-class AttemptReference(_Reference):
-    """An attempt-scoped object, which names the attempt that wrote it."""
-
-    kind: Literal["result", "output", "log-tail", "summary", "checkpoint"]
-    producer: ProducerRef
+ContentReference, AttemptReference = reference_models(layout())
 
 
 class ResultReference(AttemptReference):

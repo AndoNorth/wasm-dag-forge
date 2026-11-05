@@ -13,14 +13,19 @@ ACCEPTED = json.loads((CONTRACT_DIR / "vectors/accepted/valid/accepted.json").re
 CANONICAL = json.dumps(ACCEPTED, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 # Reads an event on stdin and writes its canonical bytes back, then moves the histogram metric.
+# The reference models are built from the layout inside the wheel, so a working import proves it.
 PROBE = """
 import sys
-from wdf_events import from_bytes, to_bytes
+from wdf_events import from_bytes, layout, to_bytes
 from wdf_events.metrics import registry
+from wdf_events.models import AttemptReference, ContentReference
 
 data = sys.stdin.buffer.read()
 assert to_bytes(from_bytes(data)) == data
 assert registry.histograms["wdf_event_bytes"].count == 1
+kinds = {*ContentReference.model_fields["kind"].annotation.__args__}
+kinds |= {*AttemptReference.model_fields["kind"].annotation.__args__}
+assert kinds == set(layout()["kinds"])
 """
 
 

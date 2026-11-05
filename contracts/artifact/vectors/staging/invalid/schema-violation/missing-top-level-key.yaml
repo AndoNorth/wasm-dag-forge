@@ -1,0 +1,39 @@
+---
+# A required key is absent.
+directories:
+  input: input
+  output: output
+input_file: input.json
+undeclared: skip-and-list
+non_regular: skip-and-list
+missing_output: OUTPUT_MISSING
+kind_caps:
+  manifest: 1048576
+  source: 67108864
+  index: 134217728
+  component: 67108864
+  build-info: 1048576
+  result: 67108864
+  output: 268435456
+  summary: 16777216
+  log-tail: 65536
+  checkpoint: 67108864
+task_types:
+  compile:
+    outputs:
+      - file: component.wasm
+        kind: component
+        cap_bytes: 67108864
+      - file: build-info.json
+        kind: build-info
+        cap_bytes: 1048576
+  simulate:
+    outputs:
+      - file: results.xml
+        kind: result
+        cap_bytes: 67108864
+  aggregate:
+    outputs:
+      - file: summary.json
+        kind: summary
+        cap_bytes: 16777216

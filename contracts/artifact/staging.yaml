@@ -1,0 +1,41 @@
+---
+# The scratch directory of a task, its declared outputs and the size caps. Schema: staging.schema.json.
+# The declared outputs of each task type equal those of contracts/job/registry.json, which stays the source.
+# Caps are bytes. A cap is an estimate chosen against the store claim, and a change is a contract-change PR.
+directories:
+  input: input
+  output: output
+input_file: input.json
+# An undeclared regular file is not uploaded and a symbolic link or a directory is ignored, and both are listed in
+# the report and in the log tail, never a failure.
+undeclared: skip-and-list
+non_regular: skip-and-list
+# A declared output that is absent or not a regular file fails the attempt with this code of failures.yaml.
+missing_output: OUTPUT_MISSING
+# The last bytes of the guest's combined standard output and error, uploaded even when the attempt failed.
+log_tail:
+  kind: log-tail
+  name: tail.log
+  cap_bytes: 65536
+kind_caps:
+  manifest: 1048576
+  source: 67108864
+  index: 134217728
+  component: 67108864
+  build-info: 1048576
+  result: 67108864
+  output: 268435456
+  summary: 16777216
+  log-tail: 65536
+  checkpoint: 67108864
+task_types:
+  compile:
+    outputs:
+      - {file: component.wasm, kind: component, cap_bytes: 67108864}
+      - {file: build-info.json, kind: build-info, cap_bytes: 1048576}
+  simulate:
+    outputs:
+      - {file: results.xml, kind: result, cap_bytes: 67108864}
+  aggregate:
+    outputs:
+      - {file: summary.json, kind: summary, cap_bytes: 16777216}
