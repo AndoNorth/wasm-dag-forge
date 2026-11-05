@@ -5,12 +5,11 @@ The contract it loads is pinned in `contracts/artifact/README.md`.
 
 ## State
 
-The contract loader, the models, the schema generator, the key builders, the typed errors, the client, `verify` and staging are delivered.
-The modules of commit by reference, the checkpoints, the aggregate index, the compile cache and the fault hooks are stubs.
+The contract loader, the models, the schema generator, the key builders, the typed errors, the client, `verify`, commit by reference and staging are delivered.
+The modules of the checkpoints, the aggregate index, the compile cache and the fault hooks are stubs.
 A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
 Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
 `tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
-`ArtifactClient.put_content` with a connection is not delivered yet and raises `NotImplementedError`.
 
 ## The client
 
@@ -28,9 +27,28 @@ Every call takes `deadline`, the seconds that the call may take from its start, 
 - `get` writes a temporary file beside the destination and renames it only when the size and the SHA-256 match the reference.
   `get_bytes` does the same into memory for objects up to a limit, `head` reads the stored size, and `verify` reads an object through the hash check and keeps nothing.
 - A missing or corrupt object is fetched once more, and the second failure is `ArtifactLost` carrying the first as its `cause`.
+- `put_content` with `conn` and `job_id` is the caller that holds a database connection, which is the dispatch API under the `wdf_artifacts` role.
+  It indexes the row first and revives a soft deleted or purged one, then sends the bytes, then links the job, so a revived row is never left without its object.
+  If a purge lands between the steps, the link finds the row purged and the three steps run again, up to three rounds, and then `OutputUploadFailed` is raised.
+  `conn` and `job_id` come together, and either one alone is a `ValueError`.
+  The rows follow the transaction of the caller, and a connection in autocommit makes each step durable as it goes.
 
 A source above the size cap of its kind in `contracts/artifact/staging.yaml` raises `TooLarge`, and a path whose bytes change during the upload raises `SourceChanged`, before the object can take the wrong address.
 Both are `ValueError`, because the failure taxonomy has no code for a caller's own mistake.
+
+## Commit by reference
+
+`commit(conn, client, references, job_id, task, accepted_attempt=None)` is what the workflow's record activity calls for an accepted attempt, with a client of the `workflow` store role and a connection of the `wdf_artifacts` role.
+A worker only returns references, and the commit is the one place where they become rows of the index.
+
+- An attempt-scoped reference is refused with `CommitRefused` unless it names this job, task and accepted attempt, and nothing is read or written first.
+  A zombie attempt that uploads late writes only under its own attempt prefix, which no row names.
+- Each reference takes its row lock, indexing the row if it is absent, then the object is checked with a `HEAD`, and a content-addressed reference is linked to the job.
+  A tombstoned or purged row is made live only after its object was seen, and `Committed.revived` lists those rows.
+- An object that is gone, or whose size differs, raises `OutputUploadFailed` and rolls back every change of the call, so the workflow retries the attempt, which uploads the bytes again.
+- Rows are taken in uri order, so two commits never wait on each other in a cycle.
+
+The call runs in one transaction block of the connection and never commits an outer transaction of the caller.
 
 ## Staging
 
