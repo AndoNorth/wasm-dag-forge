@@ -879,6 +879,7 @@ source = { editable = "packages/storecheck" }
 dependencies = [
     { name = "boto3" },
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "pyyaml" },
 ]
 
@@ -886,6 +887,7 @@ dependencies = [
 requires-dist = [
     { name = "boto3" },
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "pyyaml" },
 ]
 

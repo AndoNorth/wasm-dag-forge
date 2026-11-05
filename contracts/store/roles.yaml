@@ -15,11 +15,13 @@ roles:
   compile:
     wdf-sources: [get, list]
     wdf-components: [put, multipart]
+    wdf-results: [put, multipart]
   simulate:
     wdf-components: [get, list]
     wdf-results: [put, multipart]
     wdf-checkpoints: [get, list, put, multipart]
   aggregate:
+    wdf-sources: [get]
     wdf-results: [get, list, put, multipart]
   workflow:
     wdf-sources: [get, list]
