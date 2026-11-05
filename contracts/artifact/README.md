@@ -1,8 +1,9 @@
 # Artifact contract
 
 Owner epic: #4 (job event envelope and state propagation).
-Version: 2
-Consumers: storage (#3), workers (#10), toolchain (#11) and artifacts (#12).
+Version: 3
+The artifacts epic (#12) adds the failure taxonomy, the staging contract and the object caps.
+The [Consumers](#consumers) section names who reads each file.
 
 An artifact reference points to an object and holds no bytes.
 This directory pins the reference shape, the four buckets and the key template of each kind.
@@ -31,7 +32,7 @@ An attempt-scoped key names the tenant, batch, job, seed, task and attempt, and 
 A summary of an aggregate task sits under `<tenant>/<batch>/aggregate/<job>/<task>/<attempt>/<name>`.
 The file `build-info.json` and its schema belong to the toolchain epic (#11), and this contract pins only the reference of a `build-info` object and its bucket.
 
-## Loader
+## Reference loader
 
 `contracts/artifact/check.sh <file>` validates one reference against the schema and checks that its `uri` is a key of the template of its kind.
 It exits 0 when valid, 1 with `reason: <code>: <detail>` on stderr when not, and 2 on usage.
@@ -46,7 +47,79 @@ It exits 0 when valid, 1 with `reason: <code>: <detail>` on stderr when not, and
 | `missing-attempt-segment` | an attempt-scoped key has no segment for the attempt of the producer |
 | `key-template-mismatch` | any other difference between the key and the template, including a producer or a name that the key repeats wrongly |
 
-## Vectors and the loader test
+## Failure taxonomy
+
+[failures.yaml](failures.yaml) lists every artifact failure with its cause, retry rule, attempt class and surface, and [failures.schema.json](failures.schema.json) is generated from the models of `wdf_artifactclient`.
+The retry rule is spent inside the client, and the attempt class is what the failed attempt reports.
+The surface is the typed exception of the client and the prefix of the reason of a `task.attempt.failed` event, which is the code and a colon.
+The `Reason` model of the events contract takes free text, so no event schema changes.
+
+| Retry rule | Meaning |
+| --- | --- |
+| `backoff-within-deadline` | the client retries with backoff until the deadline of the call, then the attempt fails |
+| `refetch-once` | the client reads the object once more, then raises `ARTIFACT_LOST` carrying the first cause |
+| `fallback-to-previous-checkpoint` | the client does not retry, and the workflow starts a new attempt from the previous checkpoint |
+| `none` | no retry |
+
+`CHECKPOINT_CORRUPT` is a hash or size mismatch or a missing object of a checkpoint, and every other store fault of a verification is `STORE_UNAVAILABLE`.
+`ARTIFACT_LOST` is also what `CHECKPOINT_CORRUPT` becomes when no earlier checkpoint verifies.
+The class names `retryable` and `non-retryable` are the artifact contract's, and the workflow epic (#6) maps them into its own failure class table.
+
+## Staging
+
+[staging.yaml](staging.yaml) pins the scratch directory of a task and its declared outputs, and [staging.schema.json](staging.schema.json) is generated from the models.
+The scratch directory holds `input/`, read only once staged, with `input.json` written by the worker, and `output/`, which the guest writes.
+Each task type declares its outputs as a file name, a kind and a cap.
+The declared outputs of each task type equal those of `contracts/job/registry.json`, which stays the source, and the loader refuses a difference.
+A declared output that is absent or not a regular file fails with `OUTPUT_MISSING`.
+An undeclared regular file is not uploaded and is listed in the report and in the log tail, and a symbolic link or a directory is ignored and listed, so a temporary file of a guest never fails an attempt.
+The last bytes of the combined standard output and error, up to the cap of `log_tail`, are uploaded as kind `log-tail` even when the attempt failed.
+
+## Limits
+
+`kind_caps` of [staging.yaml](staging.yaml) holds the largest size of one object of each kind, in bytes, and every kind of `layout.yaml` has one.
+The caps are estimates chosen against the store claim, and a change is a contract-change PR.
+There is no cap for the bytes of a whole job.
+A checkpoint cap of 64 MiB with two kept checkpoints for each of 32 parallel tasks is 4,096 MiB, which fits the claim of 10,240 MiB of the store.
+The cap of an output of a task type may be lower than the cap of its kind and never higher.
+
+## Consumers
+
+| Consumer | Reads |
+| --- | --- |
+| #3 durable state and storage | the layout, the kind caps and the retention that the reaper honours, and the failure inputs that it counts |
+| #4 job event envelope | the reference shape and the layout, and the failure reasons that `task.attempt.failed` carries |
+| #5 DAG configuration and validator | the declared outputs, which equal the registry that the validator reads |
+| #6 workflow engine | the failure taxonomy, which it maps into its failure classes |
+| #10 Kubernetes workers | the staging contract and the caps |
+| #11 toolchain and guest contract | the file names of the declared outputs |
+| #13 observability | the failure codes that become metrics and alerts |
+| #15 failure scenarios | the failure codes that its scenarios provoke |
+| #16 characterization and soak | the caps and the failure codes that the soak observes |
+| #17 test ladder and acceptance | the caps and the failure codes that the acceptance run checks |
+| #18 checkpoint and resume | the checkpoint cap and `CHECKPOINT_CORRUPT` |
+| #24 dispatch and control API | the caps of the manifest, the source bundle and the index |
+
+## Contract files and their loader
+
+`python -m wdf_artifactclient.contract --check <failures.yaml|staging.yaml>` validates one file against the models and the layout and the registry.
+It exits 0 when valid, 1 with `reason: <code>: <detail>` on stderr when not, and 2 on usage.
+`python -m wdf_artifactclient.gen [--check]` writes the generated schemas, and with `--check` exits 1 and names each committed schema that differs from the models.
+
+| Reason | Fails when |
+| --- | --- |
+| `schema-violation` | the file does not match its model, or an event reason prefix is not its code and a colon, or a task type declares a file name twice |
+| `duplicate-code` | a code is listed twice |
+| `unknown-code` | a code that `escalates_to` or `missing_output` names is not in the taxonomy |
+| `unknown-kind` | a cap or an output names a kind that `layout.yaml` lacks |
+| `kind-without-cap` | a kind of `layout.yaml` has no entry in `kind_caps` |
+| `cap-above-kind-cap` | an output or the log tail has a cap above the cap of its kind |
+| `unknown-task-type` | a task type is not in the registry |
+| `output-not-in-registry` | the declared outputs of a task type differ from those of the registry, or the registry has a type that staging lacks |
+
+`vectors/failures/{valid,invalid/<reason>}/` and `vectors/staging/{valid,invalid/<reason>}/` hold the vectors, and `packages/artifactclient/tests/test_loader.py` runs them inside `just ci`.
+
+## Vectors and the reference loader test
 
 `vectors/valid/*.yaml` must pass, and `vectors/invalid/<reason>/*.yaml` must fail with that reason.
 `scripts/verify/cluster/lib/vectors.sh contracts/artifact` runs them.

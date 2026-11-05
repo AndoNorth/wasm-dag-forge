@@ -9,6 +9,7 @@ members = ["packages/*"]
 
 # Workspace members are installed through the dev group, because a plain `uv run` installs only the root project.
 [tool.uv.sources]
+wdf-artifactclient = { workspace = true }
 wdf-artifactindex = { workspace = true }
 wdf-compat = { workspace = true }
 wdf-events = { workspace = true }
@@ -32,6 +33,7 @@ wdf-temporal = { workspace = true }
 dev = [
     "hypothesis",
     "pytest",
+    "wdf-artifactclient",
     "wdf-artifactindex",
     "wdf-compat",
     "wdf-events",

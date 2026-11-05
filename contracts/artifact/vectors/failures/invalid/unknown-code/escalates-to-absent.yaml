@@ -1,0 +1,11 @@
+---
+# Escalates to a code the table lacks.
+codes:
+  - code: ARTIFACT_NOT_FOUND
+    cause: The object that a reference names is absent from the store.
+    retry: refetch-once
+    attempt_class: non-retryable
+    escalates_to: ARTIFACT_LOST
+    surface:
+      exception: ArtifactNotFound
+      event_reason: 'ARTIFACT_NOT_FOUND: '

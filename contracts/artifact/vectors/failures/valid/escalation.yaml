@@ -1,0 +1,18 @@
+---
+# A code may escalate to a code of the same table.
+codes:
+  - code: ARTIFACT_NOT_FOUND
+    cause: The object that a reference names is absent from the store.
+    retry: refetch-once
+    attempt_class: non-retryable
+    escalates_to: ARTIFACT_LOST
+    surface:
+      exception: ArtifactNotFound
+      event_reason: 'ARTIFACT_NOT_FOUND: '
+  - code: ARTIFACT_LOST
+    cause: An object stayed missing or corrupt after the one refetch, and the failure carries the first cause.
+    retry: none
+    attempt_class: non-retryable
+    surface:
+      exception: ArtifactLost
+      event_reason: 'ARTIFACT_LOST: '
