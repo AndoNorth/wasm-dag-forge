@@ -1,4 +1,4 @@
-"""Generates contracts/events/schemas from the data models and checks the committed files.
+"""Generates contracts/events/schemas and the artifact reference schema from the data models.
 
 Usage: python -m wdf_events.schemagen [--check] [--root DIR]
 """
@@ -7,8 +7,9 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any, get_args
 
-from .models import DATA_MODELS
+from .models import DATA_MODELS, AttemptReference, ContentReference, ProducerRef
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -18,6 +19,54 @@ def render(name: str, version: str) -> str:
     schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
     schema["$id"] = f"urn:wdf:schema:{name}:{version}"
     schema["title"] = f"{name} {version}"
+    return json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+
+
+REFERENCE_SCHEMA = Path("contracts/artifact/reference.schema.json")
+
+
+def _untitled(schema: Any) -> Any:
+    """Drops the titles that pydantic derives from class and field names, which carry nothing."""
+    if isinstance(schema, dict):
+        return {
+            k: _untitled(v) for k, v in schema.items() if k != "title" or not isinstance(v, str)
+        }
+    if isinstance(schema, list):
+        return [_untitled(v) for v in schema]
+    return schema
+
+
+def render_reference() -> str:
+    """The flat reference schema, with a producer required for the attempt-scoped kinds only."""
+    fields = ContentReference.model_json_schema()["properties"]
+    producer = _untitled(ProducerRef.model_json_schema())
+    producer["properties"]["attempt"]["description"] = (
+        "An attempt identity as the key formulas define it."
+    )
+    scoped = list(get_args(AttemptReference.model_fields["kind"].annotation))
+    kinds = [*get_args(ContentReference.model_fields["kind"].annotation), *scoped]
+    properties = {k: _untitled(v) for k, v in fields.items() if k != "kind"}
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Artifact reference",
+        "description": "A pointer to an object in a bucket. It never holds bytes, and the consumer "
+        "verifies sha256 and size against the object.",
+        "type": "object",
+        "additionalProperties": False,
+        "required": [*properties, "kind"],
+        "properties": {
+            **properties,
+            "kind": {"enum": kinds},
+            "producer": {
+                "description": "The attempt that wrote the object, present for the attempt-scoped "
+                "kinds only.",
+                **producer,
+            },
+        },
+        "if": {"required": ["kind"], "properties": {"kind": {"enum": scoped}}},
+        "then": {"required": ["producer"]},
+        "else": {"not": {"required": ["producer"]}},
+    }
     return json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
@@ -34,9 +83,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     drift = []
-    for name, version in sorted(DATA_MODELS):
-        path = schema_path(args.root, name, version)
-        text = render(name, version)
+    targets = [(schema_path(args.root, *key), render(*key)) for key in sorted(DATA_MODELS)]
+    targets.append((args.root / REFERENCE_SCHEMA, render_reference()))
+    for path, text in targets:
         if args.check:
             if not path.is_file() or path.read_text() != text:
                 drift.append(path.relative_to(args.root))

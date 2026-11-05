@@ -1,5 +1,6 @@
 """The committed schemas must equal what the models generate."""
 
+import json
 import shutil
 import subprocess
 import sys
@@ -46,3 +47,15 @@ def test_generation_rewrites_a_drifted_file(tmp_path):
     path.write_text("{}\n")
     assert run("--root", str(tmp_path)).returncode == 0
     assert run("--check", "--root", str(tmp_path)).returncode == 0
+
+
+def test_a_dropped_kind_of_the_reference_schema_is_reported(tmp_path):
+    reference = "contracts/artifact/reference.schema.json"
+    (tmp_path / reference).parent.mkdir(parents=True)
+    shutil.copytree(ROOT / "contracts/events/schemas", tmp_path / "contracts/events/schemas")
+    document = json.loads((ROOT / reference).read_text())
+    document["properties"]["kind"]["enum"].remove("component")
+    (tmp_path / reference).write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+    result = run("--check", "--root", str(tmp_path))
+    assert result.returncode == 1
+    assert reference in result.stderr

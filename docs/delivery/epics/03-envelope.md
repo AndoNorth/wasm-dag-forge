@@ -360,3 +360,5 @@ Follow-ups recorded by the lanes and by this run, none of which blocks closure:
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
 
 - 2026-11-01: [#168](https://github.com/AndoNorth/wasm-dag-forge/issues/168) adds the `tmpfs`, `mounts` and `Container.exec` options to the container helper, all off by default.
+- 2026-11-04: [#215](https://github.com/AndoNorth/wasm-dag-forge/issues/215) derives the kinds, the buckets and the bucket pattern of the reference models from `contracts/artifact/layout.yaml` through `wdf_events.layout()`, and generates `contracts/artifact/reference.schema.json` from them with `python -m wdf_events.schemagen`.
+  The narrowings stay, each held to the layout by a test, and no schema under `contracts/events/` changed.
