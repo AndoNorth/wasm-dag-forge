@@ -82,6 +82,7 @@ def test_the_history_holds_the_canonical_event_bytes_and_replays(t1, vector):
     accepted = from_bytes((CONTRACT / vector).read_bytes())
     form = declared_form()
     assert form == "converter"
+    others = labelled(t1.run_id)
     with t1.container(
         "temporalio/temporal",
         ports={0: 7233},
@@ -89,7 +90,7 @@ def test_the_history_holds_the_canonical_event_bytes_and_replays(t1, vector):
     ) as container:
         container.wait_ready(0)
         result, history = asyncio.run(run_once(container.host_ports[0], accepted))
-        assert labelled(t1.run_id) == [container.id[:12]]
+        assert sorted(labelled(t1.run_id)) == sorted([*others, container.id[:12]])
 
     workflow_input, activity_input = payloads(history, "workflow"), payloads(history, "activity")
     assert workflow_input[0].data == to_bytes(accepted)
@@ -111,4 +112,4 @@ def test_the_history_holds_the_canonical_event_bytes_and_replays(t1, vector):
             workflows=[StandInJob], workflow_runner=RUNNER, data_converter=event_data_converter
         ).replay_workflow(history)
     )
-    assert labelled(t1.run_id) == []
+    assert labelled(t1.run_id) == others

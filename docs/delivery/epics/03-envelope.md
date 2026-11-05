@@ -360,3 +360,4 @@ Follow-ups recorded by the lanes and by this run, none of which blocks closure:
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
 
 - 2026-11-01: [#168](https://github.com/AndoNorth/wasm-dag-forge/issues/168) adds the `tmpfs`, `mounts` and `Container.exec` options to the container helper, all off by default.
+- 2026-11-04: [#222](https://github.com/AndoNorth/wasm-dag-forge/issues/222) lets a `wdf_itest` session declare two containers with names, taking both host lock files together, and adds the markers `pair` and `isolated`.

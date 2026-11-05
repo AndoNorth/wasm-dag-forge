@@ -70,3 +70,23 @@ def test_a_slot_outside_0_to_9_is_refused(slot, monkeypatch):
 def test_the_canary_image_is_pinned_by_digest():
     ref = image_ref("canary")
     assert ref.startswith("busybox:") and "@sha256:" in ref
+
+
+def test_two_sessions_that_each_want_two_never_hold_one_file_while_waiting(lock_dir, monkeypatch):
+    held = session._acquire_locks("run-a", 1, timeout=1)
+    seen = []
+
+    def sleep(seconds):
+        # A waiter that holds nothing leaves the second file free for anyone else to take.
+        seen.append(session._acquire_locks("probe", 1, timeout=0))
+        for fd in seen[-1]:
+            os.close(fd)
+
+    monkeypatch.setattr(session.time, "sleep", sleep)
+    try:
+        with pytest.raises(LockTimeout):
+            session._acquire_locks("run-b", 2, timeout=0.05)
+        assert seen
+    finally:
+        for fd in held:
+            os.close(fd)
