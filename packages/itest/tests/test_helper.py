@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import time
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -46,10 +47,12 @@ def test_container_carries_the_label_a_slot_port_and_the_memory_cap(t1):
     assert run_ids(t1.run_id) == []
 
 
-def test_a_second_container_cannot_start_while_one_runs(t1):
-    with t1.container("canary", command=["sleep", "60"]):
-        with pytest.raises(Exception, match="one container at a time"):
-            with t1.container("canary", command=["sleep", "60"]):
+def test_a_container_beyond_the_session_count_cannot_start(t1):
+    with ExitStack() as stack:
+        for i in range(t1.containers):
+            stack.enter_context(t1.container("canary", command=["sleep", "60"], name=f"c{i}"))
+        with pytest.raises(Exception, match="container.* at a time"):
+            with t1.container("canary", command=["sleep", "60"], name="beyond"):
                 pass
     assert run_ids(t1.run_id) == []
 

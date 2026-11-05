@@ -1,4 +1,9 @@
-"""A started store per product, with every role of the contract provisioned."""
+"""The store fixtures, registered as a pytest plugin by the package entry point.
+
+`store` and `start_capped` hold one container for a module, `store_session` one for the whole
+session, and `running` is the context manager that all of them share.
+A session that runs any of them next to a database declares the marker `pair`.
+"""
 
 import json
 import subprocess
@@ -8,6 +13,7 @@ from dataclasses import dataclass
 
 import pytest
 from botocore.exceptions import BotoCoreError, ClientError
+
 from wdf_storecheck.checks import Store
 from wdf_storecheck.provision import (
     ADMIN,
@@ -19,6 +25,8 @@ from wdf_storecheck.s3 import Creds, client
 
 PRODUCTS = {"seaweedfs": "chrislusf/seaweedfs", "rustfs": "rustfs/rustfs"}
 IDENTITIES = "/etc/seaweedfs/s3.json"
+# SeaweedFS holds 100,000 objects within the 1 GiB container cap only with the Go heap bounded.
+SEAWEEDFS_ENV = {"GOMEMLIMIT": "512MiB"}
 
 
 @dataclass
@@ -76,6 +84,7 @@ def running(t1, product: str, directory, tmpfs: dict[str, int] | None = None):
                 "-dir=/data",
                 "-volume.max=0",
             ],
+            env=SEAWEEDFS_ENV,
             mounts={config: IDENTITIES},
             tmpfs=tmpfs,
         )
@@ -106,6 +115,13 @@ def running(t1, product: str, directory, tmpfs: dict[str, int] | None = None):
 def store(request, t1, tmp_path_factory):
     """One container per product for a test module, provisioned with exactly the contract grants."""
     with running(t1, request.param, tmp_path_factory.mktemp("store")) as started:
+        yield started
+
+
+@pytest.fixture(scope="session")
+def store_session(t1, tmp_path_factory):
+    """One SeaweedFS container for the whole session, provisioned with the contract grants."""
+    with running(t1, "seaweedfs", tmp_path_factory.mktemp("store-session")) as started:
         yield started
 
 

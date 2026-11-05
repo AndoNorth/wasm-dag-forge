@@ -505,3 +505,5 @@ Follow-ups that this spec already knew:
 New from this run, both fixed by the rerun PR: [#217](https://github.com/AndoNorth/wasm-dag-forge/issues/217) (`just ci` from an export) and [#218](https://github.com/AndoNorth/wasm-dag-forge/issues/218) (the interrupt test timeout).
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
+
+- 2026-11-04: [#222](https://github.com/AndoNorth/wasm-dag-forge/issues/222) raises the store contract to version 3 (`aggregate` reads `wdf-sources`, `compile` writes `wdf-results`) and turns the `running` and `store` fixtures of `packages/storecheck` into the plugin `wdf_storecheck.fixtures` with a `store_session` fixture.

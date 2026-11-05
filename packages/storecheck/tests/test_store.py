@@ -33,7 +33,7 @@ def test_wrong_role_write_is_refused_and_leaves_nothing(store):
     key = f"{target.prefix}wrong-role"
     try:
         with pytest.raises(ClientError) as refused:
-            target.as_role("compile").put_object(Bucket="wdf-results", Key=key, Body=b"1")
+            target.as_role("submit").put_object(Bucket="wdf-results", Key=key, Body=b"1")
         assert error_code(refused.value) == "AccessDenied"
         assert status(refused.value) == 403
         assert not target.exists("wdf-results", key)

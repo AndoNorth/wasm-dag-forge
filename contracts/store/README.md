@@ -1,7 +1,7 @@
 # Store contract
 
 Owner epic: #3 (durable state and artifact storage).
-Version: 2
+Version: 3
 Consumers: artifacts (#12), the contract script of this epic, the object store module, characterization (#16, #17) and the observability epic (#13).
 
 This directory pins who may do what in the object store, which lifecycle rules each bucket carries and what each tested product is known not to do.
@@ -19,9 +19,9 @@ The actions are `get`, `put`, `list`, `multipart`, `delete`, `bucket` and `lifec
 | `admin` | the bootstrap, and no pod | `bucket` and `lifecycle` on every bucket |
 | `submit` | the submit path | writes `wdf-sources` |
 | `indexer` | the aggregate index builder | writes `wdf-sources` and nothing else |
-| `compile` | the compile stage | reads `wdf-sources`, writes `wdf-components` |
+| `compile` | the compile stage | reads `wdf-sources`, writes `wdf-components` and `wdf-results` (its log tail) |
 | `simulate` | the simulate stage | reads `wdf-components`, writes `wdf-results`, reads and writes `wdf-checkpoints` |
-| `aggregate` | the aggregate stage | reads and writes `wdf-results` |
+| `aggregate` | the aggregate stage | reads `wdf-sources` (its index object), reads and writes `wdf-results` |
 | `workflow` | the workflow | reads `wdf-sources`, `wdf-components` and `wdf-results` |
 | `export` | the evidence export | reads `wdf-results` |
 | `reaper` | the artifact reaper | lists and deletes in all four buckets |
