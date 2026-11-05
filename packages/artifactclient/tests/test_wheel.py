@@ -9,12 +9,18 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 PROBE = """
+import importlib
 import yaml
 from wdf_artifactclient.contract import check
 from wdf_artifactclient.models import CONTRACT
 
 for name in ("failures.yaml", "staging.yaml"):
     check(yaml.safe_load((CONTRACT / name).read_text()))
+for name in (
+    "__main__", "aggregate", "bench", "cache", "checkpoint", "client", "commit", "errors",
+    "faults", "keys", "staging", "testing",
+):
+    importlib.import_module(f"wdf_artifactclient.{name}")
 for name in ("layout.yaml", "registry.json", "failures.schema.json", "staging.schema.json"):
     assert (CONTRACT / name).is_file(), name
 """
