@@ -21,6 +21,11 @@ for name in (
     "faults", "keys", "staging", "testing",
 ):
     importlib.import_module(f"wdf_artifactclient.{name}")
+from wdf_artifactclient.client import kind_caps
+from wdf_artifactclient.keys import content_key
+
+assert content_key("manifest", "ab" * 32) == "sha256/ab/" + "ab" * 32
+assert kind_caps()["result"] > 0
 for name in (
     "layout.yaml",
     "registry.json",
@@ -45,7 +50,7 @@ def run(*cmd, **kwargs) -> subprocess.CompletedProcess:
 def clean_python(tmp_path_factory) -> Path:
     work = tmp_path_factory.mktemp("wheel")
     wheels = work / "wheels"
-    for package in ("wdf-artifactclient", "wdf-compat", "wdf-events", "wdf-keys"):
+    for package in ("wdf-artifactclient", "wdf-compat", "wdf-events", "wdf-keys", "wdf-storecheck"):
         run("uv", "build", "--wheel", "--package", package, "-o", str(wheels), cwd=ROOT)
     venv = work / "venv"
     run("uv", "venv", "--python", sys.executable, str(venv))
