@@ -25,7 +25,8 @@ BEGIN
 END
 $$;
 
-REVOKE ALL ON accepted_job, job_status, job_transition, event, artifact FROM
+REVOKE ALL ON accepted_job, job_status, job_transition, event, artifact, artifact_use, reaper_job,
+    reaper_cursor FROM
     wdf_dispatch, wdf_control, wdf_admission, wdf_workflow, wdf_artifacts, wdf_reaper, wdf_reader;
 GRANT USAGE ON SCHEMA public TO
     wdf_dispatch, wdf_control, wdf_admission, wdf_workflow, wdf_artifacts, wdf_reaper, wdf_reader;
@@ -51,12 +52,24 @@ GRANT UPDATE (control_seq, control_delivered_at, pending_patch_ref) ON accepted_
 GRANT INSERT ON event TO wdf_dispatch, wdf_control, wdf_admission, wdf_workflow;
 GRANT SELECT (event_id, event_time) ON event TO wdf_dispatch, wdf_control, wdf_admission, wdf_workflow;
 
-GRANT SELECT ON artifact TO wdf_artifacts, wdf_reaper;
+-- The artifact role indexes and links. A retried link and a revive are updates under either
+-- spelling of the statement, so the renewal and the soft delete columns are granted with them.
+GRANT SELECT ON artifact, artifact_use TO wdf_artifacts;
 GRANT INSERT (
     kind, uri, bucket, key, sha256, size, name, producer_job, producer_task, producer_attempt,
-    cache_key, wasm_uri, componentize_py_version, wit_version, last_used_at
+    cache_key, wasm_uri, build_info_uri, componentize_py_version, wit_version, last_used_at
 ) ON artifact TO wdf_artifacts;
-GRANT UPDATE (last_used_at) ON artifact TO wdf_artifacts;
-GRANT UPDATE (deleted_at) ON artifact TO wdf_reaper;
+GRANT UPDATE (last_used_at, deleted_at, purged_at, cache_key) ON artifact TO wdf_artifacts;
+GRANT INSERT (job_id, artifact_row_id, created_at, last_linked_at) ON artifact_use TO wdf_artifacts;
+GRANT UPDATE (last_linked_at) ON artifact_use TO wdf_artifacts;
 
-GRANT SELECT ON accepted_job, job_status, job_transition, event, artifact TO wdf_reader;
+-- The reaper reads the job columns that its rules compare and the status vocabulary they join.
+-- It retires the key of an entry it expires, and records its progress.
+GRANT SELECT ON artifact, artifact_use, job_status, reaper_job, reaper_cursor TO wdf_reaper;
+GRANT SELECT (job_id, tenant, batch_id, status, terminal_at, manifest_ref, pending_patch_ref)
+    ON accepted_job TO wdf_reaper;
+GRANT UPDATE (deleted_at, purged_at, cache_key) ON artifact TO wdf_reaper;
+GRANT INSERT, UPDATE ON reaper_job, reaper_cursor TO wdf_reaper;
+
+GRANT SELECT ON accepted_job, job_status, job_transition, event, artifact, artifact_use,
+    reaper_job, reaper_cursor TO wdf_reader;

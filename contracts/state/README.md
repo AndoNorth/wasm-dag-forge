@@ -123,6 +123,22 @@ A retried submission reuses its job id and so links again, which moves `last_lin
 | `created_at` | `timestamptz` | When the job first linked the blob |
 | `last_linked_at` | `timestamptz` | When the job last linked the blob, never moved back |
 
+## Tables `reaper_job` and `reaper_cursor`
+
+The progress of the artifact reaper, written only by its role, so a pass is bounded and can be repeated.
+`reaper_job` holds one row per job that a pass has finished with, and has a foreign key to `accepted_job`.
+A done marker is set when a pass finds the listing of the prefix of the job empty after deleting.
+`reaper_cursor` holds the continuation of a sweep that is bounded to a page of the listing per run.
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `reaper_job.job_id` | `uuid` | The primary key, references `accepted_job (job_id)` |
+| `reaper_job.results_done_at` | `timestamptz` | Null until the results of the job were removed |
+| `reaper_job.checkpoints_done_at` | `timestamptz` | Null until the checkpoints of the job were removed |
+| `reaper_cursor.name` | `text` | The primary key, the name of the sweep |
+| `reaper_cursor.position` | `text` | The continuation token of the listing, not null |
+| `reaper_cursor.updated_at` | `timestamptz` | Set by the database, moved by the reaper |
+
 ## Reference rule
 
 A content-addressed row is unreferenced when no live cache entry names it as its wasm or build-info, no use row holds it, no job row that is not terminal names it as its `manifest_ref` or `pending_patch_ref`, and it is older than the unreferenced grace.
@@ -142,7 +158,15 @@ A status value cannot be restricted by a grant, so the trigger and the library k
 | Claim a job | admission, role `wdf_admission` | `transition(accepted, admitted)` and `insert_events` for the admitted event |
 | Project running, paused and the terminal statuses | the workflow, role `wdf_workflow` | `transition` and `insert_events` for every event except submit, control and admission events |
 | Index a committed reference and a cache entry, link a job to a blob, retire a cache entry | the artifact client, role `wdf_artifacts` | `index_reference`, `record_cache_entry`, `touch_cache_entry`, `link_use`, `invalidate_cache_entry` |
-| Soft delete an expired reference, expire cache entries, purge a tombstoned row | the reaper, role `wdf_reaper` | `mark_deleted`, `tombstone`, `expired_cache_entries`, `purge` |
+| Soft delete an expired reference, expire cache entries, purge a tombstoned row, record progress | the reaper, role `wdf_reaper` | `mark_deleted`, `tombstone`, `expired_cache_entries`, `purge`, and the writes of `reaper_job` and `reaper_cursor` |
+
+The artifact role holds `select` on `artifact` and `artifact_use`, `insert` on the columns of a reference and of a cache entry including `build_info_uri`, and `insert` on `artifact_use`.
+It updates `last_used_at`, `deleted_at`, `purged_at` and `cache_key` of `artifact`, which are a touch, a revive, a revive of a purged row and the retired key of an invalidation, and `last_linked_at` of `artifact_use`, which a retried link renews.
+The dispatch API writes the index and use rows of its inputs through a second connection that logs in as a member of `wdf_artifacts`, because its own role `wdf_dispatch` has no grant on `artifact`.
+
+The reaper role reads `artifact`, `artifact_use`, `job_status` and the columns `job_id`, `tenant`, `batch_id`, `status`, `terminal_at`, `manifest_ref` and `pending_patch_ref` of `accepted_job`.
+It updates `deleted_at`, `purged_at` and `cache_key` of `artifact`, because it expires cache entries and retires their keys, and it selects, inserts and updates the two progress tables.
+No other role writes the progress tables, and no role deletes from any table of the three families.
 
 ## Retention
 
@@ -177,8 +201,10 @@ Without it the two queries that compare against workflows print `skipped: <name>
 | `published-without-receipt` | A job with a `job.published` event, or past `accepted`, and no receipt |
 | `accepted-class-differs-from-row` | An accepted event whose `jobclass` differs from the `job_class` of its row |
 | `result-ready-without-artifact` | A `task.result.ready` event whose result has no artifact row |
+| `deleted-artifact-of-live-job` | A soft deleted row that a use row names while its job is not terminal, or while the job has no row and the last link is younger than the unreferenced grace, and a soft deleted attempt-scoped row of a job that is not terminal, unless it is a checkpoint |
 
 A job at `accepted` and a dead lettered job have no workflow, so the workflow queries never report them.
+A query may use the named parameters of `wdf_stateops.windows`, which reads the unreferenced grace, the windows per status and the failure codes from the artifact contract and the hard expiries from [retention.yaml](retention.yaml).
 
 ## Inputs
 
@@ -197,6 +223,17 @@ It exits 0 when every input was read, 1 when the store cannot be read, 2 on a us
 | `drift_rows` | rows | offending rows of the invariant queries that run without open workflows |
 | `store_bytes` | bytes | one value per bucket from `python -m wdf_storecheck run --mode capacity` |
 | `store_capacity_share` | percent | used share of the data volume from `df` in the store pod, alerting above 70 |
+| `artifact_failures` | failures | one value per code of `contracts/artifact/failures.yaml` (zero when none), counted over the `task.attempt.failed` events whose reason starts with the code and a colon, printed as `artifact_failures{code=<code>}` |
+| `checkpoint_age_seconds` | seconds | the largest age of the newest live checkpoint row of a job that is not terminal, 0 with none |
+| `reaper_deleted` | rows | rows soft deleted in the last hour |
+| `reaper_overdue` | rows | live attempt-scoped rows of terminal jobs in the results or checkpoint bucket that are past the window of the status of their job, within the hard expiry of the bucket and not marked done in `reaper_job`, which is the lag of the reaper |
+| `cache_hits` | tasks | `task.skipped` events with the reason `compile-cache-hit` |
+| `cache_misses` | tasks | compile tasks that have a `task.started` event, counted once per task whatever its attempts |
+
+A source of kind `sql_labelled` names a `label` and returns one row per label, the label first and the number second, and the first column must carry the name of the label.
+`<name>{<label>=<value>} <number>` is printed for each row, and a query whose columns differ stops the command with `reason: label-column-missing: <detail>` and exit 1.
+A source of kind `sql` holds no `label`, a source of kind `sql_labelled` needs one, and either breach is `schema-violation`.
+Counts of events cover the retained history, which the event retention drops after 14 days.
 
 `--store-exec` is the prefix that runs inside the store, which defaults to `kubectl --context kind-wdf -n wdf-infra exec objectstore-0 -c store --`, and the data volume is `/data`.
 `python -m wdf_stateops.inputs --check FILE` validates a file and exits 0 valid, 1 with `reason: <code>: <detail>` on stderr, and the reasons are `schema-violation` and `unknown-source`.

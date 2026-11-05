@@ -1,25 +1,18 @@
 """The typed errors of failures.yaml, each carrying the code of its entry."""
 
-from ._stub import not_implemented
+STUBBED = ()
 
-STUBBED = (
-    "ArtifactError",
-    "StoreUnavailable",
-    "StoreForbidden",
-    "ArtifactNotFound",
-    "ArtifactCorrupt",
-    "ArtifactLost",
-    "OutputUploadFailed",
-    "OutputMissing",
-    "CheckpointCorrupt",
-)
+# The reason of a task.attempt.failed event holds at most this many characters.
+REASON_LIMIT = 1024
 
 
 class ArtifactError(Exception):
     code: str
 
-    def __init__(self, *args: object):
-        raise not_implemented("C")
+    @property
+    def reason(self) -> str:
+        """The text of a task.attempt.failed reason: the code, a colon, then the detail."""
+        return f"{self.code}: {self}"[:REASON_LIMIT]
 
 
 class StoreUnavailable(ArtifactError):
@@ -42,7 +35,11 @@ class ArtifactLost(ArtifactError):
     """An artifact that stayed missing or corrupt after the refetch, with the first cause."""
 
     code = "ARTIFACT_LOST"
-    cause: ArtifactError
+
+    def __init__(self, message: str, cause: ArtifactError):
+        super().__init__(message)
+        self.cause = cause
+        self.__cause__ = cause
 
 
 class OutputUploadFailed(ArtifactError):
