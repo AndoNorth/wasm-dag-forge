@@ -5,8 +5,8 @@ The contract it loads is pinned in `contracts/artifact/README.md`.
 
 ## State
 
-The contract loader, the models, the schema generator, the key builders, the typed errors, the client and `verify` are delivered.
-The modules of commit by reference, staging, the checkpoints, the aggregate index, the compile cache and the fault hooks are stubs.
+The contract loader, the models, the schema generator, the key builders, the typed errors, the client, `verify` and staging are delivered.
+The modules of commit by reference, the checkpoints, the aggregate index, the compile cache and the fault hooks are stubs.
 A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
 Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
 `tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
@@ -31,6 +31,18 @@ Every call takes `deadline`, the seconds that the call may take from its start, 
 
 A source above the size cap of its kind in `contracts/artifact/staging.yaml` raises `TooLarge`, and a path whose bytes change during the upload raises `SourceChanged`, before the object can take the wrong address.
 Both are `ValueError`, because the failure taxonomy has no code for a caller's own mistake.
+
+## Staging
+
+`stage_inputs(client, inputs, scratch)` downloads each input reference to `input/<reference name>` through the hash check and makes the file read only.
+A name that repeats, that is `input.json` or that has a slash is refused before any download.
+The library never writes `input.json`, because its content belongs to the caller.
+`collect_outputs(client, scratch, task_type, producer, tenant, batch, seed)` uploads the declared outputs of `staging.yaml` and returns `Collected(references, undeclared)`.
+A content-addressed kind goes up by its hash and an attempt-scoped kind under the key of the producer, and the seed reaches only a key that has one.
+A declared output that is absent or not a regular file raises `OutputMissing` before anything is uploaded, so a failed attempt leaves no objects behind.
+An undeclared regular file, a symbolic link and a directory are not uploaded and come back in `undeclared`, never as a failure.
+`capture_tail(stream, cap)` keeps the last `cap` bytes of a stream in a bounded buffer, and `upload_tail` stores them as `log-tail` under the role of the task type, with the undeclared entries listed at the end, within the cap.
+The tail is uploaded for a failed attempt as for a successful one.
 
 ## Retries
 
