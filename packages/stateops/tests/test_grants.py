@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from importlib import resources
 from pathlib import Path
 
@@ -17,11 +17,21 @@ from psycopg.conninfo import make_conninfo
 from wdf_artifactindex import (
     Deleted,
     Indexed,
+    Invalidated,
+    Linked,
+    Purged,
+    Revived,
     Won,
+    expired_cache_entries,
     index_reference,
+    invalidate_cache_entry,
+    link_use,
     mark_deleted,
+    purge,
     record_cache_entry,
+    tombstone,
     touch_cache_entry,
+    uses_of,
 )
 from wdf_events import build_event
 from wdf_eventstore import insert_events
@@ -40,10 +50,24 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[3]
 README = (ROOT / "contracts/state/README.md").read_text()
 ROLES_SQL = (resources.files("wdf_stateops.migrations") / "R__roles.sql").read_text()
-TABLES = ("accepted_job", "job_status", "job_transition", "event", "artifact")
+TABLES = (
+    "accepted_job",
+    "job_status",
+    "job_transition",
+    "event",
+    "artifact",
+    "artifact_use",
+    "reaper_job",
+    "reaper_cursor",
+)
+NOW = datetime(2026, 11, 2, tzinfo=UTC)
+ARTIFACT_WRITES = {"last_used_at", "deleted_at", "purged_at", "cache_key"}
+REAPER_READS = "job_id, tenant, batch_id, status, terminal_at, manifest_ref, pending_patch_ref"
+LATER = NOW + timedelta(days=10)
+GRACE = timedelta(days=2)
+INTERVAL = timedelta(hours=1)
 SHA = "a" * 64
 KEYS = itertools.count()
-NOW = datetime(2026, 11, 2, tzinfo=UTC)
 
 
 def job_row() -> JobRow:
@@ -162,7 +186,14 @@ def test_every_table_of_the_three_families_has_a_writer(appdb):
             " UNION SELECT table_name, grantee FROM information_schema.column_privileges"
             " WHERE privilege_type = 'INSERT' AND grantee LIKE 'wdf\\_%'"
         ).fetchall()
-    for table in ("accepted_job", "event", "artifact"):
+    for table in (
+        "accepted_job",
+        "event",
+        "artifact",
+        "artifact_use",
+        "reaper_job",
+        "reaper_cursor",
+    ):
         assert [grantee for name, grantee in writers if name == table], table
 
 
@@ -214,6 +245,17 @@ def test_workflow_role_moves_the_row_and_inserts_events(login, seeded):
     refused(workflow, "UPDATE accepted_job SET published_at = now()")
 
 
+def columns(conn, table: str) -> list[str]:
+    return [
+        name
+        for (name,) in conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s"
+            " ORDER BY ordinal_position",
+            (table,),
+        )
+    ]
+
+
 def test_artifacts_role_indexes_references_and_cache_entries(login):
     artifacts = login("wdf_artifacts")
     assert isinstance(index_reference(artifacts, reference(1)), Indexed)
@@ -225,11 +267,46 @@ def test_artifacts_role_indexes_references_and_cache_entries(login):
     }
     assert isinstance(record_cache_entry(artifacts, entry), Won)
     touch_cache_entry(artifacts, "c" * 64, NOW)
-    refused(artifacts, "UPDATE artifact SET deleted_at = now()")
     refused(artifacts, "DELETE FROM artifact")
 
 
-def test_reaper_role_updates_only_deleted_at(login):
+def test_artifacts_role_cannot_soft_delete_outside_its_columns(login, appdb):
+    artifacts = login("wdf_artifacts")
+    index_reference(artifacts, reference(4))
+    with psycopg.connect(appdb) as admin:
+        names = columns(admin, "artifact")
+    for column in set(names) - ARTIFACT_WRITES:
+        refused(artifacts, f"UPDATE artifact SET {column} = DEFAULT")
+    for column in ("row_id", "created_at", "deleted_at", "purged_at"):
+        refused(artifacts, f"INSERT INTO artifact ({column}, kind) VALUES (DEFAULT, 'manifest')")
+    refused(artifacts, "DELETE FROM artifact_use")
+    refused(artifacts, "UPDATE artifact_use SET job_id = job_id")
+    refused(artifacts, "UPDATE artifact_use SET created_at = created_at")
+    refused(artifacts, "SELECT job_id FROM accepted_job")
+    for table in ("reaper_job", "reaper_cursor"):
+        refused(artifacts, f"SELECT count(*) FROM {table}")
+
+
+def test_reaper_reads_what_it_needs_and_cannot_update_a_job_row(login, seeded, appdb):
+    reaper = login("wdf_reaper")
+    index_reference(login("wdf_artifacts"), reference(2))
+    assert reaper.execute(f"SELECT {REAPER_READS} FROM accepted_job").fetchall()
+    for table in ("job_status", "artifact", "artifact_use", "reaper_job", "reaper_cursor"):
+        reaper.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)))
+    with psycopg.connect(appdb) as admin:
+        job_columns = columns(admin, "accepted_job")
+        artifact_columns = columns(admin, "artifact")
+    for column in set(job_columns) - set(REAPER_READS.split(", ")):
+        refused(reaper, f"SELECT {column} FROM accepted_job")
+    for column in job_columns:
+        refused(reaper, f"UPDATE accepted_job SET {column} = DEFAULT")
+    for column in set(artifact_columns) - ARTIFACT_WRITES:
+        refused(reaper, f"UPDATE artifact SET {column} = DEFAULT")
+    refused(reaper, "UPDATE artifact_use SET last_linked_at = now()")
+    refused(reaper, "DELETE FROM artifact_use")
+
+
+def test_reaper_role_updates_only_its_columns(login):
     index_reference(login("wdf_artifacts"), reference(2))
     reaper = login("wdf_reaper")
     assert isinstance(mark_deleted(reaper, reference(2)["uri"], NOW), Deleted)
@@ -239,6 +316,90 @@ def test_reaper_role_updates_only_deleted_at(login):
     with pytest.raises(errors.InsufficientPrivilege):
         index_reference(reaper, reference(3))
     refused(reaper, "UPDATE accepted_job SET status = status")
+
+
+def test_only_the_reaper_role_writes_the_progress_tables(login, seeded, appdb):
+    reaper = login("wdf_reaper")
+    reaper.execute("INSERT INTO reaper_job (job_id) VALUES (%s)", (seeded,))
+    reaper.execute("UPDATE reaper_job SET results_done_at = %s WHERE job_id = %s", (NOW, seeded))
+    reaper.execute("INSERT INTO reaper_cursor (name, position) VALUES ('orphans', 'sources/ab')")
+    reaper.execute("UPDATE reaper_cursor SET position = 'sources/cd', updated_at = now()")
+    refused(reaper, "DELETE FROM reaper_job")
+    refused(reaper, "DELETE FROM reaper_cursor")
+    with psycopg.connect(appdb) as admin:
+        roles = [
+            r
+            for (r,) in admin.execute(
+                "SELECT rolname FROM pg_roles"
+                " WHERE rolname LIKE 'wdf\\_%' AND rolname <> 'wdf_reaper'"
+            )
+        ]
+        for role, table in itertools.product(roles, ("reaper_job", "reaper_cursor")):
+            for privilege in ("INSERT", "UPDATE"):
+                assert not writes_granted(admin, role, table, privilege), (role, table, privilege)
+
+
+def test_record_cache_entry_works_under_the_real_wdf_artifacts_login(login):
+    artifacts = login("wdf_artifacts")
+    wasm, info = reference(10), {**reference(11), "kind": "build-info", "name": "build-info.json"}
+    for ref in (wasm, info):
+        assert isinstance(index_reference(artifacts, ref), Indexed)
+    entry = {
+        "cache_key": "d" * 64,
+        "wasm_uri": wasm["uri"],
+        "build_info_uri": info["uri"],
+        "componentize_py_version": "0.17.0",
+        "wit_version": "1.0.0",
+    }
+    assert isinstance(record_cache_entry(artifacts, entry), Won)
+    assert isinstance(invalidate_cache_entry(artifacts, "d" * 64, NOW), Invalidated)
+    assert isinstance(record_cache_entry(artifacts, entry), Won)
+
+
+def test_reaper_login_can_expire_an_entry_and_retire_its_key(login):
+    artifacts, reaper = login("wdf_artifacts"), login("wdf_reaper")
+    index_reference(artifacts, reference(12))
+    entry = {
+        "cache_key": "e" * 64,
+        "wasm_uri": reference(12)["uri"],
+        "componentize_py_version": "0.17.0",
+        "wit_version": "1.0.0",
+        "last_used_at": NOW,
+    }
+    assert isinstance(record_cache_entry(artifacts, entry), Won)
+    assert expired_cache_entries(reaper, NOW + timedelta(days=1), LATER) == ["e" * 64]
+    assert isinstance(record_cache_entry(artifacts, entry), Won)
+
+
+def test_put_content_flow_works_under_the_wdf_artifacts_login(login):
+    """Index, revive and link, as the connection of the dispatch API does."""
+    artifacts, reaper = login("wdf_artifacts"), login("wdf_reaper")
+    job, uri = str(uuid.uuid4()), reference(13)["uri"]
+    assert isinstance(index_reference(artifacts, reference(13)), Indexed)
+    assert isinstance(link_use(artifacts, job, uri, NOW), Linked)
+    assert [use.job_id for use in uses_of(artifacts, uri)] == [job]
+
+    other = reference(14)
+    index_reference(artifacts, other)
+    assert isinstance(tombstone(reaper, other["uri"], LATER, GRACE), Deleted)
+    assert isinstance(link_use(artifacts, job, other["uri"], LATER), Revived)
+
+    third = reference(15)
+    index_reference(artifacts, third)
+    assert isinstance(tombstone(reaper, third["uri"], LATER, GRACE), Deleted)
+    assert isinstance(purge(reaper, third["uri"], LATER + 2 * INTERVAL, INTERVAL, GRACE), Purged)
+    assert isinstance(index_reference(artifacts, third), Revived)
+    assert isinstance(link_use(artifacts, job, third["uri"], LATER), Linked)
+
+
+def test_retried_link_renews_under_the_wdf_artifacts_login(login):
+    artifacts = login("wdf_artifacts")
+    job, uri = str(uuid.uuid4()), reference(16)["uri"]
+    index_reference(artifacts, reference(16))
+    assert isinstance(link_use(artifacts, job, uri, NOW), Linked)
+    assert isinstance(link_use(artifacts, job, uri, LATER), Linked)
+    (use,) = uses_of(artifacts, uri)
+    assert (use.created_at, use.last_linked_at) == (NOW, LATER)
 
 
 def test_reader_role_cannot_write_any_table(login, seeded):

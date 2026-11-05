@@ -1,8 +1,9 @@
 """`python -m wdf_stateops.inputs --dsn DSN [--store-endpoint URL --credentials FILE]`.
 
 Or `--check FILE`, which only validates a file.
-Each input of contracts/state/inputs.yaml is printed as `<name> <value>`, and an input with one
-value per bucket as `<name>{bucket=<bucket>} <value>`.
+Each input of contracts/state/inputs.yaml is printed as `<name> <value>`, an input with one value
+per bucket as `<name>{bucket=<bucket>} <value>`, and a labelled query as
+`<name>{<label>=<value>} <number>`.
 Exit 0 ok, 1 an invalid file or a store that cannot be read, 2 usage and 3 when the database is
 unreachable.
 """
@@ -22,11 +23,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from wdf_storecheck.cli import run as run_storecheck
 from wdf_storecheck.s3 import load_credentials
 
+from . import windows
 from .invariants import check_invariants
 
 CONTRACT = resources.files(__package__) / "contract"
 OK, INVALID, UNREACHABLE = 0, 1, 3
-KINDS = ("sql", "invariants", "store")
+KINDS = ("sql", "sql_labelled", "invariants", "store")
 STORE_REFS = ("bytes_per_bucket", "capacity_share")
 # The data volume of the store container and the shell that reaches it on the local cluster.
 STORE_VOLUME = "/data"
@@ -39,6 +41,12 @@ class Source(BaseModel):
     kind: str = Field(description=f"One of {', '.join(KINDS)}.")
     ref: str = Field(
         min_length=1, description="The query of a sql source and the name of any other."
+    )
+    label: str | None = Field(
+        default=None,
+        pattern="^[a-z][a-z0-9_]*$",
+        description="Of a sql_labelled source only: the name of the first column, which holds the"
+        " label, the second holding the number.",
     )
 
 
@@ -100,6 +108,10 @@ def parse(text: str) -> Inputs:
         source = item.source
         if source.kind not in KINDS or (source.kind == "store" and source.ref not in STORE_REFS):
             raise Refused("unknown-source", f"{item.name} reads {source.kind} {source.ref!r}")
+        if (source.kind == "sql_labelled") != (source.label is not None):
+            raise Refused(
+                "schema-violation", f"{item.name}: a label column goes with kind sql_labelled only"
+            )
     return inputs
 
 
@@ -131,15 +143,31 @@ def capacity_share(store: Store) -> float:
     return number(Decimal(used) * 100 / (Decimal(used) + Decimal(available)))
 
 
+def labelled(conn, item: Input, params: dict) -> list[tuple[str, int | float]]:
+    """One value per row of a query whose first column is the label and the second the number."""
+    label = item.source.label
+    cursor = conn.execute(item.source.ref, params)
+    columns = [column.name for column in cursor.description]
+    if len(columns) != 2 or columns[0] != label:
+        raise Refused(
+            "label-column-missing",
+            f"{item.name} must return the columns {label} and a number, got {columns}",
+        )
+    return [(f"{item.name}{{{label}={value}}}", number(n)) for value, n in cursor.fetchall()]
+
+
 def collect_inputs(conn, inputs: Inputs, store: Store | None = None) -> Collected:
     """Reads every input, and lists the store inputs as skipped when no store is given."""
     collected = Collected()
+    params = windows.params()
     for item in inputs.inputs:
         kind, ref = item.source.kind, item.source.ref
         if kind == "store" and store is None:
             collected.skipped.append(item.name)
         elif kind == "sql":
-            collected.values.append((item.name, number(conn.execute(ref).fetchone()[0])))
+            collected.values.append((item.name, number(conn.execute(ref, params).fetchone()[0])))
+        elif kind == "sql_labelled":
+            collected.values += labelled(conn, item, params)
         elif kind == "invariants":
             collected.values.append((item.name, len(check_invariants(conn).violations)))
         elif ref == "bytes_per_bucket":
@@ -181,6 +209,9 @@ def main(argv: list[str] | None = None) -> int:
         return UNREACHABLE
     except (StoreUnavailable, ValueError) as error:
         print(f"store unavailable: {error}", file=sys.stderr)
+        return INVALID
+    except Refused as error:
+        print(f"reason: {error}", file=sys.stderr)
         return INVALID
     for name in collected.skipped:
         print(f"skipped: {name}")

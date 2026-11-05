@@ -1,0 +1,5 @@
+---
+inputs:
+  - name: per_code
+    unit: failures
+    source: {kind: sql_labelled, ref: "select 'a' as code, 1"}

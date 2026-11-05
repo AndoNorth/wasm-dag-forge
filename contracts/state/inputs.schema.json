@@ -40,9 +40,23 @@
       "additionalProperties": false,
       "properties": {
         "kind": {
-          "description": "One of sql, invariants, store.",
+          "description": "One of sql, sql_labelled, invariants, store.",
           "title": "Kind",
           "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Of a sql_labelled source only: the name of the first column, which holds the label, the second holding the number.",
+          "title": "Label"
         },
         "ref": {
           "description": "The query of a sql source and the name of any other.",

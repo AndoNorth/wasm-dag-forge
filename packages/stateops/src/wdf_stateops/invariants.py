@@ -14,6 +14,8 @@ import psycopg
 from wdf_jobstate import status_vocabulary
 from wdf_keys import workflow_id
 
+from . import windows
+
 CONTRACT = resources.files(__package__) / "contract" / "invariants"
 OK, VIOLATED, UNREACHABLE = 0, 1, 3
 NEEDS_WORKFLOWS = "%(open_workflows)s"
@@ -37,6 +39,7 @@ def check_invariants(conn, open_workflows: list[str] | None = None) -> Report:
         "open_workflows": open_workflows or [],
         "workflow_prefix": workflow_id(""),
         "terminal": sorted(status_vocabulary().terminal),
+        **windows.params(),
     }
     violations, skipped = [], []
     for name, sql in queries().items():
