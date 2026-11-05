@@ -4,8 +4,8 @@ from datetime import datetime
 from importlib import resources
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field
+from wdf_events import layout
 
 # The contract files the runtime reads ship inside the package, as links to the repository files.
 CONTRACT = resources.files(__package__) / "contract"
@@ -13,7 +13,7 @@ UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 HASH_PATTERN = "^[0-9a-f]{64}$"
 
 # The kinds are read from the layout and never retyped, and a compile cache entry is the one more.
-LAYOUT = yaml.safe_load((CONTRACT / "layout.yaml").read_text())
+LAYOUT = layout()
 KINDS = (*LAYOUT["kinds"], "compile-cache")
 
 Kind = Literal[KINDS]

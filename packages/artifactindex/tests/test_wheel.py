@@ -13,7 +13,7 @@ import json
 from importlib import resources
 from wdf_artifactindex.models import CONTRACT, ArtifactRow, ArtifactUse
 
-for name in ['layout.yaml', 'artifact-row/2.json', 'artifact-use/1.json']:
+for name in ['artifact-row/2.json', 'artifact-use/1.json']:
     assert (CONTRACT / name).is_file(), name
 for name in ['0300_artifact_index.sql', '0301_artifact_use.sql', 'R__artifact_kinds.sql']:
     assert (resources.files('wdf_artifactindex.migrations') / name).is_file(), name
