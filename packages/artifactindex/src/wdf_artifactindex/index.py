@@ -191,6 +191,8 @@ def record_cache_entry(conn: Any, entry: Any) -> Won | Lost | WasmGone:
     delete that commits first is seen and one that comes later waits for this transaction.
     """
     e = entry if isinstance(entry, CacheEntry) else CacheEntry.model_validate(entry)
+    # The column is named only when set, so a role without the grant still records a plain entry.
+    column, value = ("build_info_uri, ", "%(build_info_uri)s,") if e.build_info_uri else ("", "")
     live, row_id = _one(
         conn,
         "WITH pinned AS ("
@@ -200,9 +202,9 @@ def record_cache_entry(conn: Any, entry: Any) -> Won | Lost | WasmGone:
         " SELECT count(*) = CASE WHEN %(build_info_uri)s::text IS NULL THEN 1 ELSE 2 END AS ok"
         " FROM pinned"
         "), won AS ("
-        " INSERT INTO artifact (kind, cache_key, wasm_uri, build_info_uri, componentize_py_version,"
+        f" INSERT INTO artifact (kind, cache_key, wasm_uri, {column}componentize_py_version,"
         " wit_version, last_used_at)"
-        " SELECT 'compile-cache', %(cache_key)s, %(wasm_uri)s, %(build_info_uri)s,"
+        f" SELECT 'compile-cache', %(cache_key)s, %(wasm_uri)s, {value}"
         " %(componentize_py_version)s, %(wit_version)s, COALESCE(%(last_used_at)s, now())"
         " WHERE (SELECT ok FROM complete)"
         " ON CONFLICT (cache_key) WHERE kind = 'compile-cache' DO NOTHING RETURNING row_id"
