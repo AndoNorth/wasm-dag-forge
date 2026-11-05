@@ -7,6 +7,7 @@ members = [
     "wasm-dag-forge",
     "wdf-artifactclient",
     "wdf-artifactindex",
+    "wdf-artifactreaper",
     "wdf-compat",
     "wdf-events",
     "wdf-eventstore",
@@ -541,6 +542,7 @@ dev = [
     { name = "pytest" },
     { name = "wdf-artifactclient" },
     { name = "wdf-artifactindex" },
+    { name = "wdf-artifactreaper" },
     { name = "wdf-compat" },
     { name = "wdf-events" },
     { name = "wdf-eventstore" },
@@ -568,6 +570,7 @@ dev = [
     { name = "pytest" },
     { name = "wdf-artifactclient", editable = "packages/artifactclient" },
     { name = "wdf-artifactindex", editable = "packages/artifactindex" },
+    { name = "wdf-artifactreaper", editable = "packages/artifactreaper" },
     { name = "wdf-compat", editable = "packages/compat" },
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-eventstore", editable = "packages/eventstore" },
@@ -593,12 +596,14 @@ version = "0.0.0"
 source = { editable = "packages/artifactclient" }
 dependencies = [
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "pyyaml" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "pyyaml" },
 ]
 
@@ -620,6 +625,17 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "wdf-events", editable = "packages/events" },
 ]
+
+[[package]]
+name = "wdf-artifactreaper"
+version = "0.0.0"
+source = { editable = "packages/artifactreaper" }
+dependencies = [
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyyaml" }]
 
 [[package]]
 name = "wdf-compat"
