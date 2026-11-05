@@ -214,3 +214,54 @@ def test_a_kind_added_to_a_scratch_layout_is_accepted_by_the_table(tmp_path, emp
         refused(conn, reference_row("scratch-other"))
         # The original kinds keep their rule.
         refused(conn, reference_row("result", 2))
+
+
+def release_dir(tmp_path: Path, *, previous: bool) -> Path:
+    """The migrations of this release, or of the release before the use links."""
+    root = tmp_path / ("previous" if previous else "current")
+    root.mkdir()
+    for item in MIGRATIONS.iterdir():
+        if item.name.endswith(".sql") and not (previous and item.name.startswith("0301")):
+            (root / item.name).write_text(item.read_text())
+    return root
+
+
+def test_from_empty_and_from_previous_release(tmp_path, empty_db, appdb_server):
+    """Every statement of the new migration is expand only, so the runner takes it with no flags."""
+    current = from_dirs([release_dir(tmp_path, previous=False)])
+    assert [m.name for m in current].count("0301_artifact_use.sql") == 1
+    assert apply(empty_db, current) == [m.name for m in current]
+    assert apply(empty_db, current) == []
+
+    empty_previous = f"{empty_db}_previous"
+    admin = psycopg.connect(empty_db.rsplit("/", 1)[0] + "/postgres", autocommit=True)
+    admin.execute(f'CREATE DATABASE "{empty_previous.rsplit("/", 1)[1]}"')
+    previous = from_dirs([release_dir(tmp_path, previous=True)])
+    assert "0301_artifact_use.sql" not in [m.name for m in previous]
+    apply(empty_previous, previous)
+    with psycopg.connect(empty_previous) as conn:
+        insert(conn, reference_row("component", uri="s3://wdf-test/wasm", key="wasm"))
+        insert(conn, cache_row("s3://wdf-test/wasm"))
+        insert(conn, reference_row("source", 1, deleted_at="2026-11-02T00:00:00Z"))
+    assert apply(empty_previous, current) == ["0301_artifact_use.sql"]
+    with psycopg.connect(empty_previous) as conn:
+        rows = conn.execute(
+            "SELECT kind, build_info_uri, purged_at FROM artifact ORDER BY row_id"
+        ).fetchall()
+        assert rows == [
+            ("component", None, None),
+            ("compile-cache", None, None),
+            ("source", None, None),
+        ]
+        assert conn.execute("SELECT count(*) FROM artifact_use").fetchone() == (0,)
+        refused(conn, reference_row("source", 2, build_info_uri="s3://wdf-test/wasm"))
+        refused(conn, reference_row("source", 3, purged_at="2026-11-02T00:00:00Z"))
+        refused(
+            conn,
+            cache_row(
+                "s3://wdf-test/wasm",
+                key="b" * 64,
+                deleted_at=None,
+                purged_at="2026-11-02T00:00:00Z",
+            ),
+        )

@@ -1,5 +1,6 @@
 """The committed generated files must equal what the model and the layout generate."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -7,11 +8,12 @@ from pathlib import Path
 
 import pytest
 import yaml
-from wdf_artifactindex.gen import KINDS_SQL, LAYOUT, SCHEMA
+from wdf_artifactindex.gen import KINDS_SQL, LAYOUT, SCHEMAS
 
 ROOT = Path(__file__).resolve().parents[3]
-FILES = [str(SCHEMA), str(LAYOUT), str(KINDS_SQL)]
-GENERATED = [str(SCHEMA), str(KINDS_SQL)]
+ROW_SCHEMA = "contracts/state/schemas/artifact-row/2.json"
+FILES = [*map(str, SCHEMAS), str(LAYOUT), str(KINDS_SQL)]
+GENERATED = [*map(str, SCHEMAS), str(KINDS_SQL)]
 
 
 def run(*args):
@@ -50,7 +52,7 @@ def test_a_kind_added_to_the_layout_is_reported_against_the_kinds_file(tmp_path)
     result = run("--check", "--root", str(tmp_path))
     assert result.returncode == 1
     assert "R__artifact_kinds.sql" in result.stderr
-    assert str(SCHEMA) not in result.stderr
+    assert ROW_SCHEMA not in result.stderr
 
 
 def test_generation_rewrites_drifted_files(tmp_path):
@@ -60,3 +62,21 @@ def test_generation_rewrites_drifted_files(tmp_path):
     assert run("--root", str(tmp_path)).returncode == 0
     assert run("--check", "--root", str(tmp_path)).returncode == 0
     assert (tmp_path / KINDS_SQL).read_text() == (ROOT / KINDS_SQL).read_text()
+
+
+def test_a_renamed_column_is_reported_against_the_row_schema(tmp_path):
+    """A scratch copy of the package renames a column, and only the row schema drifts."""
+    scratch(tmp_path)
+    package = tmp_path / "src"
+    shutil.copytree(ROOT / "packages/artifactindex/src", package)
+    models = package / "wdf_artifactindex/models.py"
+    models.write_text(models.read_text().replace("    wit_version:", "    wit_release:"))
+    result = subprocess.run(
+        [sys.executable, "-m", "wdf_artifactindex.gen", "--check", "--root", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        env=os.environ | {"PYTHONPATH": str(package)},
+    )
+    assert result.returncode == 1, result.stderr
+    assert ROW_SCHEMA in result.stderr
+    assert "artifact-use" not in result.stderr

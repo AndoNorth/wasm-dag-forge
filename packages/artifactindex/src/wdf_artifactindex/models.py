@@ -1,11 +1,11 @@
-"""The row model of artifact, the source of contracts/state/schemas/artifact-row/1.json."""
+"""The row models of artifact and artifact_use, the source of contracts/state/schemas."""
 
 from datetime import datetime
 from importlib import resources
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field
+from wdf_events import layout
 
 # The contract files the runtime reads ship inside the package, as links to the repository files.
 CONTRACT = resources.files(__package__) / "contract"
@@ -13,7 +13,7 @@ UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 HASH_PATTERN = "^[0-9a-f]{64}$"
 
 # The kinds are read from the layout and never retyped, and a compile cache entry is the one more.
-LAYOUT = yaml.safe_load((CONTRACT / "layout.yaml").read_text())
+LAYOUT = layout()
 KINDS = (*LAYOUT["kinds"], "compile-cache")
 
 Kind = Literal[KINDS]
@@ -46,3 +46,22 @@ class ArtifactRow(BaseModel):
     componentize_py_version: str | None = None
     wit_version: str | None = None
     last_used_at: datetime | None = None
+    build_info_uri: str | None = Field(
+        default=None, description="The build-info a cache entry names, null for a reference."
+    )
+    purged_at: datetime | None = Field(
+        default=None, description="Set when the object was removed from the store."
+    )
+
+
+class ArtifactUse(BaseModel):
+    """The link of a job to a content-addressed blob that it holds, as in the state README."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: str = Field(pattern=UUID_PATTERN)
+    artifact_row_id: int
+    created_at: datetime | None = Field(default=None, description="Set by the database.")
+    last_linked_at: datetime | None = Field(
+        default=None, description="Moved forward each time the job links the blob again."
+    )

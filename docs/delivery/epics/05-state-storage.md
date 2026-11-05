@@ -506,4 +506,5 @@ New from this run, both fixed by the rerun PR: [#217](https://github.com/AndoNor
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
 
+- 2026-11-04: [#223](https://github.com/AndoNorth/wasm-dag-forge/issues/223) takes the state contract to version 2: the use link table, the cache entry build-info and purge columns, the retired cache key rule and the revive and purge functions of the index, as a `revisit` child of this epic.
 - 2026-11-04: [#222](https://github.com/AndoNorth/wasm-dag-forge/issues/222) raises the store contract to version 3 (`aggregate` reads `wdf-sources`, `compile` writes `wdf-results`) and turns the `running` and `store` fixtures of `packages/storecheck` into the plugin `wdf_storecheck.fixtures` with a `store_session` fixture.

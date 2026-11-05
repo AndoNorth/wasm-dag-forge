@@ -3,9 +3,10 @@
 import re
 from pathlib import Path
 
-from wdf_artifactindex.models import ArtifactRow
+from wdf_artifactindex.models import ArtifactRow, ArtifactUse
 
-README = (Path(__file__).resolve().parents[3] / "contracts/state/README.md").read_text()
+README_PATH = Path(__file__).resolve().parents[3] / "contracts/state/README.md"
+README = README_PATH.read_text()
 
 
 def columns(table: str) -> set[str]:
@@ -15,6 +16,15 @@ def columns(table: str) -> set[str]:
 
 def test_readme_lists_every_model_field():
     assert columns("artifact") == set(ArtifactRow.model_fields)
+
+
+def test_readme_lists_every_use_field():
+    assert columns("artifact_use") == set(ArtifactUse.model_fields)
+
+
+def test_readme_version_is_the_version_file():
+    version = (README_PATH.parent / "VERSION").read_text().strip()
+    assert f"Version: {version}\n" in README
 
 
 def test_readme_states_the_attempt_rule():
