@@ -5,6 +5,9 @@ cd "$(dirname "$0")/.."
 
 scripts/lint.sh
 scripts/check-links.sh
+echo "== contracts-map"
+scripts/check-contracts-map.sh
+scripts/check-contracts-map.test.sh
 echo "== verify-lint"
 scripts/lint.sh --verify-skills
 scripts/test.sh

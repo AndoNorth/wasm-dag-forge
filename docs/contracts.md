@@ -33,11 +33,12 @@ Epic numbers link to the epic issues on GitHub.
 | [status](../contracts/status/README.md) | #4 | a hand-written table, validated by its schema | #3, #6, #8, #24 | Shared data format |
 | [instrumentation](../contracts/instrumentation/README.md) | #4, then #13 | a hand-written metrics file, validated by its schema | #13 and every component that emits a metric, a log line or a span | Shared data format |
 | [preset](../contracts/preset/README.md) | #2 | the files in `deploy/presets/`, validated by its schema | every epic through `just up`, plus `just doctor` and the cluster renderer | Shared data format |
-| versions (a schema only, see [versions policy](versions-policy.md)) | #1 | `deploy/versions.yaml`, checked by `just versions --check` | #2, #3, #6, #7, #13 | Shared data format |
+| [versions](../contracts/versions.schema.json) (a schema only, see [versions policy](versions-policy.md)) | #1 | `deploy/versions.yaml`, checked by `just versions --check` | #2, #3, #6, #7, #13 | Shared data format |
 | [stages](../contracts/stages/README.md) | #4 | a hand-written table, validated by its schema and the event catalogue | #3, #6, #8, #9, #10, #24 | Test and process scaffolding |
 
 Every contract directory also carries a `VERSION` file, a `check.sh` loader and valid and invalid vectors.
 That common layer is scaffolding for all of them, and a change after the pin is a contract-change PR that bumps the version and lists the consumers.
+A new contract, or a change of owner or consumers, updates its row here and the diagram in the same PR, and `scripts/check-contracts-map.sh` fails when a row is missing or stale.
 
 ## Essential to the proof of concept
 

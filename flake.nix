@@ -29,6 +29,7 @@
         kubeconform = ''^deploy/.*\.ya?ml$'';
         nixfmt = ''\.nix$'';
         verify-lint = ''^\.claude/skills/'';
+        contracts-map = ''^(contracts/[^/]+/|contracts/[^/]+\.json$|docs/contracts\.md$|scripts/check-contracts-map\.sh$)'';
         self-test = ''^(ruff\.toml|\.yamllint|\.shellcheckrc)$'';
       };
       # A change to the linter driver, the hook scripts or the pinned tools concerns every check.
