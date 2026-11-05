@@ -5,8 +5,8 @@ The contract it loads is pinned in `contracts/artifact/README.md`.
 
 ## State
 
-The contract loader, the models, the schema generator, the key builders, the typed errors, the client, `verify` and commit by reference are delivered.
-The modules of staging, the checkpoints, the aggregate index, the compile cache and the fault hooks are stubs.
+The contract loader, the models, the schema generator, the key builders, the typed errors, the client, `verify`, commit by reference and the fault hooks are delivered.
+The modules of staging, the checkpoints, the aggregate index and the compile cache are stubs.
 A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
 Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
 `tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
@@ -84,6 +84,13 @@ nix develop -c uv run --frozen python -m wdf_artifactclient.gen --check
 nix develop -c uv run --frozen python -m wdf_artifactclient verify --endpoint URL --credentials FILE --role ROLE REF.json
 nix develop -c uv run --frozen pytest packages/artifactclient -q -rs
 nix develop -c uv run --frozen pytest packages/artifactclient -q -m isolated -k test_client
+nix develop -c uv run --frozen python -m wdf_artifactclient.faults delete|flip-byte|corrupt-checkpoint --endpoint URL --credentials FILE --role ROLE --uri URI
+nix develop -c uv run --frozen pytest packages/artifactclient -q -rs -m isolated -k faults
+scripts/artifacts/store-outage.sh stop|start
 ```
 
 `verify` exits 0 for an intact object, 1 with `code: <CODE>` on stderr (and `cause: <CODE>` for a lost artifact), and 2 for a usage error.
+
+`faults` damages one object of a store: `delete` needs the delete grant, `flip-byte` the get and put grants, and `corrupt-checkpoint` takes the `checkpoint.json` uri and flips a byte of its data object.
+Each hook prints what it changed and exits 0, 1 on failure, 2 usage.
+`scripts/artifacts/store-outage.sh` scales the object store statefulset of the cluster to 0 and back to 1, and the caller holds the cluster lock.
