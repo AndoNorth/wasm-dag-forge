@@ -8,7 +8,12 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-FILES = ["contracts/artifact/failures.schema.json", "contracts/artifact/staging.schema.json"]
+FILES = [
+    "contracts/artifact/failures.schema.json",
+    "contracts/artifact/staging.schema.json",
+    "contracts/artifact/retention.schema.json",
+    "contracts/artifact/index.schema.json",
+]
 
 
 def run(*args):

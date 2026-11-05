@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "ContentRules": {
+      "additionalProperties": false,
+      "description": "When a content-addressed blob is collected, which no job window governs.",
+      "properties": {
+        "orphan_grace_days": {
+          "description": "How old an object without a live row is before the orphan sweep deletes it.",
+          "exclusiveMinimum": 0,
+          "title": "Orphan Grace Days",
+          "type": "integer"
+        },
+        "tombstone_interval_hours": {
+          "description": "How long a row stays tombstoned before its object is deleted.",
+          "exclusiveMinimum": 0,
+          "title": "Tombstone Interval Hours",
+          "type": "integer"
+        },
+        "unreferenced_grace_days": {
+          "description": "How long a row stays unreferenced before it is tombstoned.",
+          "exclusiveMinimum": 0,
+          "title": "Unreferenced Grace Days",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "unreferenced_grace_days",
+        "tombstone_interval_hours",
+        "orphan_grace_days"
+      ],
+      "title": "ContentRules",
+      "type": "object"
+    },
+    "Window": {
+      "additionalProperties": false,
+      "description": "How long the reaper keeps the objects of a job after its terminal_at, in days.",
+      "properties": {
+        "checkpoints_days": {
+          "exclusiveMinimum": 0,
+          "title": "Checkpoints Days",
+          "type": "integer"
+        },
+        "results_days": {
+          "exclusiveMinimum": 0,
+          "title": "Results Days",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "results_days",
+        "checkpoints_days"
+      ],
+      "title": "Window",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:artifact:retention:3",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "retention.yaml: the windows of the artifact reaper, all below the safety net of the store.",
+  "properties": {
+    "cache_unused_days": {
+      "description": "How long a compile cache entry may stay unused before it expires.",
+      "exclusiveMinimum": 0,
+      "title": "Cache Unused Days",
+      "type": "integer"
+    },
+    "checkpoint_keep": {
+      "description": "How many of the newest checkpoints of a running job survive a prune.",
+      "minimum": 1,
+      "title": "Checkpoint Keep",
+      "type": "integer"
+    },
+    "content": {
+      "$ref": "#/$defs/ContentRules"
+    },
+    "statuses": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Window"
+      },
+      "description": "A window for each terminal status. A status that is not terminal has none.",
+      "title": "Statuses",
+      "type": "object"
+    }
+  },
+  "required": [
+    "statuses",
+    "checkpoint_keep",
+    "cache_unused_days",
+    "content"
+  ],
+  "title": "contracts/artifact retention.yaml",
+  "type": "object"
+}

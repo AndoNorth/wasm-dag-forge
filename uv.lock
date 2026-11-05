@@ -594,12 +594,16 @@ source = { editable = "packages/artifactclient" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "wdf-compat" },
+    { name = "wdf-events" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "wdf-compat", editable = "packages/compat" },
+    { name = "wdf-events", editable = "packages/events" },
 ]
 
 [[package]]

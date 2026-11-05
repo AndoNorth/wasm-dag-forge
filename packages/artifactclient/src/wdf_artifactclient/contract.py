@@ -1,6 +1,6 @@
 """Loads one artifact contract file and checks it against the models, the layout and the registry.
 
-Usage: python -m wdf_artifactclient.contract --check <failures.yaml|staging.yaml>
+Usage: python -m wdf_artifactclient.contract --check <contract file or index.jsonl>
 Exit 0 valid, 1 invalid with "reason: <code>: <detail>" on stderr, 2 usage.
 """
 
@@ -10,10 +10,11 @@ from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ValidationError
+from wdf_compat.window import MAX_JOB_DURATION_DAYS
 
-from .models import CONTRACT, Failures, Staging
+from .models import CONTRACT, Failures, IndexEntry, IndexHeader, Retention, Staging
 
-TOP_LEVEL = {"codes": Failures, "task_types": Staging}
+TOP_LEVEL = {"codes": Failures, "task_types": Staging, "statuses": Retention}
 
 
 class Refused(Exception):
@@ -98,6 +99,118 @@ def check_staging(model: Staging) -> None:
             raise Refused("schema-violation", f"{name} declares a file name twice")
 
 
+def terminal_statuses() -> set[str]:
+    return set(yaml.safe_load((CONTRACT / "status.yaml").read_text())["terminal"])
+
+
+def safety_net_days() -> dict[str, int]:
+    """The days after which the lifecycle rule of the store removes the objects of each bucket."""
+    windows = yaml.safe_load((CONTRACT / "state-retention.yaml").read_text())["windows"]
+    return {
+        bucket: rule["expire_after_days"]
+        for bucket, rule in windows.items()
+        if "expire_after_days" in rule
+    }
+
+
+def check_retention(model: Retention) -> None:
+    terminal = terminal_statuses()
+    for status in model.statuses:
+        if status not in terminal:
+            raise Refused("unknown-status", f"{status} is not a terminal status of status.yaml")
+    for status in sorted(terminal - set(model.statuses)):
+        raise Refused("schema-violation", f"the terminal status {status} has no window")
+
+    net = safety_net_days()
+    for status, window in model.statuses.items():
+        for bucket, days in (
+            ("wdf-results", window.results_days),
+            ("wdf-checkpoints", window.checkpoints_days),
+        ):
+            if days > net[bucket]:
+                raise Refused(
+                    "window-above-safety-net",
+                    f"{status} keeps {bucket} for {days} days, above the net of {net[bucket]}",
+                )
+
+    floor = 2 * MAX_JOB_DURATION_DAYS
+    if model.cache_unused_days < floor:
+        raise Refused(
+            "cache-window-below-twice-max-job-duration",
+            f"the cache window is {model.cache_unused_days} days, below {floor}",
+        )
+    if model.checkpoint_keep < 2:
+        raise Refused("keep-below-two", f"checkpoint_keep is {model.checkpoint_keep}")
+
+    base = model.statuses.get("succeeded")
+    for status in ("failed", "partial"):
+        window = model.statuses.get(status)
+        if (
+            base
+            and window
+            and (
+                window.results_days < base.results_days
+                or window.checkpoints_days < base.checkpoints_days
+            )
+        ):
+            raise Refused(
+                "failed-shorter-than-succeeded",
+                f"{status} keeps objects for less time than succeeded",
+            )
+
+
+def canonical(value) -> str:
+    """The one serialization of a line of an index object, so equal entries give equal bytes."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def check_index(text: str) -> None:
+    """Raises Refused with the first rule that an aggregate index object breaks."""
+    lines = text.split("\n")
+    if lines[-1] != "":
+        raise Refused("schema-violation", "the last line has no line feed")
+    lines.pop()
+    previous = None
+    for number, line in enumerate(lines, start=1):
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise Refused("schema-violation", f"line {number} is not JSON: {error}") from error
+        is_header = isinstance(value, dict) and "schema" in value
+        if is_header != (number == 1):
+            raise Refused(
+                "header-not-first", f"line {number} is {'a header' if is_header else 'an entry'}"
+            )
+        try:
+            parsed = (IndexHeader if is_header else IndexEntry).model_validate(value)
+        except ValidationError as error:
+            raise Refused(
+                "schema-violation", f"line {number}: " + " ".join(str(error).split())
+            ) from error
+        if canonical(value) != line:
+            raise Refused("schema-violation", f"line {number} is not canonical JSON")
+        if is_header:
+            continue
+        if parsed.status == "succeeded" and parsed.reference is None:
+            raise Refused(
+                "entry-without-reference", f"{parsed.task} succeeded and has no reference"
+            )
+        if parsed.status != "succeeded" and parsed.reference is not None:
+            raise Refused(
+                "reference-with-failure-status",
+                f"{parsed.task} is {parsed.status} and has a reference",
+            )
+        if parsed.reference is not None and parsed.reference.kind != "result":
+            raise Refused(
+                "wrong-kind", f"{parsed.task} references a {parsed.reference.kind}, not a result"
+            )
+        if previous is not None and parsed.task <= previous:
+            raise Refused("out-of-order", f"{parsed.task} follows {previous}")
+        previous = parsed.task
+    if not lines:
+        raise Refused("header-not-first", "the object has no header")
+
+
 def check(document) -> None:
     """Raises Refused with the first rule that the document breaks."""
     model: type[BaseModel] | None = None
@@ -111,15 +224,21 @@ def check(document) -> None:
         parsed = model.model_validate(document)
     except ValidationError as error:
         raise Refused("schema-violation", " ".join(str(error).split())) from error
-    {Failures: check_failures, Staging: check_staging}[model](parsed)
+    {Failures: check_failures, Staging: check_staging, Retention: check_retention}[model](parsed)
 
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2 or argv[0] != "--check" or not Path(argv[1]).is_file():
-        print("usage: contract --check <failures.yaml|staging.yaml>", file=sys.stderr)
+        print(
+            "usage: contract --check <failures.yaml|staging.yaml|retention.yaml|index.jsonl>",
+            file=sys.stderr,
+        )
         return 2
     try:
-        check(yaml.safe_load(Path(argv[1]).read_text()))
+        if argv[1].endswith(".jsonl"):
+            check_index(Path(argv[1]).read_text())
+        else:
+            check(yaml.safe_load(Path(argv[1]).read_text()))
     except yaml.YAMLError as error:
         print(f"reason: schema-violation: {' '.join(str(error).split())}", file=sys.stderr)
         return 1

@@ -3,7 +3,8 @@
 from importlib import resources
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, RootModel
+from wdf_events.models import UUID_PATTERN, AttemptReference
 
 # The contract files the runtime reads ship inside the package, as links to the repository files.
 CONTRACT = resources.files(__package__) / "contract"
@@ -98,8 +99,88 @@ class Staging(BaseModel):
     task_types: dict[str, TaskType]
 
 
+class Window(BaseModel):
+    """How long the reaper keeps the objects of a job after its terminal_at, in days."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    results_days: PositiveInt
+    checkpoints_days: PositiveInt
+
+
+class ContentRules(BaseModel):
+    """When a content-addressed blob is collected, which no job window governs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    unreferenced_grace_days: PositiveInt = Field(
+        description="How long a row stays unreferenced before it is tombstoned."
+    )
+    tombstone_interval_hours: PositiveInt = Field(
+        description="How long a row stays tombstoned before its object is deleted."
+    )
+    orphan_grace_days: PositiveInt = Field(
+        description="How old an object without a live row is before the orphan sweep deletes it."
+    )
+
+
+class Retention(BaseModel):
+    """retention.yaml: the windows of the artifact reaper, all below the safety net of the store."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    statuses: dict[str, Window] = Field(
+        description="A window for each terminal status. A status that is not terminal has none."
+    )
+    checkpoint_keep: int = Field(
+        ge=1, description="How many of the newest checkpoints of a running job survive a prune."
+    )
+    cache_unused_days: PositiveInt = Field(
+        description="How long a compile cache entry may stay unused before it expires."
+    )
+    content: ContentRules
+
+
+STATUSES = ("succeeded", "failed", "missing")
+PARTIAL = ("refuse", "allow")
+TASK_ID = "^[a-z0-9][a-z0-9._-]{0,62}$"
+
+
+class IndexHeader(BaseModel):
+    """Line 1 of an aggregate index object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_: Literal["wdf.artifact.index/1"] = Field(alias="schema")
+    job: str = Field(pattern=UUID_PATTERN, description="The job that the index feeds.")
+    tenant: str = Field(pattern="^[^/]+$")
+    task: str = Field(pattern=TASK_ID, description="The aggregate task that reads the index.")
+    partial: Literal[PARTIAL] = Field(
+        description="Whether the reader may accept an entry that did not succeed."
+    )
+
+
+class IndexEntry(BaseModel):
+    """One input of the aggregate task, in task id order."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    task: str = Field(pattern=TASK_ID, description="The task id of the input.")
+    status: Literal[STATUSES]
+    reference: AttemptReference | None = Field(
+        default=None,
+        description="The result reference, present exactly when the status is succeeded.",
+    )
+
+
+class IndexLine(RootModel[IndexHeader | IndexEntry]):
+    """A line of an aggregate index object, which is a header on line 1 and an entry after it."""
+
+
 # Each contract file with its model and the schema generated from it.
 FILES = {
     "failures": (Failures, "contracts/artifact/failures.schema.json"),
     "staging": (Staging, "contracts/artifact/staging.schema.json"),
+    "retention": (Retention, "contracts/artifact/retention.schema.json"),
+    "index": (IndexLine, "contracts/artifact/index.schema.json"),
 }

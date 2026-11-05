@@ -2,7 +2,11 @@
 name = "wdf-artifactclient"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = ["pydantic", "pyyaml"]
+dependencies = ["pydantic", "pyyaml", "wdf-compat", "wdf-events"]
+
+[tool.uv.sources]
+wdf-compat = { workspace = true }
+wdf-events = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
