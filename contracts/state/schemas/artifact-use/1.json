@@ -1,0 +1,51 @@
+{
+  "$id": "urn:wdf:schema:state.artifact-use:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The link of a job to a content-addressed blob that it holds, as in the state README.",
+  "properties": {
+    "artifact_row_id": {
+      "title": "Artifact Row Id",
+      "type": "integer"
+    },
+    "created_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set by the database.",
+      "title": "Created At"
+    },
+    "job_id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "last_linked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Moved forward each time the job links the blob again.",
+      "title": "Last Linked At"
+    }
+  },
+  "required": [
+    "job_id",
+    "artifact_row_id"
+  ],
+  "title": "artifact-use 1",
+  "type": "object"
+}
