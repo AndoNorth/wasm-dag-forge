@@ -1,5 +1,6 @@
-"""One idempotent reaper run: results and checkpoints of terminal jobs, the prune of running jobs
-and the expiry of compile cache entries.
+"""One idempotent reaper run: results and checkpoints of terminal jobs, the prune of running jobs,
+the expiry of compile cache entries, and the collection of content-addressed blobs with the
+sweep of their orphans.
 
 Every comparison of time uses the `now` argument and never a clock of the database or the host,
 so a repeated run with the same `now` finds nothing more to do.
@@ -17,11 +18,11 @@ from wdf_artifactclient.contract import check_retention, safety_net_days
 from wdf_artifactclient.models import CONTRACT, Retention
 from wdf_artifactindex import checkpoints_of, expired_cache_entries
 
+from .content import OBJECT_BATCH, Hooks, collect_content, sweep_orphans
+
 STUBBED = ()
 
 LOCK_NAME = "wdf-artifact-reaper"
-# Objects per listing and per delete request, and the unit of a heartbeat. An estimate.
-OBJECT_BATCH = 500
 JOB_PAGE = 100
 CACHE_PAGE = 500
 # The statuses whose checkpoints a prune trims. A paused, admitted or resuming job is never touched.
@@ -38,7 +39,8 @@ class ReapReport:
     """The counters of a run: what was handled, kept, pruned and expired.
 
     `ran` is false when another run held the lock, and every counter is then zero.
-    `tombstoned`, `purged` and `orphans` belong to the collection of content-addressed blobs.
+    `tombstoned` and `purged` count the rows of the collector, and `orphans` the objects that the
+    sweep deleted.
     """
 
     results_jobs: int = 0
@@ -260,12 +262,13 @@ def reap_once(
     *,
     heartbeat: Callable[[], None] | None = None,
     dry_run: bool = False,
+    hooks: Hooks | None = None,
 ) -> ReapReport:
     """Runs the passes once under the reaper's database login and store credentials.
 
     `conn` is an autocommit connection of the `wdf_reaper` role and `client` is a boto3 client of
     the `reaper` store role. `heartbeat` is called after each batch of objects. A dry run lists but
-    changes no row and no object.
+    changes no row and no object. `hooks` names callables for the points of `content.HOOK_POINTS`.
     """
     if not conn.autocommit:
         raise ValueError("the reaper needs an autocommit connection")
@@ -282,6 +285,10 @@ def reap_once(
         reap_terminal(conn, client, now, windows, CHECKPOINTS, report, beat, dry_run)
         prune_running(conn, client, now, windows, report, beat, dry_run)
         expire_cache(conn, now, windows, report, beat, dry_run)
+        report.tombstoned, report.purged = collect_content(
+            conn, client, now, windows, beat, dry_run, hooks
+        )
+        report.orphans = sweep_orphans(conn, client, now, windows, beat, dry_run, hooks)
     finally:
         conn.execute("SELECT pg_advisory_unlock(hashtext(%s))", (LOCK_NAME,))
     return report
