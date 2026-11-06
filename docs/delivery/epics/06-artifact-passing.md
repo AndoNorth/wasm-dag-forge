@@ -412,7 +412,7 @@ Command prefixes `nix develop -c` are omitted below and every row takes them, an
 | 11 | `python -m wdf_artifactclient.bench --results 2000 --endpoint http://127.0.0.1:<port> --credentials <state file> --dsn DSN --jobs 2` | exit 0, `results_verified: 2000`, and two jobs seeded, one advanced to `succeeded` and one left `running`, each with committed results and a checkpoint |
 | 12 | `python -m wdf_artifactreaper run-once --dsn DSN --endpoint http://127.0.0.1:<port> --credentials <state file> --now <timestamp 10 days ahead>`, then the same command again | exit 0, `deleted_objects` above 0, `results_jobs: 1` and `checkpoint_jobs: 1` for the succeeded job, `kept_live` for the running one, then `deleted_objects: 0` on the repeat |
 | 13 | `python -m wdf_artifactclient verify ... REF.json` on a result reference of the running job, then of the succeeded job | exit 0 for the running job, and exit 1 with `code: ARTIFACT_LOST` and `cause: ARTIFACT_NOT_FOUND` for the reaped one |
-| 14 | `python -m wdf_artifactclient.faults flip-byte --endpoint http://127.0.0.1:<port> --credentials <state file> --role simulate --uri <a second result of the running job, not the one that row 15 uses>`, then `verify` on its reference | exit 0 for the hook and exit 1 for `verify` with `code: ARTIFACT_LOST` and `cause: ARTIFACT_CORRUPT` |
+| 14 | `python -m wdf_artifactclient.faults flip-byte --endpoint http://127.0.0.1:<port> --credentials <state file> --role aggregate --uri <a second result of the running job, not the one that row 15 uses>`, then `verify` on its reference | exit 0 for the hook and exit 1 for `verify` with `code: ARTIFACT_LOST` and `cause: ARTIFACT_CORRUPT` |
 | 15 | `scripts/artifacts/store-outage.sh stop`, then `verify` on the reference of the running job, then `scripts/artifacts/store-outage.sh start` and `verify` again | the first `verify` exits 1 with `code: STORE_UNAVAILABLE` in under 60 s, and the second exits 0 once the store is back |
 | 16 | `python -m wdf_stateops.invariants --dsn DSN` | exit 0, so no job that can still run lost an artifact to the reaper, and the two workflow comparisons print `skipped:` lines |
 | 17 | `python -m wdf_stateops.inputs --dsn DSN --store-endpoint http://127.0.0.1:<port> --credentials <state file>` | a value for every input of `inputs.yaml`, including `artifact_failures` (one value per code), `checkpoint_age_seconds`, `reaper_deleted`, `reaper_overdue`, `cache_hits` and `cache_misses` |
@@ -444,8 +444,79 @@ Not provable by this epic: the real staging by a worker and a guest (#10, #11), 
 - Estimates, not measurements, in worker-days: R.1 (1), R.2 (2), S.1 (3.5), S.2 (2.5), lane 0 (3), C.1 (4), C.2 (2), C.3 (2.5), K.1 (2.5), K.2 (2.5), K.3 (1.5), P.1 (3.5), P.2 (3.5), P.3 (2), F.1 (1.5), exit test (1.5).
   That is about 39 worker-days of effort and about 20 days elapsed along lane 0, C.1, K.1, P.1, P.2, P.3 and the exit test (3 + 4 + 2.5 + 3.5 + 3.5 + 2 + 1.5), with the cluster lock, the container slots, `uv.lock` rebases and the second barrier at C.1 as the main sources of slip.
 
-## 8. Closure (filled at close)
+## 8. Closure
 
-Filled when the epic closes: the commit and the run of the exit test, the workflow runs on `main`, the measured rates of the client for 100,000 small results, the per product facts of C.1, what the architecture note now shows (refined and re-exported with `scripts/export-diagrams.sh` by the worker who runs the exit test), and what moved to which epic.
+Run on 2026-11-06 against `872d53bee75a50acc45d1bb8466d68bc9d122c28`, the commit of the last lane merge (P.3), from a `git archive origin/main` extracted into a scratch directory with no enclosing git repository.
+Rows 1 to 4, 6 to 10, 12 to 20 pass, with departures on rows 12 to 14, 16 and 17 that the table states.
+Row 5 fails (11 tests of `packages/itest` when collected beside the session store, filed as [#258](https://github.com/AndoNorth/wasm-dag-forge/issues/258)) and row 11 cannot run as written (the bench has no `--dsn` and `--jobs` form, filed as [#259](https://github.com/AndoNorth/wasm-dag-forge/issues/259)).
+The epic was therefore not closed by this run, and the pull request that recorded it did not close the epic issue.
+The pasted output of every row is in that pull request.
+
+Method of the run:
+
+- The worker that ran it wrote none of the lanes.
+- The host is the 20 GiB WSL2 VM with Docker running.
+  Rows 9 to 18 held `/tmp/wdf-cluster.lock` for their whole sequence and ran with `WDF_CLUSTER_LOCK_HELD=1`, and the cluster of other work on the host was not touched.
+- Row 3 edited `contracts/artifact/layout.yaml` in the export and restored it from a copy, and every generated file was regenerated from the restored layout, so the export again equals the archive.
+- No container of the run was left behind, and `just nuke` after row 17 left no node, no registry and no data directory.
+
+Results:
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1 | pass | `uv sync --frozen` exit 0, `uv lock --check` exit 0 with 57 packages resolved |
+| 2 | pass | no `DRIFT` line for the five packages |
+| 3 | pass | with a `report` kind added, `schemagen --check` exit 1 naming `contracts/artifact/reference.schema.json` (and the `task.requested` schema that embeds it), `wdf_artifactindex.gen --check` exit 1 naming `R__artifact_kinds.sql` (and `artifact-row/2.json`), the library accepted the `report` reference before the regeneration, and both checks exit 0 after it and after the restore |
+| 4 | pass | the three valid files, the 12 valid reference vectors and `roles.yaml` exit 0, and all 41 invalid files (5 failures, 15 index, 11 retention, 10 staging) and the 14 invalid reference vectors exit 1 with a `reason:` line that names the directory they sit in |
+| 5 | fail | 881 passed, 11 failed and 2 skipped in the first invocation, see [#258](https://github.com/AndoNorth/wasm-dag-forge/issues/258), and both isolated invocations pass (9 and 6 passed). The two skips are the `STUBBED` parametrizations that are empty once every stub is replaced |
+| 6 | pass | 69 passed, each of the 17 named tests is listed `PASSED` |
+| 7 | pass | 10 passed, none skipped |
+| 8 | pass | exit 0, both runs `results_put: 100000`, `results_verified: 100000`, `index_entries: 100000`, `lists: 0` and `index_sha256: c227f3eca53c7549c9a47f6b5ab40dc480fde02cfd4e9912bcdfe502064b7f5f`, phase times in the next section |
+| 9 | pass | exit 0, `SUCCESS. All workloads are healthy.`, `appdb-0`, `temporaldb-0` and `objectstore-0` running and every `appdb-migrate` file applied, with the bucket rules printed by `objectstore-bootstrap` |
+| 10 | pass | `14 of 14 base checks passed`, and the access mode has no `FAIL` line, with `ok access matrix aggregate: 20 cells` and `ok access matrix compile: 20 cells` |
+| 11 | fail | exit 2, `unrecognized arguments: --dsn ... --jobs 2`, see [#259](https://github.com/AndoNorth/wasm-dag-forge/issues/259). Rows 12 to 17 used two jobs seeded by a scratch script built on the reaper test world, 2,000 results and two checkpoints each, one `succeeded` and one `running` |
+| 12 | pass, with a departure | first run `results_jobs: 1`, `checkpoint_jobs: 1`, `deleted_objects: 2004`, second run `deleted_objects: 0`. The running job had two checkpoints, so `kept_live` was 0, and a second running job with five checkpoints gave `kept_live: 2` and `pruned_checkpoints: 3` |
+| 13 | pass | exit 0 for the running job, exit 1 with `code: ARTIFACT_LOST` and `cause: ARTIFACT_NOT_FOUND` for the reaped one |
+| 14 | pass, with a departure | `--role simulate` as the row first read exits 1 with `AccessDenied 403` because `simulate` has no `get` on `wdf-results`, so the row now names `aggregate`, which flipped a byte (exit 0), and `verify` then exits 1 with `code: ARTIFACT_LOST` and `cause: ARTIFACT_CORRUPT` |
+| 15 | pass | `verify` while stopped exits 1 with `code: STORE_UNAVAILABLE` after 7 s, and exit 0 after `store-outage.sh start` and a new port-forward |
+| 16 | pass | exit 0 with `skipped: open-workflow-without-live-row` and `skipped: running-without-workflow` |
+| 17 | pass | a value for each input, among them one `artifact_failures` value per code, `checkpoint_age_seconds`, `reaper_deleted`, `reaper_overdue`, `cache_hits` and `cache_misses` |
+| 18 | pass | `just doctor`, `just down`, `just nuke` and a second `just nuke` all exit 0 |
+| 19 | pass | `just ci` exit 0 in the export, 1,724 passed and 2 skipped in `just test`, 411 passed in `just itest` |
+| 20 | pass | the `ci` run [42256475026](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/42256475026) and the `state-modules` run [42256474951](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/42256474951), both success on `872d53b` on `main` |
+
+Measured rates of the client for 100,000 small results (a SeaweedFS container with the heap bound, no timing guard):
+
+| Run | Put | Index build | Verify |
+| --- | --- | --- | --- |
+| 1 | 276.75 s, 361 per second | 2.99 s | 215.17 s, 465 per second |
+| 2 | 261.24 s, 383 per second | 2.75 s | 216.21 s, 462 per second |
+
+Per product facts of the client core (recorded by `test_product_facts_if_none_match_and_the_md5_entity_tag`):
+
+| Product | `If-None-Match: *` on a put of an existing object | `If-None-Match: *` on a multipart completion | Entity tag of a single part put |
+| --- | --- | --- | --- |
+| SeaweedFS | honoured, 412 | honoured, 412 | MD5 of the bytes |
+| RustFS | honoured, 412 | honoured, 412 | MD5 of the bytes |
+
+Decision record for observability (#13):
+
+- Every artifact failure surfaces as a `task.attempt.failed` event whose `reason` starts with `<CODE>: `, and the input `artifact_failures` counts them by code, so #13 builds its metric and alert from that input and not from a new event field.
+- The reaper writes `reaper_deleted` and `reaper_overdue`, and the checkpoint lag is `checkpoint_age_seconds`, all inputs of `contracts/state/inputs.yaml`.
+- The compile cache surfaces as `cache_hits` and `cache_misses`.
+- The last 64 KiB of the guest's output is stored as kind `log-tail`, name `tail.log`, even for a failed attempt, and Loki owns the full logs.
+
+What the architecture note now shows: `docs/architecture/13-state-envelope-artifacts.drawio` and its re-exported SVG state that a worker returns references and the workflow commits the accepted attempt, that a job's inputs are linked to it, that results and checkpoints are verified on read, that the reaper is a Temporal Schedule and the only role that deletes, and that cache entries expire by last use.
+
+What moved to which epic:
+
+- the workflow's use of `commit`, `record`, `cache.use` and the index activity, the zombie test with Temporal's own fencing, and the failure class mapping (#6)
+- the real worker, staging and heartbeats (#10), the guest and the `build-info.json` schema (#11), and the checkpoint format (#18)
+- the dashboards and alerts over the new inputs (#13), the store outage and corruption scenarios (#15) and the characterization soak (#16)
+- the deployment of the reaper's worker as a pod, with the service image (#6)
+- the golden `job.accepted` vector class (#24), per recorded decision 14
 
 Closure addenda, one dated line each, are added after close when a `revisit` child issue is filed against this epic (see [docs/delivery/method.md](../method.md#revisiting-a-closed-epic)).
+
+- 2026-11-06: [#258](https://github.com/AndoNorth/wasm-dag-forge/issues/258) makes the container accounting tests of `packages/itest` independent of the session store, so row 5 passes as written.
+- 2026-11-06: [#259](https://github.com/AndoNorth/wasm-dag-forge/issues/259) decides whether the bench gains the `--dsn` and `--jobs` seeding form of row 11 or the spec moves it to a script.
