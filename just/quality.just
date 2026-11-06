@@ -4,6 +4,9 @@ test:
 itest *domain:
     scripts/itest.sh {{ domain }}
 
+contracts-map:
+    scripts/check-contracts-map.sh
+
 lint:
     scripts/lint.sh
 

@@ -101,6 +101,7 @@ The lane issue template is a markdown template, not an issue form, because worke
 Contracts are pinned in lane 0 of the epic that produces them, merged before any issue that consumes them is filed.
 A pinned contract has a schema or table file, test vectors, a loader test that fails if a vector breaks, a `version` and an owner epic.
 Changing it after the pin is a contract-change PR with a consumer list and a version bump.
+Adding a contract, or changing its owner or consumers, also updates its row in `docs/contracts.md` and the diagram `docs/architecture/15-contracts.drawio` in the same PR, and `scripts/check-contracts-map.sh` enforces the row.
 
 Spikes are timeboxed, each one issue labelled `spike` with a binary pass line, throwaway code in `docs/delivery/spikes/S<n>/code/`, and a result file `docs/delivery/spikes/S<n>/<slug>.md` stating pass or fail, the numbers and the decision it settles.
 A spike belongs to the epic whose design its answer can change, and the lanes it gates are not filed until the result is merged.
