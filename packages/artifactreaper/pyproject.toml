@@ -2,7 +2,18 @@
 name = "wdf-artifactreaper"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = ["pyyaml"]
+dependencies = [
+    "psycopg[binary]",
+    "pyyaml",
+    "wdf-artifactclient",
+    "wdf-artifactindex",
+    "wdf-storecheck",
+]
+
+[tool.uv.sources]
+wdf-artifactclient = { workspace = true }
+wdf-artifactindex = { workspace = true }
+wdf-storecheck = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

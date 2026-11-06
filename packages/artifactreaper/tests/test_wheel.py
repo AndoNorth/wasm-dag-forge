@@ -9,17 +9,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 PROBE = """
-import wdf_artifactreaper.__main__, wdf_artifactreaper.reap, wdf_artifactreaper.schedule
-from wdf_artifactreaper.reap import STUBBED
+import wdf_artifactreaper.__main__, wdf_artifactreaper.schedule
 import wdf_artifactreaper
-
-assert STUBBED
+from wdf_artifactreaper.reap import load_windows
 import importlib.resources as resources
 import yaml
 
 contract = resources.files("wdf_artifactreaper") / "contract"
 for name in ("layout.yaml", "failures.yaml"):
     assert yaml.safe_load((contract / name).read_text()), name
+assert load_windows().checkpoint_keep >= 2
 """
 
 
@@ -33,7 +32,16 @@ def run(*cmd, **kwargs) -> subprocess.CompletedProcess:
 def clean_python(tmp_path_factory) -> Path:
     work = tmp_path_factory.mktemp("wheel")
     wheels = work / "wheels"
-    run("uv", "build", "--wheel", "--package", "wdf-artifactreaper", "-o", str(wheels), cwd=ROOT)
+    for package in (
+        "wdf-artifactreaper",
+        "wdf-artifactclient",
+        "wdf-artifactindex",
+        "wdf-compat",
+        "wdf-events",
+        "wdf-keys",
+        "wdf-storecheck",
+    ):
+        run("uv", "build", "--wheel", "--package", package, "-o", str(wheels), cwd=ROOT)
     venv = work / "venv"
     run("uv", "venv", "--python", sys.executable, str(venv))
     python = venv / "bin/python"
