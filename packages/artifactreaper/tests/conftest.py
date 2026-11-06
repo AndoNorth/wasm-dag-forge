@@ -1,8 +1,8 @@
 """A store and a database for the reaper tests, and a small world of jobs and objects in them.
 
 The reaper's database login is a stand-in member of `wdf_reaper`, and the store clients are the
-credentials of the roles of the contract. The store is the one of the session and the database is
-the one of the module, which are the two containers that a session holds.
+credentials of the roles of the contract. The store and the database are the two containers that a
+session holds, each for the length of a test module.
 """
 
 import hashlib
@@ -25,6 +25,7 @@ from wdf_artifactreaper.content import CONTENT_BUCKETS
 from wdf_artifactreaper.reap import load_windows, reap_once
 from wdf_events.models import ProducerRef
 from wdf_jobstate import JobRow, insert_accepted
+from wdf_storecheck.fixtures import running
 from wdf_storecheck.s3 import client as s3_client
 
 NOW = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
@@ -35,11 +36,16 @@ WASM = hashlib.sha256(b"component").hexdigest()
 META = {"format_version": 1, "progress": 0, "wasm_sha256": WASM}
 
 
-@pytest.fixture(scope="session")
-def shelf(store_session):
-    """The SeaweedFS container of the session, with the buckets of the contract."""
-    store_session.store().create_buckets()
-    return store_session
+@pytest.fixture(scope="module")
+def shelf(t1, tmp_path_factory):
+    """One SeaweedFS container for this module, which is gone before other modules run.
+
+    A session fixture would outlive the package and add a container to the count that the
+    container tests of other packages assert on.
+    """
+    with running(t1, "seaweedfs", tmp_path_factory.mktemp("shelf")) as started:
+        started.store().create_buckets()
+        yield started
 
 
 @pytest.fixture
