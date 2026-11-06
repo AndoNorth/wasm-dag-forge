@@ -5,7 +5,7 @@ The reaper of the artifact passing epic: retention of artifact objects and their
 ## State
 
 `reap_once` runs the passes that act on results, checkpoints, running jobs, the compile cache and content-addressed blobs.
-The Temporal Schedule is a stub.
+The Temporal Schedule is delivered.
 A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
 Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
 `tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
@@ -40,6 +40,21 @@ The cursor of the sweep is one row of `reaper_cursor` per bucket, and an empty p
 `hooks` maps a name of `content.HOOK_POINTS` to a callable that receives the uri at that point, so a test can run another caller exactly there.
 An unknown name raises.
 
+## The Schedule
+
+The Schedule `wdf-artifact-reaper` starts a workflow every 15 minutes, with overlap policy skip and a catch-up window of 1 hour.
+The workflow has one activity that runs a pass with a heartbeat per batch and retries a failure up to 5 times with backoff.
+The task queue and the Schedule id are constants until the workflow epic pins the Temporal naming.
+
+| Command | Does |
+| --- | --- |
+| `schedule ensure --temporal-address ADDR` | creates the Schedule, or converges an existing one to the definition and keeps it paused or running as it is |
+| `schedule trigger --temporal-address ADDR` | starts one pass now and prints its counters, and prints a skip and exits 0 when the Schedule is paused or a pass is already running |
+| `schedule worker --temporal-address ADDR` | serves the task queue until interrupted, with the database and store taken from `WDF_REAPER_DSN`, `WDF_REAPER_ENDPOINT` and `WDF_REAPER_CREDENTIALS` |
+
+A pod that hosts the worker needs a service image, which does not exist yet.
+The worker is therefore run by hand against the cluster, and its deployment belongs to the workflow epic's worker deployment.
+
 ## Contract files
 
 The package carries the layout and the failure taxonomy of `contracts/artifact/` as package data.
@@ -50,7 +65,8 @@ The retention windows are read from the packaged files of `wdf_artifactclient`, 
 ```sh
 nix develop -c uv run --frozen pytest packages/artifactreaper -q -rs
 nix develop -c uv run --frozen pytest packages/artifactreaper -q -rs -m isolated -k orphan
+nix develop -c uv run --frozen pytest packages/artifactreaper -q -rs -k schedule
 nix develop -c uv run --frozen python -m wdf_artifactreaper run-once --dry-run --dsn DSN --endpoint URL --credentials FILE
 ```
 
-`run-once` prints one line per counter and exits 0, 1 for a failed pass, 2 for usage and 3 when the database is unreachable.
+`run-once` prints one line per counter and exits 0, 1 for a failed pass, 2 for usage and 3 when the database or Temporal is unreachable.

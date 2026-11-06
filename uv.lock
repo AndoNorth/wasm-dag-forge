@@ -643,6 +643,7 @@ source = { editable = "packages/artifactreaper" }
 dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pyyaml" },
+    { name = "temporalio" },
     { name = "wdf-artifactclient" },
     { name = "wdf-artifactindex" },
     { name = "wdf-storecheck" },
@@ -652,6 +653,7 @@ dependencies = [
 requires-dist = [
     { name = "psycopg", extras = ["binary"] },
     { name = "pyyaml" },
+    { name = "temporalio" },
     { name = "wdf-artifactclient", editable = "packages/artifactclient" },
     { name = "wdf-artifactindex", editable = "packages/artifactindex" },
     { name = "wdf-storecheck", editable = "packages/storecheck" },

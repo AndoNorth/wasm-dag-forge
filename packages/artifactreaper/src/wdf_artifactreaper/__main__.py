@@ -2,7 +2,9 @@
                                               [--now ISO] [--dry-run]
 python -m wdf_artifactreaper schedule ensure|trigger|worker --temporal-address ADDR
 
-Exit 0, 1 a failed pass, 2 usage, 3 database unreachable. `run-once` prints one line per counter.
+Exit 0, 1 a failed pass, 2 usage, 3 database or Temporal unreachable.
+`run-once` and `schedule trigger` print one line per counter.
+`schedule worker` reads WDF_REAPER_DSN, WDF_REAPER_ENDPOINT and WDF_REAPER_CREDENTIALS.
 """
 
 import argparse
@@ -11,16 +13,16 @@ from datetime import UTC, datetime
 
 import psycopg
 from botocore.exceptions import BotoCoreError, ClientError
+from temporalio.client import WorkflowFailureError
 from wdf_storecheck.s3 import client as s3_client
 from wdf_storecheck.s3 import load_credentials
 
 from . import schedule
-from .reap import ReapFailed, load_windows, reap_once
+from .reap import ROLE, ReapFailed, load_windows, reap_once
 
 STUBBED = ()
 
 FAILED, USAGE, UNREACHABLE = 1, 2, 3
-ROLE = "reaper"
 
 
 def parser() -> argparse.ArgumentParser:
@@ -71,6 +73,27 @@ def run_once(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_schedule(args: argparse.Namespace) -> int:
+    try:
+        result = getattr(schedule, args.action)(args.temporal_address)
+    except KeyError as error:
+        print(f"usage: missing environment variable {error}", file=sys.stderr)
+        return USAGE
+    except (RuntimeError, OSError) as error:
+        print(f"temporal: {error}", file=sys.stderr)
+        return UNREACHABLE
+    except (WorkflowFailureError, TimeoutError) as error:
+        print(f"failed: {type(error).__name__}: {error}", file=sys.stderr)
+        return FAILED
+    if args.action == "trigger":
+        if result is None:
+            print("skipped: the schedule is paused or a pass is already running", file=sys.stderr)
+        else:
+            for name, value in result.items():
+                print(f"{name}: {value}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     try:
         args = parser().parse_args(argv)
@@ -78,8 +101,7 @@ def main(argv: list[str]) -> int:
         return int(stop.code or 0)
     if args.command == "run-once":
         return run_once(args)
-    getattr(schedule, args.action)(args.temporal_address)
-    return 0
+    return run_schedule(args)
 
 
 if __name__ == "__main__":

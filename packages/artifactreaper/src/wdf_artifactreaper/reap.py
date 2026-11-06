@@ -23,6 +23,8 @@ from .content import OBJECT_BATCH, Hooks, collect_content, sweep_orphans
 STUBBED = ()
 
 LOCK_NAME = "wdf-artifact-reaper"
+# The store role whose credentials a pass runs under.
+ROLE = "reaper"
 JOB_PAGE = 100
 CACHE_PAGE = 500
 # The statuses whose checkpoints a prune trims. A paused, admitted or resuming job is never touched.
