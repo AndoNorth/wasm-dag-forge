@@ -12,14 +12,9 @@ from pathlib import Path
 import pytest
 from wdf_itest.session import RUN_LABEL, image_ref
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.pair, pytest.mark.isolated]
 
 CHILD = Path(__file__).with_name("child_session.py")
-
-
-@pytest.fixture(scope="module")
-def t1(own_session):
-    return own_session
 
 
 def run_ids(run_id: str) -> list[str]:
@@ -86,13 +81,12 @@ def test_only_the_containers_of_its_own_run_are_removed(t1):
 
 
 @pytest.mark.parametrize("sig", [signal.SIGINT, signal.SIGTERM])
-def test_interrupting_a_child_test_leaves_no_container(sig, tmp_path, child_slot):
+def test_interrupting_a_child_test_leaves_no_container(sig, tmp_path):
     run_id = f"itest-child-{sig.name.lower()}-{os.getpid()}"
     env = {
         **os.environ,
         "WDF_RUN_ID": run_id,
         "WDF_T1_LOCK_DIR": str(tmp_path),
-        "WDF_SLOT": child_slot,
     }
     child = subprocess.Popen(
         [sys.executable, "-m", "pytest", str(CHILD), "-q", "-p", "no:cacheprovider"],
