@@ -520,3 +520,8 @@ Closure addenda, one dated line each, are added after close when a `revisit` chi
 
 - 2026-11-06: [#258](https://github.com/AndoNorth/wasm-dag-forge/issues/258) makes the container accounting tests of `packages/itest` independent of the session store, so row 5 passes as written.
 - 2026-11-06: [#259](https://github.com/AndoNorth/wasm-dag-forge/issues/259) decides whether the bench gains the `--dsn` and `--jobs` seeding form of row 11 or the spec moves it to a script.
+- 2026-11-07: [#259](https://github.com/AndoNorth/wasm-dag-forge/issues/259) gave the bench the `--dsn` and `--jobs` seeding form of row 11, as section 2 pins it.
+  Rows 11 to 17 were re-run on a clean `git archive` export of the branch under `/tmp/wdf-cluster.lock` and all pass.
+  The bench seeded one `succeeded` and one `running` job with 2,000 results and one checkpoint each, row 12 deleted 2,002 objects for the succeeded job and none on the repeat, and row 16 exits 0 with the two `skipped:` lines.
+  The running job keeps all of its objects, and `kept_live` is 0 because the prune pass counts it only for a task that holds more checkpoints than the keep count.
+  The single orphan of the first pass is the aggregate index object that the bench writes to a content-addressed bucket.
