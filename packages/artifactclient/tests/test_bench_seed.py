@@ -29,8 +29,10 @@ def test_jobs_are_seeded_one_succeeded_and_one_running_with_results_and_a_checkp
         for status in ("succeeded", "running"):
             job = printed[f"seeded_{status}"]
             assert conn.execute(
-                "SELECT status, terminal_at IS NOT NULL FROM accepted_job WHERE job_id = %s", (job,)
-            ).fetchone() == (status, status == "succeeded")
+                "SELECT status, terminal_at IS NOT NULL, published_at IS NOT NULL"
+                " FROM accepted_job WHERE job_id = %s",
+                (job,),
+            ).fetchone() == (status, status == "succeeded", True)
             kinds = dict(
                 conn.execute(
                     "SELECT kind, count(*) FROM artifact"

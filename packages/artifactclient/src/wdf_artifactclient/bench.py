@@ -159,7 +159,7 @@ def seed_jobs(dsn: str, simulate: ArtifactClient, count: int, jobs: int) -> list
     # Imported here because only seeding needs a database, and a wheel need not carry the driver.
     import psycopg
     from wdf_artifactindex import index_reference
-    from wdf_jobstate import JobRow, insert_accepted, transition
+    from wdf_jobstate import JobRow, insert_accepted, mark_published, transition
 
     from .checkpoint import write_checkpoint
 
@@ -194,6 +194,7 @@ def seed_jobs(dsn: str, simulate: ArtifactClient, count: int, jobs: int) -> list
                     )
                 ],
             )
+            mark_published(conn, job)
             path = ["admitted", "running", *(["succeeded"] if final == "succeeded" else [])]
             for before, after in zip(["accepted", *path], path, strict=False):
                 transition(conn, job, before, after)
