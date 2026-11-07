@@ -17,6 +17,11 @@ pytestmark = [pytest.mark.integration, pytest.mark.pair]
 CHILD = Path(__file__).with_name("child_hold.py")
 
 
+@pytest.fixture(scope="module")
+def t1(own_session):
+    return own_session
+
+
 def running_under(run_id: str) -> int:
     out = subprocess.run(
         ["docker", "ps", "-q", "--filter", f"label={RUN_LABEL}={run_id}"],
