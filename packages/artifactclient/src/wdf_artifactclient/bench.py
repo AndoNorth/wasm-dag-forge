@@ -1,8 +1,12 @@
 """Usage: python -m wdf_artifactclient.bench --results N [--twice] [--endpoint URL --credentials F]
+                                           [--dsn DSN --jobs J]
 
 Puts N small results, builds the aggregate index of them, reads the index back and verifies every
 result through the client, then prints the counts, the SHA-256 of the index and the seconds of
 each phase. With no endpoint it starts a SeaweedFS container of its own and removes it.
+With --dsn and --jobs it then seeds J jobs into that database (a login that may write the job and
+artifact tables), alternating `succeeded` and `running` from the first, each holding N committed
+results and one checkpoint, and prints their ids.
 Exit 0 when every count is right, 1 when not, 2 on usage.
 """
 
@@ -11,6 +15,7 @@ import hashlib
 import sys
 import tempfile
 import time
+import uuid
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -30,6 +35,9 @@ TENANT, BATCH, NAME = "bench", "b1", "result.xml"
 AGGREGATE_JOB = "00000000-0000-4000-8000-000000000001"
 SIMULATE_JOB = "00000000-0000-4000-8000-000000000002"
 RESULT_BYTES = 1024
+SEED_TASK = "simulate-0"
+SEED_MANIFEST_SHA = "a" * 64
+SEED_TRACEPARENT = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
 # The thread count of the object store spike that measured 100,000 puts, and an in-flight bound.
 THREADS = 16
 WINDOW = 4 * THREADS
@@ -145,7 +153,80 @@ def measure(count: int, simulate, indexer, aggregate) -> dict[str, str]:
     }
 
 
-def run(endpoint: str, credentials: dict[str, Creds], count: int, twice: bool) -> int:
+def seed_jobs(dsn: str, simulate: ArtifactClient, count: int, jobs: int) -> list[tuple[str, str]]:
+    """Inserts the jobs, moves them through the lifecycle, and gives each committed results and a
+    checkpoint in the store and the artifact index. Returns each job id with its final status."""
+    # Imported here because only seeding needs a database, and a wheel need not carry the driver.
+    import psycopg
+    from wdf_artifactindex import index_reference
+    from wdf_jobstate import JobRow, insert_accepted, transition
+
+    from .checkpoint import write_checkpoint
+
+    batch = str(uuid.uuid4())
+    width = len(str(count - 1))
+    seeded = []
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        for number in range(jobs):
+            job = str(uuid.uuid4())
+            final = "succeeded" if number % 2 == 0 else "running"
+            insert_accepted(
+                conn,
+                [
+                    JobRow(
+                        job_id=job,
+                        tenant=TENANT,
+                        submission_key=f"bench-{job}",
+                        batch_id=batch,
+                        priority_class="standard",
+                        manifest_ref={
+                            "uri": f"s3://wdf-sources/sha256/aa/{SEED_MANIFEST_SHA}",
+                            "sha256": SEED_MANIFEST_SHA,
+                            "size": 7,
+                            "name": "m",
+                            "kind": "manifest",
+                        },
+                        schema_version="urn:wdf:schema:job.accepted:1.0",
+                        traceparent=SEED_TRACEPARENT,
+                        seed=0,
+                        parameters={},
+                        fingerprint=hashlib.sha256(job.encode()).hexdigest(),
+                    )
+                ],
+            )
+            path = ["admitted", "running", *(["succeeded"] if final == "succeeded" else [])]
+            for before, after in zip(["accepted", *path], path, strict=False):
+                transition(conn, job, before, after)
+
+            def put(i: int, job: str = job) -> AttemptReference:
+                who = ProducerRef(job=job, task=task_id(i, width), attempt="r0a1")
+                return simulate.put_attempt(payload(i), "result", NAME, who, TENANT, batch, i)
+
+            with ThreadPoolExecutor(THREADS) as pool:
+                for reference in ordered(pool, put, range(count)):
+                    index_reference(conn, reference)
+            who = ProducerRef(job=job, task=SEED_TASK, attempt="r0a1")
+            meta = {
+                "format_version": 1,
+                "progress": count,
+                "wasm_sha256": hashlib.sha256(b"component").hexdigest(),
+            }
+            data = hashlib.shake_256(f"state {job}".encode()).digest(512)
+            index_reference(
+                conn, write_checkpoint(simulate, data, who, TENANT, batch, 0, "0", meta)
+            )
+            seeded.append((job, final))
+    return seeded
+
+
+def run(
+    endpoint: str,
+    credentials: dict[str, Creds],
+    count: int,
+    twice: bool,
+    dsn: str | None,
+    jobs: int,
+) -> int:
     runs = []
     for number in range(1, 3 if twice else 2):
         clients = [
@@ -171,7 +252,14 @@ def run(endpoint: str, credentials: dict[str, Creds], count: int, twice: bool) -
         wrong.append("the two runs built indexes of different hashes")
     for line in wrong:
         print(f"mismatch: {line}", file=sys.stderr)
-    return 1 if wrong else 0
+    if wrong:
+        return 1
+    if dsn:
+        for job, status in seed_jobs(
+            dsn, ArtifactClient(endpoint, credentials["simulate"]), count, jobs
+        ):
+            print(f"seeded_{status}: {job}")
+    return 0
 
 
 def positive(text: str) -> int:
@@ -187,11 +275,26 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--twice", action="store_true", help="run twice and compare the hashes")
     parser.add_argument("--endpoint", help="a store to use, instead of a container of its own")
     parser.add_argument("--credentials", type=Path, help="the credentials file of that store")
+    parser.add_argument("--dsn", help="a database to seed jobs into, once the counts are right")
+    parser.add_argument("--jobs", type=positive, help="the number of jobs to seed, at least 2")
     args = parser.parse_args(argv)
     if bool(args.endpoint) != bool(args.credentials):
         parser.error("--endpoint and --credentials go together")
+    if bool(args.dsn) != bool(args.jobs):
+        parser.error("--dsn and --jobs go together")
+    if args.jobs is not None and args.jobs < 2:
+        parser.error("--jobs must be at least 2, one succeeded and one running")
+    if args.dsn and not args.endpoint:
+        parser.error("--dsn needs --endpoint and --credentials, the store the jobs point into")
     if args.endpoint:
-        return run(args.endpoint, load_credentials(args.credentials), args.results, args.twice)
+        return run(
+            args.endpoint,
+            load_credentials(args.credentials),
+            args.results,
+            args.twice,
+            args.dsn,
+            args.jobs or 0,
+        )
     # Imported here because only this path starts a container, and a wheel need not carry them.
     from wdf_itest import Session
     from wdf_storecheck.fixtures import running
@@ -202,7 +305,7 @@ def main(argv: list[str]) -> int:
         running(session, "seaweedfs", Path(directory)) as started,
     ):
         started.store().create_buckets()
-        return run(started.endpoint, started.credentials, args.results, args.twice)
+        return run(started.endpoint, started.credentials, args.results, args.twice, None, 0)
 
 
 if __name__ == "__main__":
