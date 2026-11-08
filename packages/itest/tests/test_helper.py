@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from wdf_itest.session import RUN_LABEL, image_ref
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.pair, pytest.mark.isolated]
 
 CHILD = Path(__file__).with_name("child_session.py")
 

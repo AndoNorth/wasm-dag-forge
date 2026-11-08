@@ -12,7 +12,7 @@ from wdf_itest.session import RUN_LABEL, ContainerError
 
 # A pair session holds both host lock files, which is what lets the child sessions below run
 # two containers between them without the host ever running more than two.
-pytestmark = [pytest.mark.integration, pytest.mark.pair]
+pytestmark = [pytest.mark.integration, pytest.mark.pair, pytest.mark.isolated]
 
 CHILD = Path(__file__).with_name("child_hold.py")
 
