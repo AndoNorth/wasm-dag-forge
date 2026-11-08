@@ -9,16 +9,37 @@ permissions:
   contents: read
 
 jobs:
-  # Setting the repository variable CI_ENABLED to false skips this job.
+  # Setting the repository variable CI_ENABLED to false skips every job.
   # A commit message containing [skip ci] also skips runs natively.
-  check:
+  # A pull request that changes documentation only takes the docs path of scripts/ci.sh, a push to main the full path.
+  # The jobs run on every event and gate inside, so a check made required later always reports.
+  changes:
     if: ${{ vars.CI_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.classify.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+        # The pull request checkout is a merge commit whose first parent is the base branch.
+        run: |
+          mode=full
+          [ "$EVENT" != pull_request ] || mode=$(git diff --name-only --no-renames HEAD^1 HEAD | scripts/ci-paths.sh)
+          echo "mode=$mode" | tee -a "$GITHUB_OUTPUT"
+
+  check:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: DeterminateSystems/nix-installer-action@v23
-      - run: nix develop -c just ci
+      - run: nix develop -c just ci --${{ needs.changes.outputs.mode }}
       - name: Reproducibility check
+        if: ${{ needs.changes.outputs.mode == 'full' }}
         run: |
           drv() {
             mkdir "$1" && git archive HEAD | tar -x -C "$1"

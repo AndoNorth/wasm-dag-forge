@@ -10,8 +10,8 @@ contracts-map:
 lint:
     scripts/lint.sh
 
-ci:
-    scripts/ci.sh
+ci *mode:
+    scripts/ci.sh {{ mode }}
 
 pre-push *check:
     scripts/hooks/pre-push.sh {{ check }}
