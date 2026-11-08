@@ -201,18 +201,26 @@ The full policy, including the preference for first-party charts, is in [version
 
 ## CI
 
-`.github/workflows/ci.yml` has one job, `check`, that runs on pushes to `main` and on pull requests.
-Its steps are checkout, Nix installation, `nix develop -c just ci`, and a reproducibility check.
+`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests.
+Its `changes` job picks the path, and its `check` job runs checkout, Nix installation, `nix develop -c just ci --<path>`, and on the full path a reproducibility check.
 The reproducibility check runs `git archive HEAD` into two fresh directories and evaluates `.#devShells.x86_64-linux.default.drvPath` in each.
 The job fails when the two derivation paths differ, which stands in for a second contributor's machine.
 
+A pull request whose changed files are all documentation takes the docs path, and every other change and every push to `main` takes the full path.
+`scripts/ci-paths.sh` decides, and `scripts/ci-paths.test.sh` lists which paths count as documentation.
+The docs path runs lint, the link check, the contracts map, the verify-skills lint and `nix flake check`, whose `checks.pre-commit` reads documentation too.
+It skips the unit and integration tests, the reproducibility check and the `kind-smoke` cluster run.
+Each skipped job still reports as skipped, so a check made required later never stays pending.
+
 CI can be switched off in two ways:
 
-- Setting the repository variable `CI_ENABLED` to `false` skips the `check` job through the job-level `if`.
+- Setting the repository variable `CI_ENABLED` to `false` skips every job through the job-level `if` of `changes`.
   Any other value, or no variable, leaves it on.
 - A commit message containing `[skip ci]` skips the runs natively in GitHub Actions.
 
 Locally, `nix develop -c just ci` is the same gate as the CI step.
+It takes the docs path when every file changed against the merge base with `origin/main`, uncommitted and untracked files included, is documentation.
+`just ci --docs` and `just ci --full` force a path.
 Lint on the workflow file is part of it, so a line over 120 columns in `ci.yml` fails before the push.
 
 ## Troubleshooting
