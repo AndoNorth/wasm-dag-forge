@@ -55,11 +55,12 @@
         package = pkgs.prek;
         # scripts/hooks/install.sh installs the shims, because the bundled installer rewrites core.hooksPath.
         install.enable = false;
-        # The lint fixtures are bad on purpose, the contract vectors are byte-exact, and draw.io generates the diagrams.
+        # The lint fixtures are bad on purpose, the contract vectors are byte-exact, draw.io generates the diagrams, and Motion Canvas writes its .meta files without a trailing newline.
         excludes = [
           "^scripts/fixtures/lint-bad/"
           "^contracts/.*/vectors/"
           "^docs/architecture/.*\\.drawio(\\.svg)?$"
+          "^docs/animations/.*\\.meta$"
         ];
         hooks = {
           trim-trailing-whitespace.enable = true;
