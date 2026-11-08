@@ -59,3 +59,5 @@ In a GitHub issue, use the full raw link to the file on `main` (the repo is publ
 
 Mermaid in the text is fine for trivial flows.
 Anything with layout or styling worth keeping belongs in draw.io.
+
+The diagrams are the source of truth for the architecture pictures.
