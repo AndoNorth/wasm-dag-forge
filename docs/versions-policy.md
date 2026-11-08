@@ -22,7 +22,7 @@ The compile image adds a hash-pinned `componentize-py` entry to `uv.lock`.
 
 | Pin | File | Bump |
 | --- | --- | --- |
-| Shell tools (kind, kubectl, helm, tilt, just, uv, python, linters) | `flake.lock` | `nix flake update`, review the `just versions` diff |
+| Shell tools (kind, kubectl, helm, tilt, just, uv, python, node, linters) | `flake.lock` | `nix flake update`, review the `just versions` diff |
 | `wasmtime`, `wasm-tools` | `nix/wasm-tools.nix` | see above |
 | Python dependencies | `uv.lock` | `uv lock --upgrade-package <name>` |
 | kind node image, charts, images | `deploy/versions.yaml` | one edit |

@@ -8,7 +8,7 @@ REPO="${WDF_DOCTOR_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PRESET="${WDF_PRESET:-ci}"
 MIN_INOTIFY=512
 MIN_DOCKER_MAJOR=24
-TOOLS=(kind ctlptl kubectl helm tilt just uv python3 ruff yamllint shellcheck actionlint kubeconform nixfmt yq wasmtime wasm-tools)
+TOOLS=(kind ctlptl kubectl helm tilt just uv python3 node ruff yamllint shellcheck actionlint kubeconform nixfmt yq wasmtime wasm-tools)
 # docker stays a host prerequisite, checked by docker-engine, so it is not in TOOLS.
 
 json=0
