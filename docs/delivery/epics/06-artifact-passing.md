@@ -525,3 +525,9 @@ Closure addenda, one dated line each, are added after close when a `revisit` chi
   The bench seeded one `succeeded` and one `running` job with 2,000 results and one checkpoint each, row 12 deleted 2,002 objects for the succeeded job and none on the repeat, and row 16 exits 0 with the two `skipped:` lines.
   The running job keeps all of its objects, and `kept_live` is 0 because the prune pass counts it only for a task that holds more checkpoints than the keep count.
   The single orphan of the first pass is the aggregate index object that the bench writes to a content-addressed bucket.
+- 2026-11-08: rows 5, 11 and 20 were re-run on a clean `git archive` export of `500e37b` on `main`, taken outside any git repository, and rows 5 and 11 now pass.
+  Row 5 passes in all three invocations with no `SKIPPED` line: 879 passed and 33 deselected in the first, and 9 (`packages/artifactclient`), 6 (`packages/artifactreaper`) and 18 (`packages/itest`) passed in the isolated ones.
+  Row 11 ran against the cluster under `/tmp/wdf-cluster.lock` with `--dsn` and `--jobs 2` and exits 0 with `results_verified: 2000` and one `succeeded` and one `running` job seeded.
+  Row 20 holds on `500e37b` with the `ci` run [42501607357](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/42501607357) and the `state-modules` run [42501607358](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/42501607358), both success.
+  Every one of the 20 rows has now passed, the earlier results table above stays as the record of the first run, and the items this epic cannot prove are those of the 'Not provable by this epic' paragraph in section 6.
+  The epic is complete.
