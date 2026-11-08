@@ -13,9 +13,11 @@ A batch-wide aggregate is still an open design question, so treat that scene as 
 
 ## Re-render
 
+Run these inside `nix develop`, which provides Node and npm.
+
 ```sh
-npm install
-npm run dev
+nix develop -c npm install
+nix develop -c npm run dev
 ```
 
 1. Open `http://localhost:9100/src/forge-job` and check the preview.

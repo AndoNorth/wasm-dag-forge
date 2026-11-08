@@ -5,7 +5,7 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 doctor="$here/doctor.sh"
 bash_bin=$(command -v bash)
-tools=(kind ctlptl kubectl helm tilt just uv python3 ruff yamllint shellcheck actionlint kubeconform nixfmt yq wasmtime wasm-tools)
+tools=(kind ctlptl kubectl helm tilt just uv python3 node ruff yamllint shellcheck actionlint kubeconform nixfmt yq wasmtime wasm-tools)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 

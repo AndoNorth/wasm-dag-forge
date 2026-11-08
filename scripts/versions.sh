@@ -47,6 +47,7 @@ tool tilt tilt version
 tool just just --version
 tool uv uv --version
 tool python python3 --version
+tool node node --version
 tool ruff ruff --version
 tool yamllint yamllint --version
 tool shellcheck shellcheck --version

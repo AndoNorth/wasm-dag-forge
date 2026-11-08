@@ -97,6 +97,7 @@
             just
             uv
             python313
+            nodejs_22
             ruff
             yamllint
             shellcheck
