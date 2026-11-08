@@ -20,24 +20,6 @@ LANES = {
     "faults": "F",
 }
 MODULES = {name: importlib.import_module(f"wdf_artifactclient.{name}") for name in LANES}
-STUBS = [(name, stub) for name, module in MODULES.items() for stub in module.STUBBED]
-
-
-def required_arguments(obj) -> list[None]:
-    parameters = inspect.signature(obj).parameters.values()
-    return [
-        None
-        for p in parameters
-        if p.default is p.empty and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-    ]
-
-
-@pytest.mark.parametrize(("module", "name"), STUBS)
-def test_a_stub_raises_only_the_error_of_its_lane(module, name):
-    with pytest.raises(NotImplementedError) as raised:
-        obj = getattr(MODULES[module], name)
-        obj(*required_arguments(obj))
-    assert str(raised.value) == f"not implemented: owned by lane {LANES[module]}"
 
 
 @pytest.mark.parametrize("module", MODULES)

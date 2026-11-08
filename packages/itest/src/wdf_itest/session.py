@@ -217,7 +217,7 @@ class Session:
         """Removes every container that carries this run's label, and no other."""
         ids = _docker("ps", "-aq", "--filter", f"label={RUN_LABEL}={self.run_id}").split()
         if ids:
-            _docker("rm", "-f", *ids)
+            _docker("rm", "-f", "-v", *ids)
 
     def close(self) -> None:
         if self._outer is not None:
@@ -237,7 +237,7 @@ class Session:
     def _remove_container(self, docker_name: str) -> None:
         ids = _docker("ps", "-aq", "--filter", f"name=^{docker_name}$").split()
         if ids:
-            _docker("rm", "-f", *ids)
+            _docker("rm", "-f", "-v", *ids)
 
     @contextmanager
     def container(
