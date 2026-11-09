@@ -118,8 +118,3 @@ def test_check_usage_exits_2(argv):
         [sys.executable, "-m", "wdf_kernel.check", *argv], capture_output=True, text=True
     )
     assert run.returncode == 2, run.stderr
-
-
-def test_check_summary_raises_the_stub_error_until_it_is_delivered():
-    with pytest.raises(NotImplementedError, match="^not implemented: owned by lane K$"):
-        check.main(["summary"])
