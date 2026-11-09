@@ -1,0 +1,14 @@
+[project]
+name = "wdf-compile"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["componentize-py==0.25.1", "wdf-jobcheck", "wdf-keys", "wdf-runtime"]
+
+[tool.uv.sources]
+wdf-jobcheck = { workspace = true }
+wdf-keys = { workspace = true }
+wdf-runtime = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

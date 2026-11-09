@@ -9,10 +9,12 @@ members = ["packages/*"]
 
 # Workspace members are installed through the dev group, because a plain `uv run` installs only the root project.
 [tool.uv.sources]
+wdf-aggregate = { workspace = true }
 wdf-artifactclient = { workspace = true }
 wdf-artifactindex = { workspace = true }
 wdf-artifactreaper = { workspace = true }
 wdf-compat = { workspace = true }
+wdf-compile = { workspace = true }
 wdf-events = { workspace = true }
 wdf-eventstore = { workspace = true }
 wdf-itest = { workspace = true }
@@ -31,15 +33,18 @@ wdf-stages = { workspace = true }
 wdf-stateops = { workspace = true }
 wdf-storecheck = { workspace = true }
 wdf-temporal = { workspace = true }
+wdf-workloads = { workspace = true }
 
 [dependency-groups]
 dev = [
     "hypothesis",
     "pytest",
+    "wdf-aggregate",
     "wdf-artifactclient",
     "wdf-artifactindex",
     "wdf-artifactreaper",
     "wdf-compat",
+    "wdf-compile",
     "wdf-events",
     "wdf-eventstore",
     "wdf-itest",
@@ -58,9 +63,13 @@ dev = [
     "wdf-stateops",
     "wdf-storecheck",
     "wdf-temporal",
+    "wdf-workloads",
 ]
 
 [tool.pytest.ini_options]
 # Several packages have a tests/test_vectors.py, so test modules are imported by path and not by basename.
 addopts = "--import-mode=importlib"
-markers = ["integration: needs containers started through wdf_itest"]
+markers = [
+    "integration: needs containers started through wdf_itest",
+    "slow: large results, deselected by scripts/test.sh and run only when selected",
+]
