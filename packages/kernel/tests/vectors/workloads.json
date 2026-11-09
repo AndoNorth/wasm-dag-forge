@@ -1,0 +1,330 @@
+[
+  {
+    "blocks": [
+      {
+        "id": "args",
+        "kind": "echo",
+        "rows": [
+          {
+            "key": "flag",
+            "value": "true"
+          },
+          {
+            "key": "n",
+            "value": "3"
+          },
+          {
+            "key": "name",
+            "value": "\"forge\""
+          },
+          {
+            "key": "tags",
+            "value": "[\"a\",\"b\"]"
+          }
+        ]
+      }
+    ],
+    "digest": "dcd1c83a029e0547",
+    "input": {
+      "args": {
+        "flag": true,
+        "n": 3,
+        "name": "forge",
+        "tags": [
+          "a",
+          "b"
+        ]
+      },
+      "seed": 42,
+      "workload": "echo"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "args",
+        "kind": "echo",
+        "rows": [
+          {
+            "key": "empty",
+            "value": "[]"
+          },
+          {
+            "key": "name",
+            "value": "\"fôrge \\\"<&>\\\"\\t\""
+          }
+        ]
+      }
+    ],
+    "digest": "7c8507c99e506722",
+    "input": {
+      "args": {
+        "empty": [],
+        "name": "fôrge \"<&>\"\t"
+      },
+      "seed": 0,
+      "workload": "echo"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "args",
+        "kind": "echo",
+        "rows": []
+      }
+    ],
+    "digest": "2ff1ed5a3311bd04",
+    "input": {
+      "args": {},
+      "seed": 1,
+      "workload": "echo"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "result",
+        "kind": "scalar",
+        "rows": [
+          {
+            "name": "sum_squares",
+            "value": 338350
+          }
+        ]
+      }
+    ],
+    "digest": "cb0f2572732d2912",
+    "input": {
+      "args": {
+        "n": 100
+      },
+      "seed": 3,
+      "workload": "sum_squares"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "result",
+        "kind": "scalar",
+        "rows": [
+          {
+            "name": "sum_squares",
+            "value": 0
+          }
+        ]
+      }
+    ],
+    "digest": "15393fab4e6fbfc8",
+    "input": {
+      "args": {
+        "n": 0
+      },
+      "seed": 0,
+      "workload": "sum_squares"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "result",
+        "kind": "digest",
+        "rows": [
+          {
+            "name": "hash_chain",
+            "value": "635813708509f42139861ed77ae30895e4e9111c461c1f93d1103d2c2580354e"
+          }
+        ]
+      }
+    ],
+    "digest": "8a6f5c9485e8c8a6",
+    "input": {
+      "args": {
+        "rounds": 1000
+      },
+      "seed": 7,
+      "workload": "hash_chain"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "result",
+        "kind": "digest",
+        "rows": [
+          {
+            "name": "hash_chain",
+            "value": "0000000000000007"
+          }
+        ]
+      }
+    ],
+    "digest": "c4c843c2b3c06195",
+    "input": {
+      "args": {
+        "rounds": 0
+      },
+      "seed": 7,
+      "workload": "hash_chain"
+    }
+  },
+  {
+    "blocks": [],
+    "digest": "2a0f05c4761aac2e",
+    "input": {
+      "args": {
+        "heartbeat_every": 1
+      },
+      "seed": 5,
+      "workload": "noop"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "series",
+        "kind": "series",
+        "rows": [
+          {
+            "step": 0,
+            "value": 0.6843956145474585
+          },
+          {
+            "step": 1,
+            "value": 0.43467944639353684
+          },
+          {
+            "step": 2,
+            "value": 0.3607678199469849
+          }
+        ]
+      }
+    ],
+    "digest": "ded49e590a613f6b",
+    "input": {
+      "args": {
+        "heartbeat_every": 1,
+        "units": 3
+      },
+      "seed": 11,
+      "workload": "cpu_burn"
+    }
+  },
+  {
+    "digest": "75d41a684abbdc7e",
+    "input": {
+      "args": {
+        "heartbeat_every": 50,
+        "units": 200
+      },
+      "seed": 11,
+      "workload": "cpu_burn"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "held",
+        "kind": "scalar",
+        "rows": [
+          {
+            "name": "held_bytes",
+            "value": 2097152
+          }
+        ]
+      },
+      {
+        "id": "series",
+        "kind": "series",
+        "rows": [
+          {
+            "step": 0,
+            "value": 0.16578464166466833
+          },
+          {
+            "step": 1,
+            "value": 0.19306468554100176
+          }
+        ]
+      }
+    ],
+    "digest": "3efdbea04bec7d2e",
+    "input": {
+      "args": {
+        "heartbeat_every": 1,
+        "mib": 2,
+        "units": 2
+      },
+      "seed": 13,
+      "workload": "mem_hold"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "payload",
+        "kind": "payload",
+        "rows": [
+          {
+            "data": "808475f02ee373636434ff62",
+            "step": 0
+          },
+          {
+            "data": "540d6c3702d41b8c395142ca",
+            "step": 1
+          },
+          {
+            "data": "046b1664f61a205e14db9121",
+            "step": 2
+          },
+          {
+            "data": "0807a6b4c6fa7404a74db96e",
+            "step": 3
+          }
+        ]
+      }
+    ],
+    "digest": "6140f6b8547f0a52",
+    "input": {
+      "args": {
+        "heartbeat_every": 2,
+        "row_bytes": 12,
+        "rows": 4
+      },
+      "seed": 17,
+      "workload": "io_churn"
+    }
+  },
+  {
+    "blocks": [
+      {
+        "id": "payload",
+        "kind": "payload",
+        "rows": []
+      }
+    ],
+    "digest": "770ca71cc32b7976",
+    "input": {
+      "args": {
+        "heartbeat_every": 1,
+        "row_bytes": 8,
+        "rows": 0
+      },
+      "seed": 17,
+      "workload": "io_churn"
+    }
+  },
+  {
+    "digest": "7a440153f42f341f",
+    "input": {
+      "args": {
+        "heartbeat_every": 1000,
+        "row_bytes": 8,
+        "rows": 10000
+      },
+      "seed": 19,
+      "workload": "io_churn"
+    }
+  }
+]
