@@ -5,7 +5,7 @@ import inspect
 
 import pytest
 
-LANES = {"main": "W", "bundle": "W"}
+LANES = {"main": "W", "bundle": "W", "level1": "W", "fault": "W"}
 MODULES = {name: importlib.import_module(f"wdf_workloads.{name}") for name in LANES}
 STUBS = [(module, name) for module in MODULES for name in MODULES[module].STUBBED]
 
