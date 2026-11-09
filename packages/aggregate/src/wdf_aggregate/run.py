@@ -11,7 +11,7 @@ from wdf_artifactclient.aggregate import open_results, read_index
 from wdf_artifactclient.contract import Refused
 from wdf_artifactclient.errors import ArtifactLost, StoreUnavailable
 
-from .read import ParseFailed, read_result
+from .read import ParseFailed, rows, seed_and_digest
 from .reduce import (
     Partial,
     UsageError,
@@ -71,22 +71,22 @@ def aggregate(
     missing: list[str] = []
     partials: list[Partial] = []
     digests: list[dict] = []
-    rows = 0
+    read_rows = 0
     for step, (task, path) in enumerate(inputs, start=1):
         if path is None:
             missing.append(task)
         else:
-            result = read_result(task, path)
             if aggregation == "summary_stats":
-                partials.append(reduce_stats(result.rows(), args))
+                partials.append(reduce_stats(rows(task, path), args))
             else:
-                digests.append({"task": task, "seed": result.seed, "digest": result.digest()})
-                rows += result.row_count
+                seed, digest, row_count = seed_and_digest(task, path)
+                digests.append({"task": task, "seed": seed, "digest": digest})
+                read_rows += row_count
         heartbeat(step, count)
     if aggregation == "summary_stats":
         summary = stats_summary(args, count, missing, combine(partials))
     else:
-        summary = digest_summary(count, missing, rows, digests)
+        summary = digest_summary(count, missing, read_rows, digests)
     return write_summary(summary, out_dir)
 
 

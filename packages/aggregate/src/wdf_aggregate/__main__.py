@@ -62,15 +62,17 @@ def main(argv: list[str]) -> int:
                 run, client, reference, args.tenant, args.aggregation, args.args, args.out
             )
         else:
-            pairs = [item.partition("=") for item in args.results]
+            # --missing takes every word after it, and a task id never holds "=", so the
+            # results given after it are told apart by their "=".
+            missing = [item for item in args.missing if "=" not in item]
+            given = [item for item in args.missing if "=" in item] + args.results
+            pairs = [item.partition("=") for item in given]
             if any(not task or not sep or not path for task, sep, path in pairs):
-                raise UsageError(f"each result is TASK=RESULTS: {args.results}")
+                raise UsageError(f"each result is TASK=RESULTS: {given}")
             results = {task: Path(path) for task, _, path in pairs}
             if len(results) != len(pairs):
                 raise UsageError("a task is given twice")
-            call = functools.partial(
-                files, args.aggregation, args.args, args.out, results, args.missing
-            )
+            call = functools.partial(files, args.aggregation, args.args, args.out, results, missing)
     except (OSError, ValueError, KeyError) as error:
         print(f"usage: {type(error).__name__}: {error}", file=sys.stderr)
         return USAGE
