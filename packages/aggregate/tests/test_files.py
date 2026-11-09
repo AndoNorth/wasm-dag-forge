@@ -3,6 +3,7 @@ store."""
 
 import hashlib
 import json
+from importlib.resources import files as package_files
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ from wdf_artifactclient.models import IndexEntry
 from wdf_events.models import ProducerRef
 from wdf_kernel.expected import expected_digest
 from wdf_kernel.rows import blocks
+from wdf_kernel.summary import difference, expected_summary
 from wdf_kernel.writer import write
 from wdf_runtime.contract import check
 
@@ -52,6 +54,28 @@ def test_output_bytes_independent_of_arrival_order(tmp_path, aggregation):
     second = files(tmp_path / "b", aggregation, {}, pairs[::-1])
     assert first.read_bytes() == second.read_bytes()
     assert hashlib.sha256(first.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "aggregation,args",
+    [("summary_stats", {}), ("summary_stats", {"blocks": ["series"]}), ("digest_list", {})],
+)
+def test_summary_equals_host_expectation(tmp_path, aggregation, args):
+    """Two level 1 fixture results and one missing input, against the pure Python host summary."""
+    level1 = package_files("wdf_kernel") / "fixtures" / "level1"
+    inputs = {
+        task: json.loads((level1 / workload / "input.json").read_text())
+        for task, workload in (("t1", "cpu_burn"), ("t2", "mem_hold"))
+    }
+    pairs = []
+    for task, params in inputs.items():
+        path = tmp_path / f"{task}.xml"
+        with path.open("wb") as sink:
+            write(sink, params["seed"], blocks(params["workload"], params["seed"], params["args"]))
+        pairs.append(f"{task}={path}")
+    out = files(tmp_path / "s", aggregation, args, pairs, "--missing", "t3")
+    expected = expected_summary(aggregation, args, {**inputs, "t3": None})
+    assert difference(expected, json.loads(out.read_text())) is None
 
 
 def test_digest_list_gives_the_kernel_digest_of_each_input_in_task_order(tmp_path):
