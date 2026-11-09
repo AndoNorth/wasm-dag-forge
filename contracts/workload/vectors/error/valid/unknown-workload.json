@@ -1,0 +1,5 @@
+{
+  "code": "unknown-workload",
+  "deterministic": true,
+  "message": "no workload named nope"
+}

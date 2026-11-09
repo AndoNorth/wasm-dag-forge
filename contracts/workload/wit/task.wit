@@ -1,0 +1,5 @@
+package wdf:task@1.0.0;
+
+world task {
+  include wasi:cli/command@0.2.9;
+}

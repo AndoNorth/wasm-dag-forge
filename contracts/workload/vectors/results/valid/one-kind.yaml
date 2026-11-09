@@ -1,0 +1,6 @@
+schema: wdf.sim.v1
+kinds:
+  scalar:
+    columns:
+      - {name: name, type: str}
+      - {name: value, type: int}

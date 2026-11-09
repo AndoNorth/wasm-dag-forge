@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<results schema="wdf.sim.v1" seed="7">
+  <block id="b" kind="series">
+    <row step="0" value="0.10"/>
+  </block>
+</results>

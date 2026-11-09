@@ -18,9 +18,11 @@ members = [
     "wdf-jobpatch",
     "wdf-jobstate",
     "wdf-jobtools",
+    "wdf-kernel",
     "wdf-keys",
     "wdf-migrate",
     "wdf-plan",
+    "wdf-runtime",
     "wdf-stages",
     "wdf-stateops",
     "wdf-storecheck",
@@ -553,9 +555,11 @@ dev = [
     { name = "wdf-jobpatch" },
     { name = "wdf-jobstate" },
     { name = "wdf-jobtools" },
+    { name = "wdf-kernel" },
     { name = "wdf-keys" },
     { name = "wdf-migrate" },
     { name = "wdf-plan" },
+    { name = "wdf-runtime" },
     { name = "wdf-stages" },
     { name = "wdf-stateops" },
     { name = "wdf-storecheck" },
@@ -581,9 +585,11 @@ dev = [
     { name = "wdf-jobpatch", editable = "packages/jobpatch" },
     { name = "wdf-jobstate", editable = "packages/jobstate" },
     { name = "wdf-jobtools", editable = "packages/jobtools" },
+    { name = "wdf-kernel", editable = "packages/kernel" },
     { name = "wdf-keys", editable = "packages/keys" },
     { name = "wdf-migrate", editable = "packages/migrate" },
     { name = "wdf-plan", editable = "packages/plan" },
+    { name = "wdf-runtime", editable = "packages/runtime" },
     { name = "wdf-stages", editable = "packages/stages" },
     { name = "wdf-stateops", editable = "packages/stateops" },
     { name = "wdf-storecheck", editable = "packages/storecheck" },
@@ -830,6 +836,11 @@ requires-dist = [
 ]
 
 [[package]]
+name = "wdf-kernel"
+version = "0.0.0"
+source = { editable = "packages/kernel" }
+
+[[package]]
 name = "wdf-keys"
 version = "0.0.0"
 source = { editable = "packages/keys" }
@@ -861,6 +872,27 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "wdf-jobdoc", editable = "packages/jobdoc" }]
+
+[[package]]
+name = "wdf-runtime"
+version = "0.0.0"
+source = { editable = "packages/runtime" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-jobdoc" },
+    { name = "wdf-kernel" },
+    { name = "wdf-keys" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-kernel", editable = "packages/kernel" },
+    { name = "wdf-keys", editable = "packages/keys" },
+]
 
 [[package]]
 name = "wdf-stages"

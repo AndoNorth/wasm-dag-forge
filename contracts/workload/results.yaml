@@ -1,0 +1,27 @@
+---
+# The schema file of the result format wdf.sim.v1. Schema: results.schema.json.
+# A results.xml is one root results element with schema and seed, block elements with id and kind, and row elements
+# whose values are attributes, exactly the columns of the block's kind. The value formats of each column type are
+# the rules of wdf_kernel.format. A change is additive only inside wdf.sim.v1: a new kind or a new column.
+schema: wdf.sim.v1
+kinds:
+  echo:
+    columns:
+      - {name: key, type: str}
+      - {name: value, type: str}
+  scalar:
+    columns:
+      - {name: name, type: str}
+      - {name: value, type: int}
+  digest:
+    columns:
+      - {name: name, type: str}
+      - {name: value, type: hex}
+  series:
+    columns:
+      - {name: step, type: int}
+      - {name: value, type: float}
+  payload:
+    columns:
+      - {name: step, type: int}
+      - {name: data, type: hex}

@@ -1,0 +1,82 @@
+---
+# How the exit of each pool's process is classified. Schema: exit-classes.schema.json.
+# deterministic says whether a retry fails the same way: true, false, or from-error-file, which takes the
+# deterministic field of the guest's error.json and is false when the file is absent.
+# exit_code is the code of the native library of the pool. Every native library exits 0 when it succeeds, 1 on an
+# unexpected error of its own and 2 on usage, so 0 and 2 are never a class's code. A class without a code is decided
+# by the runner, from wasmtime's exit and stderr for the simulate pool and from exit 137 with node events or its own
+# deadline for the others. The last stderr line of a native library is "reason: <class>: <detail>".
+pools:
+  simulate:
+    classes:
+      - class: ok
+        trigger: wasmtime exits 0 and results.xml is within its staging cap.
+        deterministic: true
+      - class: timeout
+        trigger: wasmtime stops the guest at its -W timeout deadline.
+        deterministic: false
+      - class: guest_memory_cap
+        trigger: >-
+          The guest grows its linear memory past -W max-memory-size, or the runtime library refuses a cap below
+          the minimum the component declares before starting wasmtime.
+        deterministic: true
+      - class: guest_failed
+        trigger: >-
+          The guest exits nonzero or traps, or exits 0 with a results.xml above its staging cap, which is
+          deterministic with the reason "guest_failed: output-over-cap: <bytes>".
+        deterministic: from-error-file
+      - class: host_error
+        trigger: wasmtime or the runner fails before or around the guest, such as a missing component or mount.
+        deterministic: false
+      - class: oom_killed
+        trigger: The container is OOM killed, exit 137 with a node OOM event, while the guest is below its cap.
+        deterministic: false
+  compile:
+    classes:
+      - class: compile_failed
+        trigger: >-
+          componentize-py refuses the source, or the component targets anything beyond world task in the
+          conformance check.
+        deterministic: true
+        exit_code: 3
+      - class: compile_dependency_unavailable
+        trigger: A locked dependency cannot be installed from the package mirror with its hash.
+        deterministic: false
+        exit_code: 4
+      - class: compile_timeout
+        trigger: The build runs past its --timeout.
+        deterministic: false
+        exit_code: 5
+      - class: compile_oom
+        trigger: The compile container is OOM killed, exit 137 with a node OOM event.
+        deterministic: false
+  aggregate:
+    classes:
+      - class: aggregate_failed
+        trigger: The aggregate library fails with an unexpected error, a bug.
+        deterministic: false
+        exit_code: 1
+      - class: aggregate_input_unavailable
+        trigger: The store cannot be reached for an input, STORE_UNAVAILABLE.
+        deterministic: false
+        exit_code: 3
+      - class: aggregate_input_corrupt
+        trigger: An input stays corrupt after its re-fetch, ARTIFACT_LOST with its cause.
+        deterministic: true
+        exit_code: 4
+      - class: aggregate_input_refused
+        trigger: The index reader refuses the index, such as a result of another tenant or a refused partial input.
+        deterministic: true
+        exit_code: 5
+      - class: aggregate_parse_failed
+        trigger: >-
+          A results.xml is not well formed, declares a DOCTYPE or breaks wdf.sim.v1, and the reason names the
+          input.
+        deterministic: true
+        exit_code: 6
+      - class: aggregate_oom
+        trigger: The aggregate container is OOM killed, exit 137 with a node OOM event.
+        deterministic: false
+      - class: aggregate_timeout
+        trigger: The aggregate runs past the runner's deadline.
+        deterministic: false

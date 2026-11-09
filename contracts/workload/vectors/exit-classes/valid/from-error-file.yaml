@@ -1,0 +1,10 @@
+pools:
+  simulate:
+    classes:
+      - {class: guest_failed, trigger: exits 1., deterministic: from-error-file}
+  compile:
+    classes:
+      - {class: compile_failed, trigger: refused., deterministic: true, exit_code: 3}
+  aggregate:
+    classes:
+      - {class: aggregate_failed, trigger: a bug., deterministic: false, exit_code: 1}

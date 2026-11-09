@@ -1,0 +1,5 @@
+schema: wdf.sim.v1
+kinds:
+  flag:
+    columns:
+      - {name: value, type: bool}

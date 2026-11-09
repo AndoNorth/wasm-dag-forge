@@ -249,6 +249,8 @@ Commands are written without the `nix develop -c uv run --frozen` prefix that ev
 ### Filed issues
 
 - [#272](https://github.com/AndoNorth/wasm-dag-forge/issues/272) **0.1 Workload contract** Lane 0, tier T0. Needs: nothing. Blocks: every other issue but the spikes.
+  Its Owns also holds the scaffolding its modules need to import and pass their tests: `packages/{runtime,kernel}/pyproject.toml`, `packages/runtime/src/wdf_runtime/__init__.py`, `packages/kernel/src/wdf_kernel/__init__.py`, the package data links under `packages/runtime/src/wdf_runtime/contract/`, the root `pyproject.toml` workspace sources and dev group entries for both packages, and their `uv.lock` workspace entries.
+  The rest of the skeletons stays with 0.2.
 - [#273](https://github.com/AndoNorth/wasm-dag-forge/issues/273) **0.2 Package skeletons and the toolchain pin** Lane 0, tier T0, and T1 for the wheel test. Needs: 0.1. Blocks: every code issue.
 - [#274](https://github.com/AndoNorth/wasm-dag-forge/issues/274) **S1b Heavy compile spike** Lane S, spike, timebox 1.5 days, throwaway code in `docs/delivery/spikes/S1b/code/`. Needs: nothing. Blocks: C.2.
 - [#275](https://github.com/AndoNorth/wasm-dag-forge/issues/275) **K.1 Deterministic kernel** Lane K, tier T0. Needs: lane 0. Blocks: K.3, W.1.
