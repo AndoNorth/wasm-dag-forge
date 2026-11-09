@@ -86,12 +86,18 @@ def test_a_malformed_result_is_a_parse_failure_naming_its_task(tmp_path, capsys)
 
 
 @pytest.mark.integration
-def test_run_through_store_index(store_session, tmp_path):
-    store_session.store().create_buckets()
+def test_run_through_store_index(start, tmp_path):
+    """One SeaweedFS for this test alone, removed when it ends, so no other test waits on it."""
+    with start("seaweedfs") as store:
+        aggregate_through(store, tmp_path)
+
+
+def aggregate_through(store, tmp_path: Path) -> None:
+    store.store().create_buckets()
     policy = RetryPolicy(sleep=lambda seconds: None)
 
     def role(name: str) -> ArtifactClient:
-        return ArtifactClient(store_session.endpoint, store_session.credentials[name], policy)
+        return ArtifactClient(store.endpoint, store.credentials[name], policy)
 
     simulate, local = role("simulate"), results(tmp_path)
     entries = []
