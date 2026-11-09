@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<results schema="wdf.sim.v1" seed="7">
+  <block id="echo" kind="echo">
+    <row key="name" value="&quot;a &lt;b&gt; &amp; c&#10;d&quot;"/>
+  </block>
+  <block id="total" kind="scalar">
+    <row name="sum" value="-12"/>
+    <row name="zero" value="0"/>
+  </block>
+  <block id="digest" kind="digest">
+    <row name="sha256" value="2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"/>
+  </block>
+  <block id="series.1" kind="series">
+    <row step="0" value="0.1"/>
+    <row step="1" value="1e-05"/>
+    <row step="2" value="-0.0"/>
+    <row step="3" value="1.0"/>
+  </block>
+  <block id="payload" kind="payload">
+    <row step="0" data="00ff10"/>
+    <row step="1" data=""/>
+  </block>
+</results>

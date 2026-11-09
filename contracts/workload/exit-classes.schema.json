@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "ExitClass": {
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "pattern": "^[a-z][a-z_]{0,63}$",
+          "title": "Class",
+          "type": "string"
+        },
+        "deterministic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "from-error-file",
+              "type": "string"
+            }
+          ],
+          "title": "Deterministic"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "maximum": 125,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The exit code of the pool's native library.",
+          "title": "Exit Code"
+        },
+        "trigger": {
+          "minLength": 1,
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "class",
+        "trigger",
+        "deterministic"
+      ],
+      "title": "ExitClass",
+      "type": "object"
+    },
+    "Pool": {
+      "additionalProperties": false,
+      "properties": {
+        "classes": {
+          "items": {
+            "$ref": "#/$defs/ExitClass"
+          },
+          "minItems": 1,
+          "title": "Classes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "classes"
+      ],
+      "title": "Pool",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:workload:exit-classes:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "exit-classes.yaml: how the exit of each pool's process is classified.",
+  "properties": {
+    "pools": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Pool"
+      },
+      "description": "One entry per pool of contracts/job/registry.json.",
+      "title": "Pools",
+      "type": "object"
+    }
+  },
+  "required": [
+    "pools"
+  ],
+  "title": "contracts/workload exit-classes",
+  "type": "object"
+}

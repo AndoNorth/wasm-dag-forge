@@ -1,0 +1,71 @@
+{
+  "$defs": {
+    "Column": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "description": "One of the column types of wdf_kernel.format.",
+          "pattern": "^[a-z]+$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "Kind": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "minItems": 1,
+          "title": "Columns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns"
+      ],
+      "title": "Kind",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:workload:results:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "results.yaml: the block kinds of wdf.sim.v1 with their columns.",
+  "properties": {
+    "kinds": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{0,31}$": {
+          "$ref": "#/$defs/Kind"
+        }
+      },
+      "title": "Kinds",
+      "type": "object"
+    },
+    "schema": {
+      "const": "wdf.sim.v1",
+      "title": "Schema",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "kinds"
+  ],
+  "title": "contracts/workload results",
+  "type": "object"
+}

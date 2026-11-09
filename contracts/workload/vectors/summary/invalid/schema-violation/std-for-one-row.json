@@ -1,0 +1,1 @@
+{"aggregation":"summary_stats","args":{},"blocks":{"total":{"value":{"count":1,"max":5,"mean":5.0,"min":5,"std":0.0}}},"inputs":3,"missing":["t3"],"rows":4,"schema":"wdf.summary/1"}

@@ -1,0 +1,28 @@
+{
+  "schema": "wdf.build-info/1",
+  "cache_key": "aad1b88f0687f403b62186d395b0fbd4f6f0f4ac03466ddecf24c7302fb64579",
+  "inputs": {
+    "source_hash": "1e6ed65d77d6364eeaed5a745ba5c4985ae2b700dd85d7cf7f027bdf294a33fc",
+    "lockfile_hash": "84321598744d84dbee2318e634c74c9aae39a1c253f1c4bd17ebf9ef2f807b11",
+    "componentize_py_version": "0.25.1",
+    "wit_version": "1.0.0",
+    "entry": "wdf_workloads.main"
+  },
+  "tools": {
+    "componentize_py": "0.25.1",
+    "wasm_tools": "1.262.0",
+    "uv": "0.11.21",
+    "guest_python": "3.14.0"
+  },
+  "component": {
+    "sha256": "6985ca1f4daa5a584a28eae043a239cb96689af1337ea13afb63e00c2bf512fa",
+    "size": 41943040
+  },
+  "imports": [
+    "wasi:cli/environment@0.2.9",
+    "wasi:filesystem/preopens@0.2.9"
+  ],
+  "exports": [
+    "wasi:cli/run@0.2.9"
+  ]
+}

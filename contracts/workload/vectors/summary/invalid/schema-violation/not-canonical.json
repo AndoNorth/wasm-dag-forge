@@ -1,0 +1,32 @@
+{
+  "schema": "wdf.summary/1",
+  "aggregation": "summary_stats",
+  "args": {
+    "blocks": [
+      "series"
+    ]
+  },
+  "inputs": 3,
+  "missing": [
+    "t3"
+  ],
+  "rows": 4,
+  "blocks": {
+    "series": {
+      "step": {
+        "count": 4,
+        "mean": 1.5,
+        "std": 1.2909944487358056,
+        "min": 0,
+        "max": 3
+      },
+      "value": {
+        "count": 4,
+        "mean": 0.25,
+        "std": 0.5,
+        "min": -0.5,
+        "max": 0.75
+      }
+    }
+  }
+}

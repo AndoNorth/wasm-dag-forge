@@ -1,0 +1,13 @@
+{
+  "args": {
+    "flag": true,
+    "n": 3,
+    "name": "forge",
+    "tags": [
+      "a",
+      "b"
+    ]
+  },
+  "seed": 42,
+  "workload": "echo"
+}

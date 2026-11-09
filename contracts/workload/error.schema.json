@@ -1,0 +1,29 @@
+{
+  "$id": "urn:wdf:schema:workload:error:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "error.json: the optional failure report a guest writes to /out before it exits nonzero.",
+  "properties": {
+    "code": {
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "title": "Code",
+      "type": "string"
+    },
+    "deterministic": {
+      "description": "Whether a retry would fail the same way.",
+      "title": "Deterministic",
+      "type": "boolean"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "deterministic"
+  ],
+  "title": "contracts/workload error",
+  "type": "object"
+}

@@ -1,0 +1,63 @@
+{
+  "$id": "urn:wdf:schema:workload:input:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "input.json: the bound params of a simulate task, written canonical to /in/input.json.",
+  "properties": {
+    "args": {
+      "description": "The bound arguments of the workload, with no placeholder left.",
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{0,31}$": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "title": "Args",
+      "type": "object"
+    },
+    "seed": {
+      "exclusiveMaximum": 9007199254740992,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "workload": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Workload",
+      "type": "string"
+    }
+  },
+  "required": [
+    "args",
+    "seed",
+    "workload"
+  ],
+  "title": "contracts/workload input",
+  "type": "object"
+}

@@ -1,0 +1,6 @@
+starting cpu_burn
+HEARTBEAT {"progress":0,"step":0,"steps":4}
+HEARTBEAT {"progress":0.25,"step":1,"steps":4}
+a log line that mentions HEARTBEAT later in the line
+HEARTBEAT {"progress":1e-05,"step":1,"steps":100000}
+HEARTBEAT {"progress":1.0,"step":4,"steps":4}

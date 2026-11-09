@@ -1,0 +1,1 @@
+{"blocks":[{"id":"args","kind":"echo","rows":[{"key":"flag","value":"true"},{"key":"n","value":"3"},{"key":"name","value":"\"forge\""},{"key":"tags","value":"[\"a\",\"b\"]"}]}],"schema":"wdf.sim.v1","seed":42}

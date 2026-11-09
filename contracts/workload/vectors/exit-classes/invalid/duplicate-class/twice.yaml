@@ -1,0 +1,11 @@
+pools:
+  simulate:
+    classes:
+      - {class: ok, trigger: wasmtime exits 0., deterministic: true}
+  compile:
+    classes:
+      - {class: compile_failed, trigger: refused., deterministic: true, exit_code: 3}
+      - {class: compile_failed, trigger: again., deterministic: true, exit_code: 4}
+  aggregate:
+    classes:
+      - {class: aggregate_failed, trigger: a bug., deterministic: false, exit_code: 1}

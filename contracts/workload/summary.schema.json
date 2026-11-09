@@ -1,0 +1,270 @@
+{
+  "$defs": {
+    "Digest": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]+$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "seed": {
+          "exclusiveMaximum": 9007199254740992,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task",
+        "seed",
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    },
+    "DigestListArgs": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "DigestListArgs",
+      "type": "object"
+    },
+    "DigestListSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "digest_list",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/DigestListArgs"
+        },
+        "digests": {
+          "description": "One entry per succeeded input, in index order.",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "title": "Digests",
+          "type": "array"
+        },
+        "inputs": {
+          "description": "The number of entries of the index.",
+          "minimum": 0,
+          "title": "Inputs",
+          "type": "integer"
+        },
+        "missing": {
+          "description": "The inputs that did not succeed, in task id order.",
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "rows": {
+          "description": "The number of rows read.",
+          "minimum": 0,
+          "title": "Rows",
+          "type": "integer"
+        },
+        "schema": {
+          "const": "wdf.summary/1",
+          "title": "Schema",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "inputs",
+        "missing",
+        "rows",
+        "aggregation",
+        "args",
+        "digests"
+      ],
+      "title": "DigestListSummary",
+      "type": "object"
+    },
+    "Stats": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "exclusiveMinimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Max"
+        },
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Min"
+        },
+        "std": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The sample standard deviation, null when count is 1.",
+          "title": "Std"
+        }
+      },
+      "required": [
+        "count",
+        "mean",
+        "std",
+        "min",
+        "max"
+      ],
+      "title": "Stats",
+      "type": "object"
+    },
+    "SummaryStatsArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blocks"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns"
+        }
+      },
+      "title": "SummaryStatsArgs",
+      "type": "object"
+    },
+    "SummaryStatsSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "summary_stats",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SummaryStatsArgs"
+        },
+        "blocks": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Stats"
+            },
+            "type": "object"
+          },
+          "description": "Per block id and numeric column, the statistics over every input.",
+          "title": "Blocks",
+          "type": "object"
+        },
+        "inputs": {
+          "description": "The number of entries of the index.",
+          "minimum": 0,
+          "title": "Inputs",
+          "type": "integer"
+        },
+        "missing": {
+          "description": "The inputs that did not succeed, in task id order.",
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "rows": {
+          "description": "The number of rows read.",
+          "minimum": 0,
+          "title": "Rows",
+          "type": "integer"
+        },
+        "schema": {
+          "const": "wdf.summary/1",
+          "title": "Schema",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "inputs",
+        "missing",
+        "rows",
+        "aggregation",
+        "args",
+        "blocks"
+      ],
+      "title": "SummaryStatsSummary",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:workload:summary:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "summary.json: the canonical output of an aggregate task.",
+  "discriminator": {
+    "mapping": {
+      "digest_list": "#/$defs/DigestListSummary",
+      "summary_stats": "#/$defs/SummaryStatsSummary"
+    },
+    "propertyName": "aggregation"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/SummaryStatsSummary"
+    },
+    {
+      "$ref": "#/$defs/DigestListSummary"
+    }
+  ],
+  "title": "contracts/workload summary"
+}

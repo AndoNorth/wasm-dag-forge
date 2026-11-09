@@ -1,0 +1,14 @@
+[project]
+name = "wdf-runtime"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["pydantic", "pyyaml", "wdf-jobdoc", "wdf-kernel", "wdf-keys"]
+
+[tool.uv.sources]
+wdf-jobdoc = { workspace = true }
+wdf-kernel = { workspace = true }
+wdf-keys = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

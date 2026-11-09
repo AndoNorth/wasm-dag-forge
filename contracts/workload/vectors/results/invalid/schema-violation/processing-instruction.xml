@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?render fast?>
+<results schema="wdf.sim.v1" seed="7">
+  <block id="b" kind="scalar">
+    <row name="n" value="1"/>
+  </block>
+</results>

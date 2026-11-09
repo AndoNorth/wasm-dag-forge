@@ -1,0 +1,187 @@
+{
+  "$defs": {
+    "Component": {
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "exclusiveMinimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sha256",
+        "size"
+      ],
+      "title": "Component",
+      "type": "object"
+    },
+    "KeyInputs": {
+      "additionalProperties": false,
+      "properties": {
+        "componentize_py_version": {
+          "minLength": 1,
+          "title": "Componentize Py Version",
+          "type": "string"
+        },
+        "entry": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+          "title": "Entry",
+          "type": "string"
+        },
+        "lockfile_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Lockfile Hash",
+          "type": "string"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        },
+        "wit_version": {
+          "minLength": 1,
+          "title": "Wit Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_hash",
+        "lockfile_hash",
+        "componentize_py_version",
+        "wit_version",
+        "entry"
+      ],
+      "title": "KeyInputs",
+      "type": "object"
+    },
+    "Timings": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "minimum": 0,
+          "title": "Check",
+          "type": "number"
+        },
+        "componentize": {
+          "minimum": 0,
+          "title": "Componentize",
+          "type": "number"
+        },
+        "install": {
+          "minimum": 0,
+          "title": "Install",
+          "type": "number"
+        },
+        "unpack": {
+          "minimum": 0,
+          "title": "Unpack",
+          "type": "number"
+        }
+      },
+      "required": [
+        "unpack",
+        "install",
+        "componentize",
+        "check"
+      ],
+      "title": "Timings",
+      "type": "object"
+    },
+    "Tools": {
+      "additionalProperties": false,
+      "properties": {
+        "componentize_py": {
+          "minLength": 1,
+          "title": "Componentize Py",
+          "type": "string"
+        },
+        "guest_python": {
+          "minLength": 1,
+          "title": "Guest Python",
+          "type": "string"
+        },
+        "uv": {
+          "minLength": 1,
+          "title": "Uv",
+          "type": "string"
+        },
+        "wasm_tools": {
+          "minLength": 1,
+          "title": "Wasm Tools",
+          "type": "string"
+        }
+      },
+      "required": [
+        "componentize_py",
+        "wasm_tools",
+        "uv",
+        "guest_python"
+      ],
+      "title": "Tools",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:workload:build-info:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "build-info.json: what a compile task built, from what and with which tools.",
+  "properties": {
+    "cache_key": {
+      "description": "wdf_keys.compile_cache_key over the inputs.",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cache Key",
+      "type": "string"
+    },
+    "component": {
+      "$ref": "#/$defs/Component"
+    },
+    "exports": {
+      "description": "The exports of the component as wasm-tools reports them.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Exports",
+      "type": "array"
+    },
+    "imports": {
+      "description": "The imports of the component as wasm-tools reports them.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Imports",
+      "type": "array"
+    },
+    "inputs": {
+      "$ref": "#/$defs/KeyInputs"
+    },
+    "schema": {
+      "const": "wdf.build-info/1",
+      "title": "Schema",
+      "type": "string"
+    },
+    "timings_s": {
+      "$ref": "#/$defs/Timings"
+    },
+    "tools": {
+      "$ref": "#/$defs/Tools"
+    }
+  },
+  "required": [
+    "schema",
+    "cache_key",
+    "inputs",
+    "tools",
+    "component",
+    "imports",
+    "exports",
+    "timings_s"
+  ],
+  "title": "contracts/workload build-info",
+  "type": "object"
+}
