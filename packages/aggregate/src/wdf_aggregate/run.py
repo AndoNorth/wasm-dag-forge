@@ -23,8 +23,6 @@ from .reduce import (
     write_summary,
 )
 
-STUBBED = ()
-
 # The exit code of each class of the aggregate pool in contracts/workload/exit-classes.yaml.
 EXIT_CODES = {
     "aggregate_failed": 1,

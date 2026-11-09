@@ -20,8 +20,6 @@ from wdf_storecheck.s3 import load_credentials
 from .reduce import UsageError
 from .run import EXIT_CODES, USAGE, classify, files, run
 
-STUBBED = ()
-
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="python -m wdf_aggregate")
