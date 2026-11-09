@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 PROBE = """
-import wdf_aggregate.__main__, wdf_aggregate.run
+import wdf_aggregate.__main__, wdf_aggregate.read, wdf_aggregate.reduce, wdf_aggregate.run
 """
 
 

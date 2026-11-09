@@ -2,11 +2,18 @@
 name = "wdf-aggregate"
 version = "0.0.0"
 requires-python = ">=3.13,<3.14"
-dependencies = ["wdf-artifactclient", "wdf-kernel"]
+dependencies = [
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "wdf-artifactclient",
+    "wdf-kernel",
+    "wdf-storecheck",
+]
 
 [tool.uv.sources]
 wdf-artifactclient = { workspace = true }
 wdf-kernel = { workspace = true }
+wdf-storecheck = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
