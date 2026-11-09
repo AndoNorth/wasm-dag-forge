@@ -1,6 +1,6 @@
 # Epic #11: Workload toolchain, guest contract and aggregate task - breakdown
 
-Status: draft
+Status: approved
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/11
 Architecture note: docs/architecture/14-wasm-workload-library.drawio
 Verifier: none, per decision 16.
@@ -219,7 +219,7 @@ Shared-file rules:
 
 ## 4. Issues
 
-One block per issue, in the shape of the lane issue template, replaced by `#NNN` links after filing.
+Each issue below was filed on 2026-11-09 from the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #11, and its body holds the block that stood here: scope, owns, consumes and produces, acceptance criteria, verifier, and needs and blocks as links.
 Done means, for every issue: `just ci` is green on the branch, the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files changed.
 Commands are written without the `nix develop -c uv run --frozen` prefix that every Python command takes.
 
@@ -246,211 +246,24 @@ Commands are written without the `nix develop -c uv run --frozen` prefix that ev
 | 17 Aggregate image | decision 18 (#10), A.2 (hardening tests) |
 | 18 Workload ladder fixtures | 0.1 (level 0), K.3 (level 1 and summaries) |
 
-### 0.1 Workload contract
+### Filed issues
 
-- Lane 0, tier T0.
-- Scope: pin `contracts/workload/` as 0.4 describes, with the models in `wdf_runtime.models`, the loader `wdf_runtime.contract`, the generator `wdf_runtime.gen`, `check.sh`, valid and invalid vectors for every file, the level 0 golden vectors (`vectors/level0/<workload>/{input.json,expected.json}`, each expected value derived by a formula a person can check: the args for `echo`, `n(n+1)(2n+1)/6` for `sum_squares`, a `hashlib` loop for `hash_chain`), the `wdf.sim.v1` format rules in `wdf_kernel.format` that the loader calls for `.xml` files, the row in `docs/contracts.md`, diagram 15, and the refinement of diagram 14 that section 3 describes.
-- Owns: `contracts/workload/**`, `packages/runtime/src/wdf_runtime/{models,contract,gen}.py`, `packages/runtime/tests/test_{loader,drift}.py`, `packages/kernel/src/wdf_kernel/format.py`, `packages/kernel/tests/test_format.py`, one row of `docs/contracts.md`, `docs/architecture/15-contracts.drawio` and its svg, `docs/architecture/14-wasm-workload-library.drawio` and its svg.
-- Consumes: artifact v3 staging names, job v2 params, events v3 keys. Produces: workload v1.
-- Acceptance:
-  - `python -m wdf_runtime.contract --check` exits 0 on every file and valid vector, and 1 with the `reason:` of its directory on every invalid vector, shown by `test_loader.py`.
-  - `python -m wdf_runtime.gen --check` exits 0, and exits 1 naming the file after a model edit, shown by `test_drift.py`.
-  - `wasm-tools component wit contracts/workload/wit` exits 0 and prints world `task`, shown by `test_wit_parses`.
-  - `scripts/check-contracts-map.sh` and `scripts/export-diagrams.sh --check` exit 0.
-- Verifier: `packages/runtime/tests/test_loader.py`, `test_drift.py`, `test_wit_parses`.
-- Needs: nothing. Blocks: every other issue but the spikes.
-
-### 0.2 Package skeletons and the toolchain pin
-
-- Lane 0, tier T0, and T1 for the wheel test.
-- Scope: create `packages/{kernel,workloads,compile,runtime,aggregate}` with `pyproject.toml`, `README.md`, a `STUBBED` list and stub entry points that raise `NotImplementedError("not implemented: owned by lane <letter>")`, add them to the root `pyproject.toml`, add `componentize-py==0.25.1` to `wdf-compile` and run `uv lock`, and add `wdf_runtime.pins` with its drift test against `uv.lock` and `nix/wasm-tools.nix`, with `GUEST_OVERHEAD_MIB` 128 and `GUEST_MIN_PAGES` 206 from S6 (decisions 20 and 21).
-  `wdf_kernel` declares no dependency, and a test fails on any import outside the standard library.
-  Register the `slow` marker in the root `pyproject.toml` and deselect it in `scripts/test.sh` (`-m "not integration and not slow"`), so the large-result tests run only when selected, as exit row 12 does.
-- Owns: the skeletons, root `pyproject.toml`, `uv.lock`, the marker line of `scripts/test.sh`, `packages/runtime/src/wdf_runtime/{__init__,pins}.py`, `packages/runtime/tests/test_{stubs,pins}.py`.
-- Consumes: `uv.lock` and `nix/wasm-tools.nix` for the pins, the S6 result.
-  Produces: the five package skeletons, `wdf_runtime.pins`.
-- Acceptance:
-  - `uv lock --check` exits 0, and `uv.lock` holds `componentize-py` 0.25.1 with hashes.
-  - `pytest --markers` lists `@pytest.mark.slow`, and `scripts/test.sh` collects no test marked `slow`.
-  - `pytest packages/{kernel,workloads,compile,runtime,aggregate} -q -rs -k "stubs or pins or wheel or stdlib_only"` passes.
-- Verifier: `test_stubs.py` per package, `test_pins.py`, `test_kernel_imports_stdlib_only`, `test_wheel` per package.
-- Needs: 0.1. Blocks: every code issue.
-
-### S1b Heavy compile spike
-
-- Lane S, spike, timebox 1.5 days, throwaway code in `docs/delivery/spikes/S1b/code/`.
-- Question: does the workload library bundle build inside the `ci` compile slot, which generated bundle size is killed at that slot, and can the build step run with no network?
-- Pass line: on 3 of 3 runs, (1) the workload library bundle (or, before W.1 exists, a bundle of the same size built from the kernel and a stand-in entry) builds under `docker run --memory 1g --memory-swap 1g --cpus 1` with peak memory at most 768 MiB and wall time under 60 s, (2) a generated heavy bundle is killed with exit 137 at that limit and the smallest killed size is recorded, and (3) the `componentize-py` step succeeds with `--network none` after an install step that had network.
-  The result also records whether `unshare --user --net` works inside that container with the default seccomp profile (D9).
-- Fail consequence: (1) fails, the compile slot resize goes to the cluster epic as a `revisit` before C.2; (2) fails, no generated size is killed within the compile timeout, so C.2 keeps only the bundle that exceeds a short `--timeout` and the compile OOM at the slot is left to #15 on the cluster; (3) fails, D9 falls back to no in-process enforcement and the captain is told.
-- Consumes: the `ci` compile slot of `deploy/presets/slots/ci.yaml`, `componentize-py` 0.25.1 in a throwaway venv.
-  Produces: `docs/delivery/spikes/S1b/heavy-compile.md` and its README row.
-- Blocks: C.2.
-
-### K.1 Deterministic kernel
-
-- Lane K, tier T0.
-- Scope: SplitMix64, FNV-1a 64, the row generator of each workload, `expected_blocks`, `expected_digest` over parsed values, golden vectors under `packages/kernel/tests/vectors/`, and the spike value of the epic (`d07cdf67a5d64fea`) reproduced when its inputs are recoverable, otherwise recorded as not reproduced.
-- Owns: `packages/kernel/src/wdf_kernel/{rng,digest,rows,expected}.py`, `packages/kernel/tests/test_{rng,digest,rows,vectors}.py`, `packages/kernel/tests/vectors/**`.
-- Consumes: the workload argument names of 0.4, the skeleton of 0.2.
-  Produces: kernel v1 generators and digest.
-- Acceptance: `pytest packages/kernel -k "golden or property or interpreters" -v` passes, including a Hypothesis property that equal (seed, args) give equal blocks and a test that two interpreters with different `PYTHONHASHSEED` give one digest.
-- Verifier: `test_golden_vectors`, `test_same_inputs_same_blocks`, `test_digest_stable_across_interpreters`.
-- Needs: lane 0. Blocks: K.3, W.1.
-
-### K.2 Result format writer, reader and host check
-
-- Lane K, tier T0.
-- Scope: the streaming writer (every import at module top), the streaming reader over `wdf_kernel.format` with the block flatten, `DOCTYPE` refusal and the `max_bytes` cap, the parsed-value comparison, and `python -m wdf_kernel.check results`, with the `summary` subcommand dispatched to `wdf_kernel.summary`, which K.2 creates as a stub listed in `STUBBED` for K.3 to take over. A test fails on any import inside a function body of `wdf_kernel` or `wdf_workloads` (the lazy import guard).
-- Owns: `packages/kernel/src/wdf_kernel/{writer,reader,check,__main__}.py`, `packages/kernel/tests/test_{writer,reader,check,imports}.py`, and the stub of `summary.py` until K.3 takes it over.
-- Consumes: workload v1 result format and vectors, `wdf_kernel.format` of 0.1, K.1's generators.
-  Produces: kernel v1 writer, reader and `check results`.
-- Acceptance:
-  - every valid result vector of `contracts/workload/vectors/results/` reads back to its expected values and every invalid one is refused with its reason, shown by `test_reader_vectors`;
-  - a written then read result of 1,000,000 rows round-trips with equal values, shown by `test_million_rows_round_trip` (marked `slow`, run in the exit test);
-  - bytes that differ only in attribute order or number spelling of the same value compare equal, shown by `test_compares_values_not_bytes`.
-- Verifier: the tests named above and `test_no_import_inside_functions`.
-- Needs: lane 0. Blocks: W.1, A.1.
-
-### K.3 Expected summaries and level 1 fixtures
-
-- Lane K, tier T0.
-- Scope: `expected_summary` for `summary_stats` and `digest_list` in pure Python over `inputs` keyed by task id (0.4), `python -m wdf_kernel.check summary` with D5's comparison, and one small argument set per level 1 workload with its expected digest, as `fixtures/level1/<workload>/{input.json,expected.json}` package data, for exit row 8, R.3's catalogue and later epics.
-  This epic names those argument sets, and a later epic adds its own beside them.
-- Owns: `packages/kernel/src/wdf_kernel/summary.py` (after K.2's stub), `packages/kernel/src/wdf_kernel/fixtures/**`, `packages/kernel/tests/test_summary*.py`.
-- Consumes: workload v1 summary format, K.1 and K.2.
-  Produces: kernel v1 `expected_summary`, `check summary` and the level 1 fixtures.
-- Acceptance: `pytest packages/kernel -k summary -v` passes, including `test_summary_tolerance_is_relative_1e9` and `test_missing_inputs_listed_when_partial`.
-- Verifier: the tests named above.
-- Needs: K.1, K.2. Blocks: A.2, R.3.
-
-### C.1 Compile library and bundle reader
-
-- Lane C, tier T1 (real `componentize-py` and `wasm-tools` on the host).
-- Scope: the bundle format reader and writer, `bundle.info -> BundleInfo` passing `wdf_jobcheck.resolver_contract`, the build procedure of 0.4 with its exit codes, the WIT check, `build-info.json`, and the cache key written into it. No cache or store I/O.
-- Owns: `packages/compile/src/wdf_compile/{bundle,build,__main__}.py`, `packages/compile/tests/test_{bundle,build,info}*.py`.
-- Consumes: workload v1 WIT world, build info and bundle format, `wdf_runtime.pins`, `wdf_keys.compile_cache_key` (events v3), `BundleInfo` and `resolver_contract` (validator v1).
-  Produces: compile v1 `build` and `bundle.info`.
-- Acceptance:
-  - a bundle of a ten-line entry builds, `wasm-tools component targets contracts/workload/wit` accepts the component, and `build-info.json` passes the loader, shown by `test_build_minimal_bundle`;
-  - two builds of one bundle give the same `cache_key` and possibly different component hashes, shown by `test_rebuild_same_key`;
-  - a missing `Run` class, an import of a native wheel, an extra WIT import and a bundle path with `..` or a link each exit with `compile_failed`, shown by `test_compile_failed_cases`;
-  - a bundle with one pure-Python dependency installs from a local `--find-links` directory with `--require-hashes`, and a tampered hash fails, shown by `test_locked_dependency_install`;
-  - `resolver_contract` passes over a resolver built on `bundle.info`, shown by `test_bundle_info_meets_resolver_contract`.
-- Verifier: the tests named above and the wheel test.
-- Needs: lane 0. Blocks: C.2, R.1 (guest half), W.1.
-
-### C.2 Compile limits and heavy-compile bundles
-
-- Lane C, tier T1.
-- Scope: the `--timeout` with `compile_timeout`, the unreachable `--find-links` with `compile_dependency_unavailable`, the refusal of a source-only dependency (`--no-build`), the network step per D9 and S1b, and `python -m wdf_compile.heavy` with the sizes S1b measured.
-- Owns: `packages/compile/src/wdf_compile/{limits,heavy}.py`, `packages/compile/tests/test_{limits,heavy}*.py`.
-- Consumes: the exit class table of workload v1, the S1b result.
-  Produces: compile v1 limits and `python -m wdf_compile.heavy`.
-- Acceptance: `pytest packages/compile -k "timeout or dependency_unavailable or source_build_refused or no_network_step or heavy" -v` passes, and `test_exit_137_classifies_as_compile_oom` holds against the exit class table.
-- Verifier: the tests named above.
-- Needs: C.1, S1b.
-
-### R.1 Runtime library
-
-- Lane R, tier T0 for the table, T1 for the guest half.
-- Scope: `command` with the guest cap of `GUEST_OVERHEAD_MIB`, `warm_up` (decision 21), `classify`, the heartbeat parser, the error file reader, the `/in` copy and re-hash, `python -m wdf_runtime run` with `--cache-dir`, the refusal of a guest cap below `GUEST_MIN_PAGES` (decision 20), a `results.xml` above its staging cap classified as `guest_failed`, and a test that runs a real component in a `wdf_artifactclient.testing.make_scratch` directory and checks `output/` against the declared outputs of `wdf_artifactclient.staging.contract()`.
-  `RUNNERS` stays Python only, because its guests are Python callables.
-- Owns: `packages/runtime/src/wdf_runtime/{command,classify,heartbeat,run,__main__}.py`, `packages/runtime/tests/test_{command,classify,heartbeat,run,staging}*.py`.
-- Consumes: workload v1 guest contract and exit class table, `wdf_runtime.pins`, artifact v3 staging contract, a component built by C.1.
-  Produces: runtime v1 `command`, `warm_up`, `classify` and `run`.
-- Acceptance:
-  - every row of `exit-classes.yaml` has a test that feeds its trigger to `classify` and gets its class, shown by `test_every_class_row_has_a_case`;
-  - a component built by C.1 runs, writes `/out`, cannot see an unset environment variable, and its `/in` copy is re-hashed, shown by `test_run_minimal_guest` and `test_input_copy_rehashed`;
-  - a cap below the minimum is refused before `wasmtime` starts, shown by `test_cap_below_minimum_refused`;
-  - after `warm_up` the module cache holds the component and a following run adds no cache entry, shown by `test_warm_up_fills_module_cache`;
-  - a real guest's `output/` holds the declared file of the simulate task type within its cap, shown by `test_real_guest_outputs_meet_staging`;
-  - a result above the staging cap after a zero exit gives `guest_failed` with `output-over-cap`, shown by `test_over_cap_result_is_guest_failed`.
-- Verifier: the tests named above.
-- Needs: lane 0, C.1 for the guest half. Blocks: W.1, R.2, R.3.
-
-### W.1 Level 0 workloads, entry module and bundle
-
-- Lane W, tier T1.
-- Scope: `wdf_workloads.main` dispatching to every workload of 0.4 with top-level imports, `echo`, `sum_squares`, `hash_chain` writing `results.xml` (decision 17), the `unknown-workload` error, and `python -m wdf_workloads.bundle`.
-  W.1 creates `level1.py` and `fault.py` as stubs listed in `STUBBED`, so the dispatch and the lazy import guard hold, and W.2 and W.3 take them over.
-- Owns: `packages/workloads/src/wdf_workloads/{main,level0,bundle}.py`, `packages/workloads/tests/test_{level0,bundle}*.py`, and the stubs of `level1.py` and `fault.py` until W.2 and W.3 take them over.
-- Consumes: workload v1 input, error file and level 0 vectors, K.1 and K.2, C.1 to build and R.1 to run.
-  Produces: workloads v1 entry module, level 0 and the bundle.
-- Acceptance: each level 0 vector of `contracts/workload/vectors/level0/` gives its expected values on the host and in the guest (built by C.1, run by R.1), each in under a second of guest time, shown by `test_level0_golden_host` and `test_level0_golden_guest`; the bundle builder gives the same bytes twice, shown by `test_bundle_is_reproducible`.
-- Verifier: the tests named above.
-- Needs: K.1, K.2, C.1, R.1. Blocks: W.2, W.3.
-
-### W.2 Level 1 workloads
-
-- Lane W, tier T1.
-- Scope: `noop`, `cpu_burn`, `mem_hold`, `io_churn` with an output size argument, calibrated work units and heartbeats.
-- Owns: `packages/workloads/src/wdf_workloads/level1.py` (after W.1's stub), `packages/workloads/tests/test_level1*.py`.
-- Consumes: workload v1 heartbeat and result format, K.1's generators.
-  Produces: workloads v1 level 1.
-- Acceptance: each workload's guest result equals `expected_blocks` by parsed values, the heartbeat count matches `steps / heartbeat_every`, and `io_churn` with 1,000,000 rows and `row_bytes` 8 runs under the `ci` guest cap (the 384 MiB simulate slot less `GUEST_OVERHEAD_MIB`), writes a `results.xml` under its staging cap and checks equal, shown by `test_level1_guest_equals_host`, `test_heartbeat_cadence` and `test_io_churn_million_rows_in_guest` (marked `slow`).
-- Verifier: the tests named above.
-- Needs: W.1. Blocks: R.3.
-
-### W.3 Fault workload
-
-- Lane W, tier T1.
-- Scope: the `fault` modes of 0.4 (without "fail once", per decision 19), each documenting the class it must produce.
-- Owns: `packages/workloads/src/wdf_workloads/fault.py` (after W.1's stub), `packages/workloads/tests/test_fault*.py`.
-- Consumes: workload v1 exit class table and error file, R.1.
-  Produces: workloads v1 `fault`.
-- Acceptance: `test_every_fault_mode_has_its_class` runs each mode through R.1 and gets the class the mode documents, except `memory_kill`, whose exit 137 is #10's and is shown against the table only.
-- Verifier: the test named above.
-- Needs: W.1. Blocks: R.2.
-
-### R.2 Wasmtime behaviour pin tests
-
-- Lane R, tier T1.
-- Scope: contract tests that pin, for `wasmtime 48.0.7` and the real workload component, the stderr strings and exit codes of the timeout, the memory cap, a trap, an uncaught exception and a nonzero exit, the instantiation failure below the component's declared initial memory, a fresh instance per run (a module-level counter stays at 1), the module cache, and what S6 measured: a warm run's peak resident memory less the guest linear memory stays within `GUEST_OVERHEAD_MIB`, a cold first run keeps its compile memory so the warm-up rule of decision 21 still applies, and whether `-W timeout` counts compile time.
-  R.2 sets `GUEST_MIN_PAGES` to the declared initial memory of the built workload component.
-- Owns: `packages/runtime/tests/test_pin*.py`, `packages/runtime/src/wdf_runtime/pins.py` (the `GUEST_OVERHEAD_MIB` and `GUEST_MIN_PAGES` values only, after 0.2 created it).
-- Consumes: `wasmtime 48.0.7`, the S6 result, R.1, the workload component built from W.1's bundle with W.3's `fault`.
-  Produces: runtime v1 pins of `wasmtime` behaviour.
-- Acceptance: `pytest packages/runtime -k pin -v` passes and prints the `wasmtime` version it pinned, including `test_pin_warm_overhead_within_guest_overhead`, `test_pin_cold_run_keeps_compile_memory`, `test_pin_timeout_against_compile_time` and `test_pin_workload_component_minimum`, and changing the pinned version string makes `test_pins_name_the_tested_version` fail.
-- Verifier: the tests named above.
-- Needs: R.1, W.3.
-
-### R.3 Calibration and catalogue
-
-- Lane R, tier T1.
-- Scope: `python -m wdf_runtime.calibrate`, `catalogue.yaml` with its CPU basis and the nominal durations of K.3's level 1 argument sets, the tolerance of D2.
-- Owns: `packages/runtime/src/wdf_runtime/{calibrate,catalogue.yaml}`, `packages/runtime/tests/test_calibrate*.py`.
-- Consumes: R.1, `cpu_burn` of W.2, the level 1 fixtures of K.3.
-  Produces: runtime v1 calibration and catalogue.
-- Acceptance: `python -m wdf_runtime.calibrate --component C --runs 3` prints `units_per_second`, and `--check` exits 1 for a catalogue rate off by 50 percent, shown by `test_check_refuses_rate_outside_tolerance`.
-- Verifier: the test named above.
-- Needs: R.1, W.2, K.3.
-
-### A.1 Aggregate library
-
-- Lane A, tier T0 for the reduce, T1 for the store (marked `integration`, on `store_session`).
-- Scope: `run` and the two commands of 0.4, `summary_stats` and `digest_list`, the per-file reduce, partial results, the exit codes, and `pandas` and `numpy` pinned in `uv.lock`.
-- Owns: `packages/aggregate/**` except A.2's files.
-- Consumes: workload v1 summary format and exit class table, artifact v3 `read_index` and `open_results`, the store fixture `store_session`, K.2's reader.
-  Produces: aggregate v1 `run` and `files`.
-- Acceptance:
-  - `summary.json` equals `expected_summary` within D5 for two level 1 results, shown by `test_summary_equals_host_expectation`;
-  - the same inputs in another arrival order give the same bytes, shown by `test_output_bytes_independent_of_arrival_order`;
-  - through the store, an index of two results gives the summary without the aggregate listing a bucket, shown by `test_run_through_store_index`;
-  - `STORE_UNAVAILABLE`, `ARTIFACT_LOST` and a refused index each exit with their class, shown by `test_input_failures_classified`.
-- Verifier: the tests named above and the wheel test.
-- Needs: lane 0, K.2. Blocks: A.2.
-
-### A.2 Aggregate hardening and memory
-
-- Lane A, tier T0.
-- Scope: entity expansion, a file above the reader's `max_bytes` (the staging cap of `results.xml`), `DOCTYPE` (D11) and a malformed block, each `aggregate_parse_failed` naming the input, and the peak memory of one result at the staging cap made of the smallest valid rows (`scalar` rows, about 2.6 million), marked `slow`.
-- Owns: `packages/aggregate/tests/test_{hardening,memory}*.py`.
-- Consumes: A.1, the level 1 fixtures and reader of K.2 and K.3, the artifact v3 staging cap.
-  Produces: tests only.
-- Acceptance: `pytest packages/aggregate -k "entity_expansion or oversize or doctype or malformed_block or cap_sized_result_peak" -v` passes, with `peak_rss_mib` printed and below the 1 GiB aggregate slot of `deploy/presets/slots/ci.yaml`.
-- Verifier: the tests named above.
-- Needs: A.1, K.3.
+- [#272](https://github.com/AndoNorth/wasm-dag-forge/issues/272) **0.1 Workload contract** Lane 0, tier T0. Needs: nothing. Blocks: every other issue but the spikes.
+- [#273](https://github.com/AndoNorth/wasm-dag-forge/issues/273) **0.2 Package skeletons and the toolchain pin** Lane 0, tier T0, and T1 for the wheel test. Needs: 0.1. Blocks: every code issue.
+- [#274](https://github.com/AndoNorth/wasm-dag-forge/issues/274) **S1b Heavy compile spike** Lane S, spike, timebox 1.5 days, throwaway code in `docs/delivery/spikes/S1b/code/`. Needs: nothing. Blocks: C.2.
+- [#275](https://github.com/AndoNorth/wasm-dag-forge/issues/275) **K.1 Deterministic kernel** Lane K, tier T0. Needs: lane 0. Blocks: K.3, W.1.
+- [#276](https://github.com/AndoNorth/wasm-dag-forge/issues/276) **K.2 Result format writer, reader and host check** Lane K, tier T0. Needs: lane 0. Blocks: W.1, A.1.
+- [#277](https://github.com/AndoNorth/wasm-dag-forge/issues/277) **K.3 Expected summaries and level 1 fixtures** Lane K, tier T0. Needs: K.1, K.2. Blocks: A.2, R.3.
+- [#278](https://github.com/AndoNorth/wasm-dag-forge/issues/278) **C.1 Compile library and bundle reader** Lane C, tier T1 (real `componentize-py` and `wasm-tools` on the host). Needs: lane 0. Blocks: C.2, R.1 for the guest half, W.1.
+- [#279](https://github.com/AndoNorth/wasm-dag-forge/issues/279) **C.2 Compile limits and heavy-compile bundles** Lane C, tier T1. Needs: C.1, S1b.
+- [#280](https://github.com/AndoNorth/wasm-dag-forge/issues/280) **R.1 Runtime library** Lane R, tier T0 for the table, T1 for the guest half. Needs: lane 0, C.1 for the guest half. Blocks: W.1, R.2, R.3.
+- [#284](https://github.com/AndoNorth/wasm-dag-forge/issues/284) **R.2 Wasmtime behaviour pin tests** Lane R, tier T1. Needs: R.1, W.3.
+- [#285](https://github.com/AndoNorth/wasm-dag-forge/issues/285) **R.3 Calibration and catalogue** Lane R, tier T1. Needs: R.1, W.2, K.3.
+- [#281](https://github.com/AndoNorth/wasm-dag-forge/issues/281) **W.1 Level 0 workloads, entry module and bundle** Lane W, tier T1. Needs: K.1, K.2, C.1, R.1. Blocks: W.2, W.3.
+- [#282](https://github.com/AndoNorth/wasm-dag-forge/issues/282) **W.2 Level 1 workloads** Lane W, tier T1. Needs: W.1. Blocks: R.3.
+- [#283](https://github.com/AndoNorth/wasm-dag-forge/issues/283) **W.3 Fault workload** Lane W, tier T1. Needs: W.1. Blocks: R.2.
+- [#286](https://github.com/AndoNorth/wasm-dag-forge/issues/286) **A.1 Aggregate library** Lane A, tier T0 for the reduce, T1 for the store (marked `integration`, on `store_session`). Needs: lane 0, K.2. Blocks: A.2.
+- [#287](https://github.com/AndoNorth/wasm-dag-forge/issues/287) **A.2 Aggregate hardening and memory** Lane A, tier T0. Needs: A.1, K.3.
 
 ## 5. Order, stubs and spikes
 
