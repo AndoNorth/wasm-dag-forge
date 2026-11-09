@@ -1,0 +1,13 @@
+[project]
+name = "wdf-aggregate"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["wdf-artifactclient", "wdf-kernel"]
+
+[tool.uv.sources]
+wdf-artifactclient = { workspace = true }
+wdf-kernel = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
