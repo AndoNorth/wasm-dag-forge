@@ -2,7 +2,7 @@
 
 Inserts N accepted rows in chunks of 1,000, each chunk in one transaction with its accepted events,
 then the remaining 13 events of a two-task job, through the same libraries the writers will call.
-Every key and time derives from the job number, so a second run inserts nothing.
+Every key and time derives from the job number and the day, so a rerun that day inserts nothing.
 It asserts counts and idempotence and has no timing guard, the seconds it prints are the measure.
 """
 
@@ -25,8 +25,9 @@ CHUNK = 1_000
 TENANT = "bench"
 TASKS = ("compile", "sim")
 EVENTS_PER_JOB = 14
-# A fixed origin keeps every event key, which includes the time, the same from run to run.
-ORIGIN = datetime(2026, 11, 1, tzinfo=UTC)
+# The start of the day keeps every event key, which includes the time, the same from run to run,
+# and keeps the events younger than the retention policy that drops old chunks.
+ORIGIN = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 JOB_SPACING = timedelta(seconds=6)
 EVENT_SPACING = timedelta(milliseconds=400)
 OK, WRONG_COUNT = 0, 1
