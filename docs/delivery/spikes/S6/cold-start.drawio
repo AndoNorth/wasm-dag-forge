@@ -1,0 +1,54 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="t" value="Spike S6: first run of the workload component in the ci simulate slot (250m CPU, 384 MiB)" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+      <mxGeometry x="20" y="10" width="900" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="L" value="One process does compile and run (not allowed)" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="60" width="440" height="470" as="geometry"/>
+    </mxCell>
+    <mxCell id="L1" value="Process 1: wasmtime run guest.wasm&#xa;empty module cache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="L">
+      <mxGeometry x="40" y="50" width="360" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="L2" value="Compile the 18.1 MiB component: 29.0 to 29.6 s (CPU quota bound at 250m), peak working set 290 to 326 MiB of 384" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="L">
+      <mxGeometry x="40" y="130" width="360" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="L3" value="Compile memory is not given back before the guest starts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="L">
+      <mxGeometry x="40" y="230" width="360" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="L4" value="Guest holds 64 MiB more: completes (368 MiB peak)&#xa;Guest holds 128 MiB more: OOM killed, exit 137 (383 MiB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="L">
+      <mxGeometry x="40" y="310" width="360" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="L5" value="A cap computed from the warm overhead is unsafe here" style="text;html=1;whiteSpace=wrap;align=center;fontStyle=2;" vertex="1" parent="L">
+      <mxGeometry x="40" y="400" width="360" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="R" value="Warm-up process, then the task in a new process (the rule)" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="500" y="60" width="440" height="470" as="geometry"/>
+    </mxCell>
+    <mxCell id="R1" value="Process 1: warm-up, runs noop&#xa;fills the module cache (10.6 MiB), no -W timeout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="R">
+      <mxGeometry x="40" y="50" width="360" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="R2" value="About 29 s once per component per pod, then it exits and frees its memory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="R">
+      <mxGeometry x="40" y="140" width="360" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="R3" value="Process 2: the task guest, runs warm in a new process: 0.54 to 0.61 s, peak working set 69 to 70 MiB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="R">
+      <mxGeometry x="40" y="220" width="360" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="R4" value="Worked example: slot 384 MiB, GUEST_OVERHEAD_MIB 128, so -W max-memory-size is 256 MiB. A guest that holds 256 MiB completes, peak working set 309 MiB of 384" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="R">
+      <mxGeometry x="40" y="310" width="360" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="R5" value="Same guest, cold, was killed at 128 MiB held" style="text;html=1;whiteSpace=wrap;align=center;fontStyle=2;" vertex="1" parent="R">
+      <mxGeometry x="40" y="410" width="360" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="L" source="L1" target="L2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="L" source="L2" target="L3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="L" source="L3" target="L4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="R" source="R1" target="R2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="R" source="R2" target="R3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="R" source="R3" target="R4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="o" value="The workers epic builds the pool worker that runs the warm-up before the first task of a component on a pod, with a heartbeat timeout above 30 s. Source: docs/delivery/spikes/S6/cold-start.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="20" y="550" width="920" height="50" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>
