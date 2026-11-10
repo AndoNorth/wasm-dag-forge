@@ -1,0 +1,473 @@
+{
+  "$defs": {
+    "BoundSummaryStatsArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blocks"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns"
+        }
+      },
+      "title": "BoundSummaryStatsArgs",
+      "type": "object"
+    },
+    "BoundSummaryStatsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "summary_stats",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/BoundSummaryStatsArgs"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "aggregation"
+      ],
+      "title": "BoundSummaryStatsParams",
+      "type": "object"
+    },
+    "CompileParams": {
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "maxLength": 128,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+          "title": "Entry",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceReference"
+        }
+      },
+      "required": [
+        "source",
+        "entry"
+      ],
+      "title": "CompileParams",
+      "type": "object"
+    },
+    "DigestListArgs": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "DigestListArgs",
+      "type": "object"
+    },
+    "DigestListParams": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "const": "digest_list",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/DigestListArgs"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "aggregation"
+      ],
+      "title": "DigestListParams",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "description": "A CloudEvent as the platform profile defines it, with the data as a plain mapping.\n\nThe data is validated against the JSON Schema its `dataschema` names, so a reader that knows\nonly an older minor can still carry the added optional fields.",
+      "properties": {
+        "attempt": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempt"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        },
+        "datacontenttype": {
+          "const": "application/json",
+          "title": "Datacontenttype",
+          "type": "string"
+        },
+        "dataschema": {
+          "title": "Dataschema",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "jobclass": {
+          "title": "Jobclass",
+          "type": "string"
+        },
+        "jobid": {
+          "title": "Jobid",
+          "type": "string"
+        },
+        "priorityclass": {
+          "title": "Priorityclass",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "specversion": {
+          "const": "1.0",
+          "title": "Specversion",
+          "type": "string"
+        },
+        "subject": {
+          "title": "Subject",
+          "type": "string"
+        },
+        "taskid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Taskid"
+        },
+        "tenant": {
+          "title": "Tenant",
+          "type": "string"
+        },
+        "time": {
+          "title": "Time",
+          "type": "string"
+        },
+        "traceparent": {
+          "title": "Traceparent",
+          "type": "string"
+        },
+        "tracestate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tracestate"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "specversion",
+        "id",
+        "source",
+        "type",
+        "time",
+        "datacontenttype",
+        "dataschema",
+        "subject",
+        "tenant",
+        "jobid",
+        "priorityclass",
+        "jobclass",
+        "traceparent",
+        "data"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "IndexReference": {
+      "additionalProperties": false,
+      "description": "The content-addressed reference of an aggregate index object, the `index` kind.",
+      "properties": {
+        "kind": {
+          "const": "index",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-sources/sha256/[0-9a-f]{2}/[0-9a-f]{64}$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "IndexReference",
+      "type": "object"
+    },
+    "Input": {
+      "additionalProperties": false,
+      "description": "input.json: the bound params of a simulate task, written canonical to /in/input.json.",
+      "properties": {
+        "args": {
+          "description": "The bound arguments of the workload, with no placeholder left.",
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{0,31}$": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "seed": {
+          "exclusiveMaximum": 9007199254740992,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "workload": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Workload",
+          "type": "string"
+        }
+      },
+      "required": [
+        "args",
+        "seed",
+        "workload"
+      ],
+      "title": "Input",
+      "type": "object"
+    },
+    "SourceReference": {
+      "additionalProperties": false,
+      "description": "The content-addressed reference of a source bundle, the `source` kind of the artifacts.",
+      "properties": {
+        "kind": {
+          "const": "source",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-sources/sha256/[0-9a-f]{2}/[0-9a-f]{64}$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "SourceReference",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:activity:task-input:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The one argument of run_task: the request and what the worker needs beside it.",
+  "properties": {
+    "batch_id": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "title": "Batch Id",
+      "type": "string"
+    },
+    "cache_key": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The compile cache key, null on any other task.",
+      "title": "Cache Key"
+    },
+    "params": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CompileParams"
+        },
+        {
+          "$ref": "#/$defs/Input"
+        },
+        {
+          "discriminator": {
+            "mapping": {
+              "digest_list": "#/$defs/DigestListParams",
+              "summary_stats": "#/$defs/BoundSummaryStatsParams"
+            },
+            "propertyName": "aggregation"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/BoundSummaryStatsParams"
+            },
+            {
+              "$ref": "#/$defs/DigestListParams"
+            }
+          ]
+        }
+      ],
+      "description": "The params of the bound plan task, with no placeholder left.",
+      "title": "Params"
+    },
+    "request": {
+      "$ref": "#/$defs/Event",
+      "description": "A dev.wdf.task.requested.v1 event, as wdf_events.to_bytes writes it."
+    },
+    "resume_counter": {
+      "minimum": 0,
+      "title": "Resume Counter",
+      "type": "integer"
+    },
+    "seed": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "task_attempt": {
+      "minimum": 1,
+      "title": "Task Attempt",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "request",
+    "task_attempt",
+    "resume_counter",
+    "batch_id",
+    "seed",
+    "params",
+    "cache_key"
+  ],
+  "title": "contracts/activity task-input",
+  "type": "object"
+}

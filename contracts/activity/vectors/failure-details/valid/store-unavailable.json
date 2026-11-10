@@ -1,0 +1,10 @@
+{
+  "details": {
+    "checkpoint": null,
+    "deterministic": false,
+    "log_tail": null,
+    "reason": "STORE_UNAVAILABLE: connection refused",
+    "started_at": "2026-11-10T12:00:05.000000Z"
+  },
+  "type": "STORE_UNAVAILABLE"
+}

@@ -1,0 +1,38 @@
+{
+  "batch_id": "5b1f0c3e-8a2d-4e6f-9b7a-1c2d3e4f5a6b",
+  "cache_key": null,
+  "params": {
+    "args": {
+      "heartbeat_every": 100,
+      "n": 1000
+    },
+    "seed": 7,
+    "workload": "pi"
+  },
+  "request": {
+    "data": {
+      "cpu_cores": 0.25,
+      "deadline": "2026-11-10T14:00:00.000000Z",
+      "inputs": [],
+      "memory_mib": 384,
+      "task_type": "simulate"
+    },
+    "datacontenttype": "application/json",
+    "dataschema": "urn:wdf:schema:task.requested:1.0",
+    "id": "579a2286-be81-522f-821b-c664abfaec0c",
+    "jobclass": "short",
+    "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+    "priorityclass": "standard",
+    "source": "/wdf/workflow",
+    "specversion": "1.0",
+    "subject": "3a9617fa-df7c-5760-a644-42d559e0f433/sim-0",
+    "taskid": "sim-0",
+    "tenant": "acme",
+    "time": "2026-11-10T12:00:00.123456Z",
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    "type": "dev.wdf.task.requested.v1"
+  },
+  "resume_counter": 0,
+  "seed": 7,
+  "task_attempt": 1
+}

@@ -1,0 +1,54 @@
+# Every Temporal name that the workflow, its workers and its callers share. Schema: naming.schema.json.
+# A retry's maximum_attempts of 0 means no limit, as in Temporal's own retry policy.
+namespace: wdf
+workflow:
+  type: JobWorkflow
+  queue: wdf-workflow
+  # The workflow id of a job is wdf_keys.workflow_id(job_id).
+  id: wdf_keys.workflow_id
+  id_reuse_policy: REJECT_DUPLICATE
+  versioning_behavior: PINNED
+  deployment: wdf-workflow-worker
+  build_id_env: WDF_BUILD_ID
+# One unversioned control queue per build, named with the build id of WDF_BUILD_ID.
+control_queue: wdf-control-<build id>
+# Unversioned, one per pool of contracts/job/registry.json.
+pools:
+  compile: wdf-compile
+  simulate: wdf-simulate
+  aggregate: wdf-aggregate
+  gpu: wdf-gpu
+activities:
+  pool:
+    - name: run_task
+      retry: {maximum_attempts: 1}
+      cancellation_type: WAIT_CANCELLATION_COMPLETED
+  control:
+    - {name: load_plan, retry: &control {maximum_attempts: 5, initial_interval_s: 1, backoff_coefficient: 2.0,
+                                         maximum_interval_s: 60}}
+    - {name: cache_lookup, retry: *control}
+    - {name: cache_record, retry: *control}
+    - {name: cache_invalidate, retry: *control}
+    - {name: commit, retry: *control}
+    - {name: index_checkpoint, retry: *control}
+    - {name: build_index, retry: *control}
+  local:
+    - {name: place, retry: &local {maximum_attempts: 0, initial_interval_s: 1, backoff_coefficient: 2.0,
+                                   maximum_interval_s: 600}}
+    - {name: emit, retry: *local}
+signals: [cancel, terminate, pause, resume]
+queries: [status]
+search_attributes:
+  WdfTenant: keyword
+  WdfPriorityClass: keyword
+  WdfJobClass: keyword
+  WdfJobId: keyword
+  WdfSubmittedAt: datetime
+# As wdf_artifactreaper.schedule delivers them.
+schedules:
+  artifact_reaper:
+    id: wdf-artifact-reaper
+    queue: wdf-artifact-reaper
+    workflow: ReapWorkflow
+    workflow_id: wdf-artifact-reaper-pass
+    activity: reap_pass

@@ -1,0 +1,32 @@
+{
+  "$id": "urn:wdf:schema:temporal:control-signal:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The argument of the signals cancel, terminate and pause.",
+  "properties": {
+    "control_seq": {
+      "maximum": 2147483647,
+      "minimum": 1,
+      "title": "Control Seq",
+      "type": "integer"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 1024,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Reason"
+    }
+  },
+  "required": [
+    "control_seq",
+    "reason"
+  ],
+  "title": "contracts/temporal control-signal",
+  "type": "object"
+}

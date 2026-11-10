@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "CheckpointReference": {
+      "additionalProperties": false,
+      "description": "A checkpoint reference, a subset of contracts/artifact/reference.schema.json.",
+      "properties": {
+        "kind": {
+          "const": "checkpoint",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-checkpoints/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "CheckpointReference",
+      "type": "object"
+    },
+    "LogTailReference": {
+      "additionalProperties": false,
+      "description": "The reference of an attempt's log tail, narrowed as ResultReference narrows its kinds.",
+      "properties": {
+        "kind": {
+          "const": "log-tail",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-(sources|components|results|checkpoints)/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "LogTailReference",
+      "type": "object"
+    },
+    "ProducerRef": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "pattern": "^r[0-9]+a[0-9]+$",
+          "title": "Attempt",
+          "type": "string"
+        },
+        "job": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job",
+          "type": "string"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "task",
+        "attempt"
+      ],
+      "title": "ProducerRef",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:activity:failure-details:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The details of the ApplicationError a worker raises, whose type is the failure class.",
+  "properties": {
+    "checkpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CheckpointReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The latest checkpoint the attempt uploaded."
+    },
+    "deterministic": {
+      "title": "Deterministic",
+      "type": "boolean"
+    },
+    "log_tail": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LogTailReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Null only when the upload of the tail itself failed."
+    },
+    "reason": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    },
+    "started_at": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "title": "Started At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deterministic",
+    "reason",
+    "started_at",
+    "checkpoint",
+    "log_tail"
+  ],
+  "title": "contracts/activity failure-details",
+  "type": "object"
+}

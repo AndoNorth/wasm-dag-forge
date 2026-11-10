@@ -1,0 +1,28 @@
+{
+  "control_seq": 0,
+  "job_status": "running",
+  "pause_reason": null,
+  "resume_counter": 0,
+  "tasks": [
+    {
+      "checkpoint": null,
+      "guest_left": 1,
+      "id": "agg",
+      "infra_left": 10,
+      "last_class": null,
+      "reschedules": 0,
+      "state": "pending",
+      "task_attempt": 0
+    },
+    {
+      "checkpoint": null,
+      "guest_left": 1,
+      "id": "agg",
+      "infra_left": 10,
+      "last_class": null,
+      "reschedules": 0,
+      "state": "pending",
+      "task_attempt": 0
+    }
+  ]
+}

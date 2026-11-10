@@ -1,0 +1,48 @@
+[project]
+name = "wdf-workflow"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "psycopg[binary]",
+    "pydantic",
+    "pyyaml",
+    "temporalio",
+    "wdf-artifactclient",
+    "wdf-artifactindex",
+    "wdf-artifactreaper",
+    "wdf-compat",
+    "wdf-compile",
+    "wdf-events",
+    "wdf-eventstore",
+    "wdf-itest",
+    "wdf-jobdoc",
+    "wdf-jobpatch",
+    "wdf-jobstate",
+    "wdf-keys",
+    "wdf-plan",
+    "wdf-runtime",
+    "wdf-stages",
+    "wdf-temporal",
+]
+
+[tool.uv.sources]
+wdf-artifactclient = { workspace = true }
+wdf-artifactindex = { workspace = true }
+wdf-artifactreaper = { workspace = true }
+wdf-compat = { workspace = true }
+wdf-compile = { workspace = true }
+wdf-events = { workspace = true }
+wdf-eventstore = { workspace = true }
+wdf-itest = { workspace = true }
+wdf-jobdoc = { workspace = true }
+wdf-jobpatch = { workspace = true }
+wdf-jobstate = { workspace = true }
+wdf-keys = { workspace = true }
+wdf-plan = { workspace = true }
+wdf-runtime = { workspace = true }
+wdf-stages = { workspace = true }
+wdf-temporal = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

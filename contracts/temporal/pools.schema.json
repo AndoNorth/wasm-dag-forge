@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "PoolTiming": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_milli": {
+          "exclusiveMinimum": 0,
+          "title": "Cpu Milli",
+          "type": "integer"
+        },
+        "heartbeat_s": {
+          "exclusiveMinimum": 0,
+          "title": "Heartbeat S",
+          "type": "integer"
+        },
+        "memory_mib": {
+          "exclusiveMinimum": 0,
+          "title": "Memory Mib",
+          "type": "integer"
+        },
+        "schedule_to_start_s": {
+          "exclusiveMinimum": 0,
+          "title": "Schedule To Start S",
+          "type": "integer"
+        },
+        "start_to_close_margin_s": {
+          "exclusiveMinimum": 0,
+          "title": "Start To Close Margin S",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cpu_milli",
+        "memory_mib",
+        "schedule_to_start_s",
+        "heartbeat_s",
+        "start_to_close_margin_s"
+      ],
+      "title": "PoolTiming",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:temporal:pools:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "pools.yaml: pool table v0, the ci slots and the timeouts of each pool.",
+  "properties": {
+    "estimate": {
+      "title": "Estimate",
+      "type": "boolean"
+    },
+    "pools": {
+      "additionalProperties": {
+        "$ref": "#/$defs/PoolTiming"
+      },
+      "propertyNames": {
+        "enum": [
+          "compile",
+          "simulate",
+          "aggregate"
+        ]
+      },
+      "title": "Pools",
+      "type": "object"
+    },
+    "schedule_to_start_ceiling_s": {
+      "exclusiveMinimum": 0,
+      "title": "Schedule To Start Ceiling S",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "estimate",
+    "schedule_to_start_ceiling_s",
+    "pools"
+  ],
+  "title": "contracts/temporal pools",
+  "type": "object"
+}

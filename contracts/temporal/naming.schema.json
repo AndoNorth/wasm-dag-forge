@@ -1,0 +1,450 @@
+{
+  "$defs": {
+    "Activities": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "items": {
+            "$ref": "#/$defs/ControlActivity"
+          },
+          "minItems": 1,
+          "title": "Control",
+          "type": "array"
+        },
+        "local": {
+          "items": {
+            "$ref": "#/$defs/LocalActivity"
+          },
+          "minItems": 1,
+          "title": "Local",
+          "type": "array"
+        },
+        "pool": {
+          "items": {
+            "$ref": "#/$defs/PoolActivity"
+          },
+          "minItems": 1,
+          "title": "Pool",
+          "type": "array"
+        }
+      },
+      "required": [
+        "pool",
+        "control",
+        "local"
+      ],
+      "title": "Activities",
+      "type": "object"
+    },
+    "Bounded": {
+      "additionalProperties": false,
+      "properties": {
+        "backoff_coefficient": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backoff Coefficient"
+        },
+        "initial_interval_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initial Interval S"
+        },
+        "maximum_attempts": {
+          "exclusiveMinimum": 0,
+          "title": "Maximum Attempts",
+          "type": "integer"
+        },
+        "maximum_interval_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum Interval S"
+        }
+      },
+      "required": [
+        "maximum_attempts"
+      ],
+      "title": "Bounded",
+      "type": "object"
+    },
+    "ControlActivity": {
+      "additionalProperties": false,
+      "description": "A regular activity whose retries end, so the workflow sees its typed error.",
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "retry": {
+          "$ref": "#/$defs/Bounded"
+        }
+      },
+      "required": [
+        "name",
+        "retry"
+      ],
+      "title": "ControlActivity",
+      "type": "object"
+    },
+    "LocalActivity": {
+      "additionalProperties": false,
+      "description": "A local activity retried without limit, so an outage stalls a job and fails nothing.",
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "retry": {
+          "$ref": "#/$defs/Unbounded"
+        }
+      },
+      "required": [
+        "name",
+        "retry"
+      ],
+      "title": "LocalActivity",
+      "type": "object"
+    },
+    "PoolActivity": {
+      "additionalProperties": false,
+      "description": "An activity the workflow runs once, keeping the retry loop in the workflow.",
+      "properties": {
+        "cancellation_type": {
+          "const": "WAIT_CANCELLATION_COMPLETED",
+          "title": "Cancellation Type",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "retry": {
+          "$ref": "#/$defs/SingleAttempt"
+        }
+      },
+      "required": [
+        "name",
+        "retry",
+        "cancellation_type"
+      ],
+      "title": "PoolActivity",
+      "type": "object"
+    },
+    "ScheduleNaming": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Activity",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "queue": {
+          "pattern": "^[a-z][a-z0-9-]{0,127}$",
+          "title": "Queue",
+          "type": "string"
+        },
+        "workflow": {
+          "pattern": "^[A-Z][A-Za-z0-9]{0,63}$",
+          "title": "Workflow",
+          "type": "string"
+        },
+        "workflow_id": {
+          "pattern": "^[a-z][a-z0-9-]{0,127}$",
+          "title": "Workflow Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "queue",
+        "workflow",
+        "workflow_id",
+        "activity"
+      ],
+      "title": "ScheduleNaming",
+      "type": "object"
+    },
+    "SingleAttempt": {
+      "additionalProperties": false,
+      "properties": {
+        "backoff_coefficient": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backoff Coefficient"
+        },
+        "initial_interval_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initial Interval S"
+        },
+        "maximum_attempts": {
+          "const": 1,
+          "title": "Maximum Attempts",
+          "type": "integer"
+        },
+        "maximum_interval_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum Interval S"
+        }
+      },
+      "required": [
+        "maximum_attempts"
+      ],
+      "title": "SingleAttempt",
+      "type": "object"
+    },
+    "Unbounded": {
+      "additionalProperties": false,
+      "properties": {
+        "backoff_coefficient": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backoff Coefficient"
+        },
+        "initial_interval_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initial Interval S"
+        },
+        "maximum_attempts": {
+          "const": 0,
+          "title": "Maximum Attempts",
+          "type": "integer"
+        },
+        "maximum_interval_s": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum Interval S"
+        }
+      },
+      "required": [
+        "maximum_attempts"
+      ],
+      "title": "Unbounded",
+      "type": "object"
+    },
+    "WorkflowNaming": {
+      "additionalProperties": false,
+      "properties": {
+        "build_id_env": {
+          "const": "WDF_BUILD_ID",
+          "title": "Build Id Env",
+          "type": "string"
+        },
+        "deployment": {
+          "pattern": "^[a-z][a-z0-9-]{0,127}$",
+          "title": "Deployment",
+          "type": "string"
+        },
+        "id": {
+          "const": "wdf_keys.workflow_id",
+          "title": "Id",
+          "type": "string"
+        },
+        "id_reuse_policy": {
+          "const": "REJECT_DUPLICATE",
+          "title": "Id Reuse Policy",
+          "type": "string"
+        },
+        "queue": {
+          "pattern": "^[a-z][a-z0-9-]{0,127}$",
+          "title": "Queue",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^[A-Z][A-Za-z0-9]{0,63}$",
+          "title": "Type",
+          "type": "string"
+        },
+        "versioning_behavior": {
+          "const": "PINNED",
+          "title": "Versioning Behavior",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "queue",
+        "id",
+        "id_reuse_policy",
+        "versioning_behavior",
+        "deployment",
+        "build_id_env"
+      ],
+      "title": "WorkflowNaming",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:temporal:naming:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "naming.yaml: every Temporal name the workflow, its workers and its callers share.",
+  "properties": {
+    "activities": {
+      "$ref": "#/$defs/Activities"
+    },
+    "control_queue": {
+      "description": "The control queue of a build, with <build id> replaced by its build id.",
+      "pattern": "^[a-z][a-z0-9-]{0,63}-<build id>$",
+      "title": "Control Queue",
+      "type": "string"
+    },
+    "namespace": {
+      "pattern": "^[a-z][a-z0-9-]{0,127}$",
+      "title": "Namespace",
+      "type": "string"
+    },
+    "pools": {
+      "additionalProperties": {
+        "pattern": "^[a-z][a-z0-9-]{0,127}$",
+        "type": "string"
+      },
+      "propertyNames": {
+        "enum": [
+          "compile",
+          "simulate",
+          "aggregate"
+        ]
+      },
+      "title": "Pools",
+      "type": "object"
+    },
+    "queries": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Queries",
+      "type": "array"
+    },
+    "schedules": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ScheduleNaming"
+      },
+      "propertyNames": {
+        "const": "artifact_reaper"
+      },
+      "title": "Schedules",
+      "type": "object"
+    },
+    "search_attributes": {
+      "patternProperties": {
+        "^Wdf[A-Z][A-Za-z]{0,62}$": {
+          "enum": [
+            "keyword",
+            "datetime"
+          ],
+          "type": "string"
+        }
+      },
+      "title": "Search Attributes",
+      "type": "object"
+    },
+    "signals": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{0,63}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Signals",
+      "type": "array"
+    },
+    "workflow": {
+      "$ref": "#/$defs/WorkflowNaming"
+    }
+  },
+  "required": [
+    "namespace",
+    "workflow",
+    "control_queue",
+    "pools",
+    "activities",
+    "signals",
+    "queries",
+    "search_attributes",
+    "schedules"
+  ],
+  "title": "contracts/temporal naming",
+  "type": "object"
+}
