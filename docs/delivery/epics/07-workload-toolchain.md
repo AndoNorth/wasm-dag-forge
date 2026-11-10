@@ -1,6 +1,6 @@
 # Epic #11: Workload toolchain, guest contract and aggregate task - breakdown
 
-Status: approved
+Status: closed 2026-11-10
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/11
 Architecture note: docs/architecture/14-wasm-workload-library.drawio
 Verifier: none, per decision 16.
@@ -320,7 +320,7 @@ Every command takes `nix develop -c`, and every Python command takes `uv run --f
 | 9 | `pytest packages/kernel packages/workloads packages/compile packages/runtime packages/aggregate -q -rs` | all pass with no `SKIPPED` line |
 | 10 | `pytest packages/kernel packages/workloads packages/compile packages/runtime packages/aggregate -v -k "every_fault_mode_has_its_class or every_class_row_has_a_case or compile_failed_cases or locked_dependency_install or timeout or dependency_unavailable or source_build_refused or no_network_step or rebuild_same_key or input_copy_rehashed or cap_below_minimum_refused or warm_up_fills_module_cache or real_guest_outputs_meet_staging or over_cap_result_is_guest_failed or pin or output_bytes_independent_of_arrival_order or input_failures_classified or entity_expansion or doctype or malformed_block or no_import_inside_functions or bundle_info_meets_resolver_contract"` | each named test is listed `PASSED` |
 | 11 | `pytest packages/aggregate -v -k run_through_store_index` | `PASSED`, with one SeaweedFS container started by `wdf_itest` and removed after |
-| 12 | `pytest packages/kernel packages/workloads packages/aggregate -v -m slow -k "million or cap_sized"` | `test_million_rows_round_trip`, `test_io_churn_million_rows_in_guest` and `test_cap_sized_result_peak` pass, and the peak memory printed is below 1,024 MiB |
+| 12 | `pytest packages/kernel packages/workloads packages/aggregate -v -s -m slow -k "million or cap_sized"` | `test_million_rows_round_trip`, `test_io_churn_million_rows_in_guest` and `test_cap_sized_result_peak` pass, and the peak memory printed is below 1,024 MiB |
 | 13 | `python -m wdf_aggregate files --aggregation summary_stats --args '{}' --out $W/s1 t1=$W/r1-cpu_burn/results.xml t2=$W/r1-io_churn/results.xml`, the same with the two arguments reversed into `$W/s2`, `sha256sum $W/s1/summary.json $W/s2/summary.json`, then `python -m wdf_kernel.check summary --summary $W/s1/summary.json --inputs t1=<cpu_burn input.json> t2=<io_churn input.json>` | exit 0 for each, equal hashes, check exit 0. `$W/r1-*` are the outputs of row 8 |
 | 14 | `python -m wdf_runtime.calibrate --component $W/c1/component.wasm --runs 3` | exit 0 and `units_per_second` printed, recorded in Closure |
 | 15 | `pytest packages/kernel packages/workloads packages/compile packages/runtime packages/aggregate -q -rs -k wheel` | all pass, none skipped |
@@ -341,9 +341,78 @@ Not provable by this epic: a compile, a simulate or an aggregate inside a pod (#
   That is about 35 worker-days of effort and about 17 days elapsed along lane 0, C.1, R.1, W.1, W.2, R.3 and the exit test (3 + 3 + 2.5 + 2 + 3 + 1.5 + 1.5 = 16.5), with the real component outgrowing S6's 58 MiB of first-run headroom, `uv.lock` rebases and slow component builds as the main sources of slip.
   The rejected alternatives of decisions 16 and 18 would have added about 3 worker-days each.
 
-## 9. Closure (filled at close)
+## 9. Closure
 
-Commit sha, the exit test run, CI run URL, what was learned, what moved, and `docs/architecture/14-wasm-workload-library.drawio` as 0.1 refined it, re-checked against what was learned.
+Run on 2026-11-10 against `fd18333df53b0a522defcf5bc86660170421d4c8`, the commit of the last lane merge (C.2), from a `git archive origin/main` extracted into a scratch directory with no enclosing git repository, and `$W` outside the export.
+Rows 1 to 8 and 10 to 17 pass as written.
+Row 9 failed as written on four `SKIPPED` lines, the stub test of `kernel`, `workloads`, `compile` and `runtime` parametrized over a `STUBBED` that every lane had emptied.
+The pull request that records this run drops that test, as `packages/artifactclient` already did, and row 9 passes from a clean export of that fix with no `SKIPPED` line.
+The pasted output of every row is in that pull request.
+
+Method of the run:
+
+- The worker that ran it wrote none of the lanes.
+- The host is the 20 GiB WSL2 VM with Docker running for the whole run.
+  Rows 9, 11 and 16 started containers, and so did row 10 through `test_no_network_step`, one at a time, each with the `wdf_itest` run label and a memory cap, and none was left behind.
+  No cluster was started and the cluster lock was not taken.
+- Row 16 ran first, and rows 2 to 8 and 13 ran beside it, since they start no container.
+  Rows 9 to 12, 14 and 15 ran after it, so row 14 measured an idle host.
+- Row 12 takes `-s`, now in its command, because pytest captures the peak memory that the row reads.
+
+Results:
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1 | pass | `uv sync --frozen` exit 0, `uv lock --check` exit 0 with 65 packages resolved, `uv.lock` byte for byte unchanged |
+| 2 | pass | no output |
+| 3 | pass | 19 valid files exit 0, and 80 invalid files exit 1 with the `reason:` of their directory |
+| 4 | pass | exit 0 for the three commands, and the WIT prints `package wdf:task@1.0.0` with world `task` |
+| 5 | pass | `info` lists `wdf_workloads.main` among 18 modules, both builds print `cache_key: c523632e0f90a800c2d16d9003699b05e2ae8c561e8681b8f834679b447b86dd`, and the component hashes and page counts follow this table |
+| 6 | pass | exit 0 for `wasm-tools component targets` and for `check.sh` on `build-info.json` |
+| 7 | pass | `class: ok` and check exit 0 for `echo` (`dcd1c83a029e0547`), `sum_squares` (`cb0f2572732d2912`) and `hash_chain` (`8a6f5c9485e8c8a6`) |
+| 8 | pass | `class: ok` and check exit 0 for all eight runs, with one digest per workload for both components: `noop` `bdb349dd54d2701e`, `cpu_burn` `a8ba700f2673b6d1`, `mem_hold` `d37229962daaacc5`, `io_churn` `174994ed45edd77f` |
+| 9 | fail as written, pass with the fix | 508 passed and 4 skipped on `main`, the 4 `SKIPPED` lines being `test_stubs.py:24: got empty parameter set`, then 508 passed and no `SKIPPED` line from an export of the fix |
+| 10 | pass | 60 passed, and every named test is listed `PASSED` |
+| 11 | pass | `test_run_through_store_index PASSED`, with one SeaweedFS container removed after |
+| 12 | pass | the three tests pass (four cases), with a peak of 274.3 MiB for `summary_stats` and 333.5 MiB for `digest_list` over a 67,108,852 byte result |
+| 13 | pass | exit 0 for each command, both `summary.json` hash to `6e8506601a511603d91d051fe78f9b7c4a1b770e3a0b79fd1945262839e01ad6`, and the summary check exits 0 |
+| 14 | pass | exit 0, `units_per_second: 705.9`, spread 696.0 to 716.0 over 3 runs, 4.1 percent above the catalogue's 677.9 |
+| 15 | pass | 5 passed, none skipped |
+| 16 | pass | `just ci` exit 0 in the export, full path, 2,226 passed and 4 skipped (the stubs of row 9) in `just test`, 402 passed in `just itest` |
+| 17 | pass | the `ci` run [42866858823](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/42866858823), success on `fd18333` on `main` |
+
+The two components of row 5:
+
+| Build | `component.wasm` SHA-256 | Initial memory of the main module |
+| --- | --- | --- |
+| `$W/c1` | `c01174eb2eb2064699a4b77c60abac428d18589569348ba592174f28369de563` | 208 pages |
+| `$W/c2` | `10ac3949378eb08bc712923e53ebc42e1c043fca9988d1d08a759993dba535b5` | 209 pages |
+
+What was learned:
+
+- Two builds of one bundle share a cache key and give the same results, but not the same bytes.
+  `componentize-py` takes its pre-init snapshot with host entropy, clocks and the metadata of directories it creates, and the dev environment's `VIRTUAL_ENV` leaks into the guest path, which puts the heap close enough to a page boundary that the declared memory is 208 or 209 pages.
+  `GUEST_MIN_PAGES` at 209 (decision 24) holds both builds of this run.
+- The calibration rate moved 4.1 percent between R.3's catalogue and an idle host, inside D2's 20 percent.
+- The largest result the staging contract allows peaks at about a third of the 1 GiB aggregate slot.
+
+What the architecture note now shows: `docs/architecture/14-wasm-workload-library.drawio` and its re-exported SVG keep 0.1's five-input key, `results.xml` at both levels and the build library with no cache step, and now name the level 1 workloads and the fault modes as built, the compile task's fetch step before an offline install, `error.json` beside `results.xml`, the heartbeat fields, the runner's guest cap, the 209-page minimum and the warm-up, and that two builds of one key differ in bytes but not in behaviour.
+
+What moved to which epic, unchanged from section 1:
+
+- the runner, the warm-up per pod, the pool images, the exit 137 decision with node events and every run inside a pod (#10)
+- the workflow's cache lookup and record and the mapping of the exit classes (#6)
+- `paced_sim`, the cooperative stop marker, checkpoints and kill-and-resume (#18)
+- the fault scenarios, the malformed block vectors in use and a compile OOM at the pod limit (#15)
+- the aggregate over 100,000 results with real store latency (#16), the real `SourceResolver` (#24), and the Rust spike, not filed (D1)
+
+Follow-ups found, none filed by this run:
+
+- Build determinism: running `componentize-py` with `VIRTUAL_ENV` pointing at an empty environment removes the leak, and `GUEST_MIN_PAGES` can drop to 208 only after a sweep shows it holds.
+  Byte-identical components need deterministic entropy, clocks and directory metadata in `componentize-py` itself.
+- `scripts/export-diagrams.sh` re-exports every diagram in an unlabelled container with no memory cap, so this run exported the one diagram with the same image and arguments under a label and a 1 GiB cap.
+- The `_stub` modules and the empty `STUBBED` constants of `wdf_kernel`, `wdf_workloads`, `wdf_compile` and `wdf_runtime` have no stub left to serve, and only the listing test still reads them.
+- `docs/delivery/method.md` still lists `verify-workloads` in its verifier table and E7 row, which decision 16 dropped.
 
 Closure addenda, one dated line each, added after close when a `revisit` child issue is filed against this epic:
 
