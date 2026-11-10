@@ -2,7 +2,9 @@
 
 import subprocess
 import sys
+from datetime import timedelta
 
+import psycopg
 import pytest
 from wdf_eventstore import insert_events
 from wdf_stateops import bench
@@ -57,6 +59,13 @@ def test_a_repeat_invocation_against_the_same_database_inserts_nothing(appdb, ca
     assert bench.main(["--jobs", "300", "--dsn", appdb]) == 0
     out = lines(capsys.readouterr().out)
     assert "rows_inserted: 0" in out and "events_inserted: 0" in out
+
+
+def test_the_origin_is_today_on_the_database_clock(appdb):
+    """A calendar date here would be dropped by the retention policy once it aged past it."""
+    with psycopg.connect(appdb) as conn:
+        (database_now,) = conn.execute("SELECT now()").fetchone()
+    assert timedelta(0) <= database_now - bench.ORIGIN < timedelta(days=1)
 
 
 def test_bench_exits_1_when_a_count_is_wrong(appdb, monkeypatch, capsys):

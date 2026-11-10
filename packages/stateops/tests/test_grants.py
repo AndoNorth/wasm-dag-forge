@@ -60,7 +60,8 @@ TABLES = (
     "reaper_job",
     "reaper_cursor",
 )
-NOW = datetime(2026, 11, 2, tzinfo=UTC)
+# Rows take created_at from the database clock, so the times passed in follow the real clock.
+NOW = datetime.now(UTC)
 ARTIFACT_WRITES = {"last_used_at", "deleted_at", "purged_at", "cache_key"}
 REAPER_READS = "job_id, tenant, batch_id, status, terminal_at, manifest_ref, pending_patch_ref"
 LATER = NOW + timedelta(days=10)
@@ -369,6 +370,13 @@ def test_reaper_login_can_expire_an_entry_and_retire_its_key(login):
     assert isinstance(record_cache_entry(artifacts, entry), Won)
     assert expired_cache_entries(reaper, NOW + timedelta(days=1), LATER) == ["e" * 64]
     assert isinstance(record_cache_entry(artifacts, entry), Won)
+
+
+def test_now_follows_the_database_clock(appdb):
+    """A calendar date here would pass until the database clock overtook it."""
+    with psycopg.connect(appdb) as conn:
+        (database_now,) = conn.execute("SELECT now()").fetchone()
+    assert abs(database_now - NOW) < timedelta(hours=1)
 
 
 def test_put_content_flow_works_under_the_wdf_artifacts_login(login):
