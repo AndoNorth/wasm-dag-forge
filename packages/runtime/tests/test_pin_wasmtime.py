@@ -220,16 +220,22 @@ def test_pin_failure_stderr_and_exit_code(case, request, warm_cache, tmp_path):
 
 
 def test_pin_workload_component_minimum(component, warm_cache, tmp_path):
-    """The component declares GUEST_MIN_PAGES of initial memory: a run at that cap completes, and
-    one page less fails at instantiation, which classify gives the class of a refused cap."""
-    argv = command(component, scratch(tmp_path / "at", ECHO), MEMORY_MIB, TIMEOUT_S, warm_cache)
-    at = measured(with_cap(argv, GUEST_MIN_PAGES * PAGE))
-    path = scratch(tmp_path / "below", ECHO)
-    argv = command(component, path, MEMORY_MIB, TIMEOUT_S, warm_cache)
-    below = measured(with_cap(argv, (GUEST_MIN_PAGES - 1) * PAGE))
-    classified = classify(below.exit_code, below.stderr, read_error_file(path), Facts())
-    print(f"at {GUEST_MIN_PAGES} pages: exit {at.exit_code}\nbelow: exit {below.exit_code}")
-    print(f"{classified}\n{below.stderr}")
+    """The component declares at most GUEST_MIN_PAGES of initial memory, so a run at that cap
+    completes, and a cap one page below what it declares fails at instantiation, which classify
+    gives the class of a refused cap. Builds of one bundle differ by a page in what they declare."""
+
+    def capped(name, pages):
+        path = scratch(tmp_path / name, ECHO)
+        argv = command(component, path, MEMORY_MIB, TIMEOUT_S, warm_cache)
+        ran = measured(with_cap(argv, pages * PAGE))
+        return ran, classify(ran.exit_code, ran.stderr, read_error_file(path), Facts())
+
+    declared = int(re.search(r"minimum size of (\d+) pages", capped("probe", 1)[0].stderr)[1])
+    at, _ = capped("at", GUEST_MIN_PAGES)
+    below, classified = capped("below", declared - 1)
+    print(f"declares {declared} pages, at {GUEST_MIN_PAGES}: exit {at.exit_code}")
+    print(f"{declared - 1} pages: exit {below.exit_code} {classified}\n{below.stderr}")
+    assert declared <= GUEST_MIN_PAGES
     assert at.exit_code == 0, at.stderr
     assert below.exit_code == 1
     assert in_order(
@@ -237,7 +243,7 @@ def test_pin_workload_component_minimum(component, warm_cache, tmp_path):
         [
             "Error: failed to run main module",
             "Caused by:",
-            f"memory minimum size of {GUEST_MIN_PAGES} pages exceeds memory limits",
+            f"memory minimum size of {declared} pages exceeds memory limits",
         ],
     )
     assert GUEST_RAN not in below.stderr
