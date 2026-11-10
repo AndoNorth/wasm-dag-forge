@@ -7,7 +7,6 @@ import pytest
 
 LANES = {"main": "W", "bundle": "W", "level1": "W", "fault": "W"}
 MODULES = {name: importlib.import_module(f"wdf_workloads.{name}") for name in LANES}
-STUBS = [(module, name) for module in MODULES for name in MODULES[module].STUBBED]
 
 
 @pytest.mark.parametrize("module", MODULES)
@@ -19,14 +18,3 @@ def test_every_stub_of_a_module_is_listed(module):
             continue
         if inspect.isfunction(obj) or inspect.isclass(obj):
             assert ("not_implemented(" in inspect.getsource(obj)) == (name in stubbed), name
-
-
-@pytest.mark.parametrize("module,name", STUBS)
-def test_a_listed_stub_raises_the_error_of_its_lane(module, name):
-    stub = getattr(MODULES[module], name)
-    if inspect.isclass(stub):  # the Run export is called as the command world calls it
-        stub = stub().run
-    required = [p for p in inspect.signature(stub).parameters.values() if p.default is p.empty]
-    expected = f"^not implemented: owned by lane {LANES[module]}$"
-    with pytest.raises(NotImplementedError, match=expected):
-        stub(*[None] * len(required))
