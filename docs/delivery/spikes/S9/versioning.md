@@ -5,7 +5,8 @@ Owner: the [workflow engine epic](https://github.com/AndoNorth/wasm-dag-forge/is
 Spec: the S9 block of [the workflow engine breakdown](../../epics/08-workflow-engine.md#s9-versioning-on-sdk-1350-and-the-pinned-bug-override), and decision D6 there.
 Method: [docs/delivery/method.md](../../method.md).
 Throwaway code: [code/](code/), run as `nix develop -c uv run python docs/delivery/spikes/S9/code/spike.py [out-dir]`.
-Every number and finding below is a `figure <name> <value>` line of that run, and the name is given in backticks beside it.
+Every measured value below is a `figure <name> <value>` line of that run, and the name is given in backticks beside it.
+The waits of 3 s, 5 s and 10 s are constants of the code.
 
 ## Result
 
@@ -13,7 +14,7 @@ Diagram: [versioning.drawio.svg](versioning.drawio.svg), a worked example of the
 
 **Pass.**
 All five items of the pass line hold on the dev server of `temporalio/temporal` 1.9.1, which reports server 1.32.0 (`server.version`, `server.cli`), with `temporalio` 1.35.0 (`sdk.temporalio`).
-The tables below are from the second of two full runs, and the first gave the same value for every figure both recorded.
+The tables below are from the second of two full runs.
 
 - (1) A pinned workflow started on A finished on A while B was current, and `workflow.info().get_current_deployment_version()` reported A at all four of its steps (`stays.result`, `stays.pass`).
 - (2) The raw `set_worker_deployment_current_version` call, with the `conflict_token` of `describe_worker_deployment` and the client identity, made A current on a fresh deployment and then B (`current_a.pass`, `current_b.pass`).
@@ -32,7 +33,7 @@ SDK 1.35.0 has no client method for worker deployments, so D6 relies on the raw 
 
 | Item | Value |
 | --- | --- |
-| Host | WSL2, 20 GiB VM, 16,406 MiB `MemAvailable` before the run (`host.mem_available_mib.before`) |
+| Host | WSL2, 16,406 MiB `MemAvailable` before the run (`host.mem_available_mib.before`) |
 | Server | `temporalio/temporal:1.9.1` pinned by digest in `deploy/versions.yaml`, `temporal server start-dev --headless`, which reports `temporal version 1.9.1 (Server 1.32.0, UI 2.54.1)` (`server.cli`) and server version 1.32.0 from `GetSystemInfo` (`server.version`) |
 | SDK | `temporalio` 1.35.0 from `uv.lock` (`sdk.temporalio`), `uv.lock` unchanged |
 | Containers | one, the dev server, started through `wdf_itest.Session` with its T1 lock file, 1 GiB cap, port on 127.0.0.1 only and the run label, removed after the run |
@@ -58,7 +59,7 @@ The workflow runs a `prepare` activity on the pool queue, waits on the signal `g
 | Set B after B's pollers are seen | A | B | A | yes | `s9-spike` | `current_b.*` |
 
 Before any version was current, a workflow started on `wdf-workflow` completed 0 workflow tasks in 3 s, although A's pollers were registered (`no_current.completed_tasks`).
-After A became current, the same workflow completed 2 tasks within 3 s (`no_current.completed_tasks_after_a`), so a task queued with no current version is not lost and goes to the build made current.
+After A became current, the same workflow completed 2 tasks within 3 s (`no_current.completed_tasks_after_a`), so a workflow started with no current version is not lost, and A, the only build with pollers, ran it once A was current.
 
 ### Workflows
 
@@ -70,7 +71,7 @@ After A became current, the same workflow completed 2 tasks within 3 s (`no_curr
 | `moved-to-c` | B | override to C, signalled, override back to B | B, B, B, B | `prepare`, `finish-fixed` | `unguarded.*` |
 
 The SDK reports the version in its canonical form with a dot, `wdf-workflow-worker.A`, while the search attribute holds `wdf-workflow-worker:A` with a colon.
-The moved workflow reports A for the points B replays and B for the points B runs, so the value is deterministic across the move, as the SDK documents.
+The moved workflow reports A for the points B replays and B for the points B runs, so the value is deterministic across the move, as the docstring of `get_current_deployment_version` in SDK 1.35.0 says.
 
 ### Visibility count
 
@@ -83,7 +84,8 @@ The query is `TemporalWorkerDeploymentVersion = 'wdf-workflow-worker:A' AND Temp
 | After the last workflow on A closed | 0 | 0 | `count.pinned_a.after_close`, `count.pinned_b.after_close` |
 | When the server reported A drained | 0 | | `count.pinned_a.at_drained` |
 
-The drainage status of A turned `VERSION_DRAINAGE_STATUS_DRAINED`, with the version status `WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED`, 176 s after the last workflow on A closed, polled every 5 s, in both runs (`drain.a.seconds_after_close`, `drain.a.version_status`).
+The drainage status of A turned `VERSION_DRAINAGE_STATUS_DRAINED`, with the version status `WORKER_DEPLOYMENT_VERSION_STATUS_DRAINED`, 176 s after the last workflow on A closed, polled every 5 s and timed from the spike's own clock at the moment the result of that workflow returned (`drain.a.seconds_after_close`, `drain.a.version_status`).
+It is one sample at 5 s resolution, and what starts the server's own drain clock was not measured.
 The count gave the same answer at once.
 
 ## The four open points
@@ -91,10 +93,12 @@ The count gave the same answer at once.
 1. **Update mask path.** `versioning_override`, the snake case field name, is accepted (`override.mask.snake`).
    The camel case `versioningOverride` is refused with `INVALID_ARGUMENT: error parsing UpdateMask: proto: invalid path "versioningOverride" for message "temporal.api.workflow.v1.WorkflowExecutionOptions"` (`override.mask.camel`).
    An empty mask is accepted and changes nothing: the call returns OK and the workflow has no override afterwards (`override.mask.empty`, `override.mask.empty_describe`), so a missing path fails silently and V.2 checks the override with a describe.
-2. **Does an override schedule a workflow task on its own?** No.
+2. **Does an override schedule a workflow task on its own?**
+   No.
    The only event the override adds is `WORKFLOW_EXECUTION_OPTIONS_UPDATED`, and 5 s later no workflow task was scheduled (`override.new_events`).
-   The moved workflow ran on B only when the signal gave it a task, so a workflow waiting on a timer or a signal stays where it is until that event.
-3. **Do the search attributes follow a moved workflow before its next task completes?** Yes.
+   The moved workflow ran on B only when the signal gave it a task, so a workflow waiting on a signal stays where it is until that signal, and a timer wait was not measured.
+3. **Do the search attributes follow a moved workflow before its next task completes?**
+   Yes.
    Right after the override and before any task, the moved workflow counts 0 under A and 1 under B, and the same 5 s later (`override.visibility.a_now`, `override.visibility.b_now`, `override.visibility.a_5s`, `override.visibility.b_5s`).
    Describe shows the split at that moment: the execution's `deployment_version` is still A and its `versioning_override` is B (`override.describe_now`).
    So the drain count of A drops when the override lands, not when the moved workflow next runs.
@@ -103,19 +107,21 @@ The count gave the same answer at once.
 
 ## What the numbers change
 
-1. D6 holds as written: `JobWorkflow` pinned, the workflow worker versioned, the control, reaper and pool workers unversioned, the current version set with the raw call at every deploy including the first, and the override with the raw call.
-2. A deployment with no current version holds new workflows back rather than failing them, which confirms D6's rule that the first deploy also sets the current version.
+1. D6 holds for what was run: the workflow type pinned, the workflow worker versioned, an unversioned pool worker, the current version set with the raw call at every deploy including the first, and the override with the raw call.
+   The control and reaper workers were not run, and as unversioned workers on their own queues they are in the same position as the pool worker.
+2. A deployment with no current version gave a new workflow no task until a version was made current, which confirms D6's rule that the first deploy also sets the current version.
 3. V.2 sends the override with the update mask path `versioning_override` and reads the workflow back with describe, because an empty or wrong mask is either refused or silently ignored.
-4. V.2 counts drainage with the query of (5), which drops when the override lands, and reports the server's status beside it, which took 176 s at the defaults here.
-5. A moved workflow that waits on a signal or timer moves only at its next task, so V.2 reports "overridden" when the call lands and "on the fixed build" only after that task.
+4. V.2 counts drainage with the query of (5), which drops when the override lands, and reports the server's status beside it, which came 176 s after the close in the one sample here.
+5. A moved workflow that waits on a signal moves only at its next task, so V.2 reports "overridden" when the call lands and "on the fixed build" only after that task.
 6. An override to a build that does not replay the history leaves the workflow running and stuck on a failing task, and overriding it back recovers it, so V.2's override procedure is: override, wait for the next task, and on `NON_DETERMINISTIC_ERROR` override back and report.
    The determinism gate of V.1 is what keeps such a build from shipping.
 7. Code that compares the SDK's version with a search attribute converts between the dot of `to_canonical_string()` and the colon of the search attribute.
 
 ## Caveats and what was not measured
 
-- One host, two runs of the same sequence on a fresh dev server each.
-  The first run's check of (1) compared against the colon form and so printed `stays.pass False` on the right versions, and the second run compares the dot form.
+- One host, two runs of the same sequence on a fresh dev server each, and only the second is recorded here.
+  The first run's check of (1) compared against the colon form and so printed `stays.pass False` on the same versions, and the second run compares the dot form.
+  The first run lacked a few figures added later, and every figure it shared with the second, including the 176 s, had the same value, with enums printed as numbers where the second prints their names.
 - The dev server uses its in-memory SQLite store and visibility, not the Postgres persistence and SQL visibility of the cluster, so visibility timing and the drainage refresh may differ there.
   The drainage time is at the server defaults and was not tuned with dynamic config.
 - All workers ran in one process with `UnsandboxedWorkflowRunner`, so three builds of one workflow type could share a module, and the workflow sandbox was not exercised.

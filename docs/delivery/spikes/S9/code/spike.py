@@ -230,7 +230,7 @@ async def spike(address: str) -> None:
             names(await events(early)).count("WORKFLOW_TASK_COMPLETED"),
         )
 
-        # (2) the raw call makes A current on the fresh deployment.
+        # The raw call makes A current on the fresh deployment.
         await set_current(client, "A", "current_a")
         await asyncio.sleep(3)
         figure(
@@ -244,13 +244,13 @@ async def spike(address: str) -> None:
         await wait_waiting(moved)
         figure("count.pinned_a.before_b", await count(client, pinned_running("A")))
 
-        # (2) then B, after its pollers are seen.
+        # Then B, after its pollers are seen.
         await wait_version(client, "B")
         await set_current(client, "B", "current_b")
         on_b = await start(client, "started-on-b")
         await wait_waiting(on_b)
 
-        # (3) the override of an open pinned workflow, and the mask path the SDK source leaves open.
+        # The override of an open pinned workflow, and the mask path the SDK source leaves open.
         before = names(await events(moved))
         figure("override.mask.empty", await override(client, on_b, "B", []))
         figure(
@@ -298,7 +298,7 @@ async def spike(address: str) -> None:
         result = await on_b.result()
         figure("on_b.result", json.dumps(result, separators=(",", ":")))
 
-        # (1) and (5): the last pinned workflow on A finishes there while B is current.
+        # The last pinned workflow on A finishes there while B is current.
         await stays.signal("go")
         result = await stays.result()
         closed = time.monotonic()
@@ -334,11 +334,11 @@ async def spike(address: str) -> None:
         except TimeoutError:
             figure("unguarded.recovered_result", "timeout")
 
-        # (4) one unversioned pool worker served the activities of every build.
+        # One unversioned pool worker served the activities of every build.
         figure("pool.served", json.dumps(dict(served), separators=(",", ":")))
         figure("pool.pass", served["A"] > 0 and served["B"] > 0)
 
-        # (5) the server's drainage status of A, polled until drained.
+        # The server's drainage status of A, polled until drained.
         while True:
             info = await describe_version(client, "A")
             status = VersionDrainageStatus.Name(info.drainage_info.status)
