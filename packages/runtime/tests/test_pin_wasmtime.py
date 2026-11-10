@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import subprocess
-import time
+import sys
 from pathlib import Path
 from typing import NamedTuple
 
@@ -53,6 +53,20 @@ class Run(main.Run):
             os.abort()
         super().run()
 """
+# Spawns argv with stdout discarded, waits for it, prints its peak resident KiB and its seconds,
+# and exits with its exit code.
+WAIT4 = """\
+import os
+import sys
+import time
+
+started = time.monotonic()
+discard = [(os.POSIX_SPAWN_OPEN, 1, os.devnull, os.O_WRONLY, 0)]
+pid = os.posix_spawnp(sys.argv[1], sys.argv[1:], os.environ, file_actions=discard)
+_, status, usage = os.wait4(pid, 0)
+print(usage.ru_maxrss, time.monotonic() - started)
+sys.exit(os.waitstatus_to_exitcode(status))
+"""
 UNREACHABLE = "wasm trap: wasm `unreachable` instruction executed"
 GUEST_RAN = "failed to invoke `run` function"
 PYTHON_RAISED = "Python function threw an unexpected exception"
@@ -92,16 +106,18 @@ def probe(tmp_path_factory) -> Path:
 
 
 def measured(argv: list[str]) -> Measured:
-    """Runs wasmtime alone in a child process, whose peak resident memory is its own."""
-    started = time.monotonic()
-    process = subprocess.Popen(
-        argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+    """Runs wasmtime as the only child of a small process, which reports its peak resident memory
+    and wall time. A child spawned straight from pytest would report pytest's own peak, since exec
+    keeps the high-water mark of the memory it replaces."""
+    done = subprocess.run(
+        [sys.executable, "-c", WAIT4, *argv],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        errors="replace",
     )
-    stderr = process.stderr.read().decode(errors="replace")
-    process.stderr.close()
-    _, status, usage = os.wait4(process.pid, 0)
-    process.returncode = os.waitstatus_to_exitcode(status)
-    return Measured(process.returncode, stderr, usage.ru_maxrss / 1024, time.monotonic() - started)
+    peak_kib, seconds = done.stdout.split()
+    return Measured(done.returncode, done.stderr, int(peak_kib) / 1024, float(seconds))
 
 
 def scratch(path: Path, params: dict) -> Path:
