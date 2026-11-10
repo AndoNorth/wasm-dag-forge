@@ -9,6 +9,8 @@ Every number below is a `figure <name> <value>` line of that run, and the name i
 
 ## Result
 
+Diagram: [cold-start.drawio.svg](cold-start.drawio.svg), a worked example of the first run and the warm-up rule.
+
 **Pass.**
 On 3 of 3 runs, a first run of a `noop` guest with an empty module cache completed under `docker run --memory 384m --memory-swap 384m --cpus 0.25`, and so did a run with a warm cache, with no OOM kill.
 A first run took 29.0 to 29.6 s and peaked at a working set of 290 to 326 MiB, and a warm run took 0.54 to 0.61 s and peaked at 69 to 70 MiB.
