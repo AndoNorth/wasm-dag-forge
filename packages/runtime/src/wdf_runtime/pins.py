@@ -11,4 +11,4 @@ WASMTIME_VERSION = "48.0.7"
 GUEST_OVERHEAD_MIB = 128
 # The initial memory, in 64 KiB pages, that the workload component declares. A guest cap below it
 # fails at instantiation, so the runtime refuses it before starting wasmtime.
-GUEST_MIN_PAGES = 206
+GUEST_MIN_PAGES = 208
