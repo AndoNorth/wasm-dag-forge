@@ -134,7 +134,7 @@ def test_cap_below_minimum_refused(component, tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "Popen", no_wasmtime)
     monkeypatch.setattr(subprocess, "run", no_wasmtime)
-    below = GUEST_OVERHEAD_MIB + -(-GUEST_MIN_PAGES * PAGE // MIB) - 1
+    below = GUEST_OVERHEAD_MIB + GUEST_MIN_PAGES * PAGE // MIB
     ran = run(component, write_input(tmp_path / "i.json"), tmp_path / "s", below, 30, tmp_path)
     print(below, ran.classified)
     assert (ran.classified.cls, ran.classified.deterministic) == ("guest_memory_cap", True)
