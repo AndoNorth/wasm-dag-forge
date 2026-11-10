@@ -1,0 +1,90 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="t" value="Spike S9: a rollout from build A to build B of wdf-workflow-worker, dev server 1.32.0, temporalio 1.35.0" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+      <mxGeometry x="20" y="10" width="1000" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="R" value="Routing of the deployment (raw set_worker_deployment_current_version with the describe conflict token)" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="60" width="1000" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="R0" value="No current version: a new workflow completes 0 tasks in 3 s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="R">
+      <mxGeometry x="20" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="R1" value="A current (previous: none), the waiting workflow then completes 2 tasks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="R">
+      <mxGeometry x="360" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="R2" value="B current (previous: A), new workflows start on B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="R">
+      <mxGeometry x="700" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="R" source="R0" target="R1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="R" source="R1" target="R2">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="W" value="Pinned workflows on queue wdf-workflow" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="190" width="1000" height="300" as="geometry"/>
+    </mxCell>
+    <mxCell id="S1" value="stays-on-a: started on A, waits on the signal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="W">
+      <mxGeometry x="20" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="S2" value="Finishes on A while B is current: versions A, A, A, A, step finish-buggy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="W">
+      <mxGeometry x="700" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="M1" value="moved-to-b: started on A, waits on the signal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="W">
+      <mxGeometry x="20" y="125" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="M2" value="Override: update_workflow_execution_options, mask versioning_override, PinnedVersioningOverride to B. One new event (OPTIONS_UPDATED), no task, search attribute already B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="W">
+      <mxGeometry x="330" y="110" width="340" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="M3" value="Signal, B replays the history and completes: versions A, A, B, B, step finish-fixed, 1 patch marker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="W">
+      <mxGeometry x="700" y="125" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="C1" value="moved-to-c: started on B, override to C, whose change before the signal is unguarded" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="W">
+      <mxGeometry x="20" y="215" width="280" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="C2" value="Task fails NON_DETERMINISTIC_ERROR (TMPRL1100), workflow stays RUNNING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="W">
+      <mxGeometry x="360" y="215" width="280" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="C3" value="Override back to B, completes on B with finish-fixed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="W">
+      <mxGeometry x="700" y="215" width="280" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="eS" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="W" source="S1" target="S2">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eM1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="W" source="M1" target="M2">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eM2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="W" source="M2" target="M3">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eC1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="W" source="C1" target="C2">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eC2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="W" source="C2" target="C3">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="D" value="Drain of A" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="510" width="1000" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="D1" value="count of pinned running on wdf-workflow-worker:A: 2 before B, 1 after the override" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="D">
+      <mxGeometry x="20" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="D2" value="0 as soon as stays-on-a closes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="D">
+      <mxGeometry x="360" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="D3" value="describe_worker_deployment_version reports DRAINED 176 s later (server defaults)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="D">
+      <mxGeometry x="700" y="45" width="280" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="eD1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="D" source="D1" target="D2">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eD2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="D" source="D2" target="D3">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="n" value="One unversioned pool worker on wdf-pool-simulate ran every activity: 4 calls from A, 5 from B" style="text;html=1;whiteSpace=wrap;align=center;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="20" y="630" width="1000" height="30" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>
