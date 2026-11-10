@@ -1,0 +1,56 @@
+# Written by python -m wdf_runtime.calibrate --write, never by hand. Rewritten on every bump of
+# wasmtime or componentize-py and on a new host.
+# cpu_basis host: every rate and duration is measured on one uncapped host core, and a guest runs
+# on one thread. A duration in a pod is the duration here divided by the pod's CPU in cores, so
+# four times longer in a 250m pod.
+# A --check fails when a measured rate differs from units_per_second by more than tolerance, as a
+# fraction of units_per_second.
+cpu_basis: host
+host:
+  cpu: AMD Ryzen 5 7500F 6-Core Processor
+  machine: x86_64
+  system: Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.42
+versions:
+  componentize_py: 0.25.1
+  wasmtime: 48.0.7
+  wit: 1.0.0
+tolerance: 0.2
+units_per_second: 677.9
+spread:
+  runs: 5
+  min: 672.2
+  max: 682.8
+durations:
+  cpu_burn:
+    params:
+      args:
+        heartbeat_every: 10
+        units: 100
+      seed: 12
+      workload: cpu_burn
+    seconds: 0.404
+  io_churn:
+    params:
+      args:
+        heartbeat_every: 64
+        row_bytes: 256
+        rows: 1024
+      seed: 14
+      workload: io_churn
+    seconds: 0.314
+  mem_hold:
+    params:
+      args:
+        heartbeat_every: 10
+        mib: 32
+        units: 50
+      seed: 13
+      workload: mem_hold
+    seconds: 0.351
+  noop:
+    params:
+      args:
+        heartbeat_every: 1
+      seed: 11
+      workload: noop
+    seconds: 0.258
