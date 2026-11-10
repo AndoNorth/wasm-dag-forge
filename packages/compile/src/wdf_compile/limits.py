@@ -55,12 +55,14 @@ def fetch(bundle: Path, find_links: str, dest: Path, timeout_s: float | None = N
         PurePosixPath(wheel.get("url") or wheel["path"]).name
         for package in lock.get("package", [])
         for wheel in package.get("wheels", [])
-        if wheel["hash"] in hashes
+        if wheel.get("hash") in hashes
     )
     dest.mkdir(parents=True, exist_ok=True)
     fetched = []
     for name in names:
         url = f"{find_links.rstrip('/')}/{name}"
+        # ponytail: the deadline bounds each socket wait, so a mirror that trickles bytes can run
+        # past it; copy in chunks against the deadline if a slow mirror matters.
         timeout = None if deadline is None else max(deadline - time.monotonic(), 0.001)
         try:
             with urllib.request.urlopen(url, timeout=timeout) as response:
