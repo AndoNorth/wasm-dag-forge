@@ -1,6 +1,6 @@
 # Epic #6: Workflow engine (Temporal) - breakdown
 
-Status: draft
+Status: approved
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/6
 Architecture note: docs/architecture/12-dag-and-workflow.drawio
 Verifier: none, per decision 1.
@@ -442,7 +442,7 @@ Shared-file rules:
 
 ## 4. Issues
 
-One block per issue, in the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), replaced by `#NNN` links after filing.
+Each issue below was filed on 2026-11-10 from the [lane issue template](../../../.github/ISSUE_TEMPLATE/lane-issue.md), as a sub-issue of #6, and its body holds the block that stood here: scope, owns, consumes and produces, acceptance criteria, verifier, and needs and blocks as links.
 Done means, for every issue: `just ci` is green on the branch, the output of the named tests is pasted in the PR, and nothing outside Owns and the shared files changed.
 An issue that names a T2 command runs it under the cluster lock and pastes its output.
 
@@ -465,276 +465,28 @@ An issue that names a T2 command runs it under the cluster lock and pastes its o
 | 13 State-change events | A.1 |
 | 14 Durability test harness | V.3 |
 
-### 0.1 Activity and Temporal contracts
+### Filed issues
 
-Lane 0, tier T0. Needs: nothing. Blocks: every other issue but the spikes.
-
-- Scope: the two contracts of 0.4 with their models, loader, generator, vectors and READMEs, the two `docs/contracts.md` rows, and the contracts diagram.
-- Owns: `contracts/activity/**`, `contracts/temporal/**`, the `activity` and `temporal` rows of `docs/contracts.md`, `docs/architecture/15-contracts.drawio` and its svg, `packages/workflow/{pyproject.toml,README.md}`, `wdf_workflow/{__init__,models,contract,gen}.py`, the package data under `wdf_workflow/contract/`, `tests/{conftest,test_loader,test_drift,test_task_input,test_pools}.py`, the root `pyproject.toml` lines and the `uv.lock` entry.
-- Consumes / produces: events v3, workload v1, artifact v3, job v2 and status v1, read through package data.
-  Produces activity v1 and temporal v1.
-- Acceptance criteria:
-  - [ ] `contracts/activity/check.sh` and `contracts/temporal/check.sh` exit 0 for every `vectors/*/valid/*` file and the pinned `failure-classes.yaml`, `naming.yaml` and `pools.yaml`, and 1 with the `reason:` of its directory for every `invalid` one, shown by `pytest packages/workflow -v -k loader`.
-  - [ ] `test_failure_table_covers_exit_classes` and `test_failure_table_covers_artifact_codes` pass on the pinned table and fail on the vectors under `invalid/class-not-covered/`.
-  - [ ] `test_task_input_round_trip` passes: a `TaskInput` through `wdf_temporal.converter` keeps `request` byte-equal to `wdf_events.to_bytes`.
-  - [ ] `test_pools_match_ci_slots` passes, and fails after a slot of `pools.yaml` is changed.
-  - [ ] `python -m wdf_workflow.gen --check` exits 0, and exits 1 after a model field is renamed.
-  - [ ] `scripts/check-contracts-map.sh` and `scripts/export-diagrams.sh --check` exit 0.
-- Verifier: `packages/workflow/tests/test_loader.py`, `test_drift.py`, `test_task_input.py`, `test_pools.py`.
-
-### 0.2 Package skeleton, stubs and fakes
-
-Lane 0, tier T0, and T1 for the fake pool worker. Needs: 0.1 (issue). Blocks: every code issue.
-
-- Scope: the wheel test, `Placer`, `StaticPlacer`, the `place` local activity and `placer_contract`, `FakePool` and `activity_contract`, `FakeControl` and `control_activity_contract`, the reaper name test, and the refined DAG diagram.
-- Owns: the rest of lane 0's globs.
-- Consumes / produces: pool table v0, the naming contract.
-  Produces the stubs of section 5.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "placer_contract or activity_contract or control_contract"` passes against `StaticPlacer`, `FakePool` and `FakeControl`, and fails against a placer that returns a queue outside the naming contract, a fake that returns bytes instead of references, a fake that answers a cancel without `operator_interrupt` and a checkpoint, and a fake control activity that raises a plain exception.
-  - [ ] `pytest packages/workflow -v -k reaper_names` passes, and fails when the naming contract's reaper Schedule id, workflow, activity or queue differs from `wdf_artifactreaper.schedule`.
-  - [ ] `pytest packages/workflow -v -k wheel` builds the wheel and loads both contracts from package data outside the repository.
-  - [ ] `scripts/export-diagrams.sh --check` exits 0 after the diagram refinement.
-- Verifier: `test_placer_contract.py`, `test_activity_contract.py`, `test_control_contract.py`, `test_reaper_names.py`, `test_wheel.py`.
-
-### S9 Versioning on SDK 1.35.0 and the pinned-bug override
-
-Lane S, spike, timebox 1.5 days, tier T1, throwaway code in `docs/delivery/spikes/S9/code/`. Needs: nothing. Blocks: V.2.
-
-- Question: does pinned versioning hold on `temporalio` 1.35.0 against the pinned dev server, do the raw deployment calls set the current version and move an open pinned workflow to a fixed build, and does a visibility count detect that a build is drained?
-- Pass line, all five on the dev server of `temporalio/temporal` 1.9.1 (server 1.32.0, as the server reports) with `temporalio` 1.35.0:
-  - (1) a workflow declared `@workflow.defn(versioning_behavior=VersioningBehavior.PINNED)` on a worker with `WorkerDeploymentConfig(version=WorkerDeploymentVersion("wdf-workflow-worker", A), use_worker_versioning=True)`, started on A and waiting on a signal, finishes on A while B is current, as `workflow.info().get_current_deployment_version()` reports;
-  - (2) the raw `client.workflow_service.set_worker_deployment_current_version` call, with the `conflict_token` of `describe_worker_deployment` and the client identity, makes A current on a fresh deployment and then B;
-  - (3) the raw `update_workflow_execution_options` call with a `PinnedVersioningOverride` to B moves an open pinned workflow from A to B, and it completes on B's code, with B's change guarded by `workflow.patched`;
-  - (4) an unversioned activity worker on a pool queue serves workflows of both builds;
-  - (5) `count_workflows` with `TemporalWorkerDeploymentVersion = 'wdf-workflow-worker:A' AND TemporalWorkflowVersioningBehavior = 'Pinned' AND ExecutionStatus = 'Running'` returns 0 once the last pinned workflow on A closes, and the time until `describe_worker_deployment_version` reports `VERSION_DRAINAGE_STATUS_DRAINED` is recorded.
-  - Any of the five failing is a fail.
-- The result also records the update mask path that (3) needs, whether an override schedules a workflow task on its own, whether the search attributes follow a moved workflow before its next task completes, and what an override to a build with an unguarded change does, because the SDK source leaves these four open.
-- On fail: the override procedure is "pause, terminate and resubmit the job, keeping its artifacts", recorded in the result and applied by V.2.
-- Result: `docs/delivery/spikes/S9/versioning.md` with the server version the dev server reports.
-
-### S10 The official Temporal chart on the `ci` preset
-
-Lane S, spike, timebox 2 days, tier T2 under the cluster lock, throwaway values in `docs/delivery/spikes/S10/code/`. Needs: the D22 revisit. Blocks: M.1.
-
-- Question: does the official chart `temporal` 1.8.0 (server 1.32.2), with Postgres persistence and SQL visibility on `temporaldb`, one replica per service, 512 shards and the two dynamic-config keys, fit Temporal's 1,024 MiB and 1 CPU on the `ci` infra node, and do the keys reach the history service?
-- Values to start from: `server.config.persistence` with `numHistoryShards: 512` and the stores `default` and `visibility`, each `sql` with `pluginName: postgres12`, the database `temporal` or `temporal_visibility` on `temporaldb.wdf-infra.svc:5432`, the password from the `temporaldb` Secret, `createDatabase: false` and `manageSchema: true`; the two keys under `server.dynamicConfig`; `web.enabled: false`; `server.config.namespaces.create: false`; no top-level `cassandra`, `elasticsearch`, `mysql`, `postgresql`, `prometheus` or `grafana` key, because chart 1.8.0 has no subcharts and fails the render on them; and the manifests from `helm template --skip-tests` with `schema.useHelmHooks: false`.
-- Starting split, an estimate from the S3b heap profile: history 576 MiB and 450m, frontend 192 MiB and 200m, matching 128 MiB and 200m, worker 128 MiB and 150m.
-- Pass line, all of: (1) frontend, history, matching and worker run at one replica each with no Elasticsearch and no web UI, and the sum of their memory limits is at most 1,024 MiB and of their CPU limits at most 1; (2) 3,000 two-task stand-in jobs (the S3 method, with host workers through a port-forward bound to 127.0.0.1) all finish; (3) the history service's mutable state cache series stays at or below 1,000 while they finish; (4) the `max` counter of `memory.events` of no Temporal pod rises.
-  Any of the four failing is a fail.
-- The result records the exact name and labels of the cache series as the server exports it (expected `cache_usage{cache_type="mutablestate"}` on port 9090), because M.1 and the exit test read it by name.
-- On fail: decision 20 applies, and M.1 deploys the one-pod shape: `temporalio/server:1.32.2`, whose default `temporal-server start` runs the four services in one process, configured by the embedded template's environment (`DB=postgres12`, `NUM_HISTORY_SHARDS=512`, `DYNAMIC_CONFIG_FILE_PATH` and `PROMETHEUS_ENDPOINT` set explicitly because their defaults are Cassandra, 4 shards and no metrics), with the schema set up by a job on `temporalio/admin-tools:1.32.2`.
-- Result: `docs/delivery/spikes/S10/helm-install.md` with the chart and server versions and digests, the per-service limits and peaks, and the decision.
-
-### M.1 Temporal module
-
-Lane M, tier T2. Needs: lane 0, S10, the D22 revisit. Blocks: M.2.
-
-- Scope: module `temporal` in `deploy/temporal/` per the module contract, the pinned chart (or the fallback of decision 20), persistence and visibility on `temporaldb`, 512 shards, one replica per service, the two keys of decision 18, the limits of S10, readiness, `profiles: [dev, full, ci]`, the values in `values.json` (D23), and a checksum of the dynamic config on the pod template, so a changed key rolls the Temporal pods, because both keys need a restart.
-- Owns: lane M's globs.
-- Consumes / produces: module v1, `deploy/temporaldb/`, S10.
-  Produces module `temporal` and three `deploy/versions.yaml` entries.
-- Acceptance criteria:
-  - [ ] `just versions --check` exits 0 with the chart and both images pinned by digest, or, under the fallback, the two images and no chart.
-  - [ ] `pytest deploy/temporal -v` passes `test_dynamic_config_keys`, `test_limits_match_s10` and `test_config_change_rolls_pods` (the checksum annotation changes when a key changes) against the module's render, the chart's or the fallback's.
-  - [ ] `just up` then `scripts/tilt/run.sh ci` exits 0 with `temporal` ready beside `temporaldb`, and `kubectl --context kind-wdf -n wdf-infra get pods` lists one pod per Temporal service, or one under the fallback.
-- Verifier: the commands above, output pasted.
-
-### M.2 Bootstrap
-
-Lane M, tier T2. Needs: M.1. Blocks: D.2.
-
-- Scope: module `temporal-bootstrap`, an idempotent job that creates namespace `wdf` with the retention of D11, registers the five search attributes, and creates the reaper's Schedule in `wdf` with `wdf_artifactreaper.schedule.ensure_schedule` (decision 16).
-- Owns: lane M's globs.
-- Consumes / produces: the naming contract, `wdf_artifactreaper`.
-  Produces the namespace, the search attributes and the Schedule.
-- Acceptance criteria:
-  - [ ] The bootstrap job completes twice in a row with exit 0, and the second run changes nothing, shown by its log.
-  - [ ] Its log, or the equivalent `temporal operator` calls from the pinned CLI image, prints retention `24h`, the five search attributes with their types, and Schedule `wdf-artifact-reaper` in `wdf`.
-  - [ ] `scripts/tilt/run.sh ci` exits 0 with `temporal-bootstrap` completed.
-- Verifier: the commands above, output pasted.
-- Note: the keys-active check of the epic's detail issue 1 is S10's pass line on the chart and exit row 12 on the module.
-
-### P.1 Ready set and job result model
-
-Lane P, tier T0. Needs: lane 0. Blocks: W.1.
-
-- Scope: pure functions with no Temporal import: the ready set in ascending task id under `max_parallel`, fan-out and fan-in, blocked dependents, aggregate readiness with and without `allow_partial`, both drain modes of D8, pause or fail of D9 with its resume-compile exception and of decision 23, the terminal status (`succeeded`, `partial`, `failed`, `cancelled`, `terminated`) or `paused`, `skipped_tasks` of a partial run, and the per-task states of the status query.
-- Owns: lane P's globs for `ready` and `result`.
-- Consumes / produces: plan v1, status v1, the status query schema.
-  Produces `wdf_workflow.ready` and `wdf_workflow.result`.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "ready or result"` passes, including Hypothesis properties: no task becomes ready before its dependencies succeed, at most `max_parallel` tasks run, the order is a function of the plan alone, and every task ends with a state.
-  - [ ] Named cases pass: `test_aggregate_waits_for_all`, `test_allow_partial_lists_skipped`, `test_paused_and_failed_chain_pauses`, `test_resume_reruns_unsucceeded`, `test_manual_pause_cancels_only_checkpoint_tasks`, `test_resume_compile_failure_pauses` and `test_resume_keeps_skipped_compile`.
-- Verifier: `test_ready.py`, `test_result.py`.
-
-### P.2 Failure decisions and budgets
-
-Lane P, tier T0. Needs: lane 0, and P.1 for its worker. Blocks: W.2.
-
-- Scope: `decide(failure, task, budgets) -> Decision` over the failure class table: guest and infrastructure budgets, `none` rows ending the task at once, `free` rows consuming nothing, the OOM rule of decision 22 with D3's two-in-a-row rule, the backoffs of D3 and D5, `invalidate-cache-and-rebuild`, `previous-checkpoint` over D2's list and `re-place`, and the history estimate per decision.
-- Owns: lane P's globs for `failures` and `budgets`.
-- Consumes / produces: the activity v1 table, plan `retries`.
-  Produces `wdf_workflow.failures` and `wdf_workflow.budgets`.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "failures or budgets"` passes, with one case per row of the table (`test_every_class_row_has_a_case`).
-  - [ ] `test_deterministic_class_not_retried`, `test_infra_cap_exhausted`, `test_operator_interrupt_free`, `test_repeated_oom_killed_stops` and `test_schedule_to_start_backoff_ceiling` pass.
-- Verifier: `test_failures.py`, `test_budgets.py`.
-
-### A.1 Plan load and the emit point
-
-Lane A, tier T1 (Postgres and SeaweedFS through `wdf_itest`, marked `pair`, as plain functions without Temporal). Needs: lane 0. Blocks: A.2.
-
-- Scope: `load_plan` (D1), the batched `emit` local activity that writes events with `insert_events` after the id check of D17 and projects status with `transition` under a login in `wdf_workflow` (decision 24), deterministic ids from `cloudevent_id` and `time` from the fact, the `Lost` cases of D18, and the `ApplicationError` types of D12.
-- Owns: lane A's globs.
-- Consumes / produces: state v2, eventstore v1, jobstate v1, artifactclient v1, plan v1.
-  Produces the two activities.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "load_plan or emit"` passes, including `test_emit_replay_inserts_nothing`, `test_emit_retry_with_shifted_time_inserts_nothing` (the same ids with every time moved by 1 s insert 0 rows) and `test_manifest_hash_mismatch_refused`.
-  - [ ] `test_emit_lost_cases` shows the four answers of D18, and `test_activities_run_under_their_role` connects with a test login in `wdf_workflow` and never as the superuser.
-  - [ ] `control_activity_contract` passes against `load_plan` and `emit`.
-- Verifier: `tests/activities/test_load_plan.py`, `test_emit.py`.
-
-### A.2 Commit, compile cache and aggregate index activities
-
-Lane A, tier T1, marked `pair`. Needs: A.1. Blocks: D.1, V.3.
-
-- Scope: `commit` of the accepted attempt (decision 11) under a login in `wdf_artifacts` (decision 24), `index_checkpoint` of D2 under the same login, `cache_lookup` (D13), `cache_record` with the build-info key check, the guarded `cache_invalidate` of decision 10, which looks the entry up with `SELECT ... FOR UPDATE` in the transaction of its `invalidate_cache_entry`, so no entry recorded between the lookup and the invalidation is retired, and `build_index` from recorded results in task id order, which puts the index with the `indexer` store role and commits its reference with `commit` and no accepted attempt under the `wdf_artifacts` login and a `workflow` store client.
-- Owns: lane A's globs.
-- Consumes / produces: artifactclient v1, keys v1, runtime v1 pins, compile v1 `bundle.info`.
-  Produces the remaining control activities.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "commit or cache or build_index or index_checkpoint"` passes, including `test_cache_error_not_miss`, `test_bundle_without_lockfile_has_no_key`, `test_build_info_key_mismatch_refused`, `test_stale_invalidate_keeps_fresh_entry`, `test_cache_invalidate_races_fresh_record`, `test_commit_refuses_zombie_attempt`, `test_commit_upload_failed_reaches_workflow`, `test_index_checkpoint_refuses_other_attempt`, `test_index_in_task_id_order` and `test_build_index_commits_reference`.
-  - [ ] `control_activity_contract` passes against every activity of this issue.
-  - [ ] `test_cache_key_matches_build_info`, marked `slow` and not `integration`, computes the key of the workload bundle of `wdf_workloads.bundle` and finds it equal to the `cache_key` printed by `python -m wdf_compile build` for that bundle, and runs in the exit test.
-- Verifier: `tests/activities/test_commit.py`, `test_checkpoint.py`, `test_cache.py`, `test_index.py`.
-
-### W.1 Job workflow v1 and the task path
-
-Lane W, tier T1 (dev server through `wdf_itest`, with `FakeControl` and `FakePool`). Needs: lane 0, P.1. Blocks: W.2, D.1, V.2.
-
-- Scope: `JobWorkflow.run(accepted, params)` with the payload converter and tracing interceptor of `wdf_temporal`, plan load, the ready loop, `place` as a local activity through `StaticPlacer`, a single-attempt activity on the returned queue with the returned timeouts and the cancellation type of D20, the task input of 0.4, the compile cache check before placement (skip on a hit with `task.skipped`), commit, emit with the defect rule of D12, the status query, the workflow metrics of the #13 rules row, and `run_stage_contract("workflow", ...)`.
-- Owns: lane W's globs.
-- Consumes / produces: P.1, the naming and activity contracts.
-  Produces the workflow.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "fan_out_fan_in or max_parallel or cache_hit_skips or status_query or stage_contract_workflow or workflow_metrics_recorded"` passes.
-  - [ ] `test_place_answer_recorded` shows the placement as a marker in the history and no `place` call on replay.
-- Verifier: `tests/workflow/test_job.py`, `test_taskpath.py`.
-
-### W.2 Retry loop, schedule-to-start, lost completion and the history budget
-
-Lane W, tier T1. Needs: W.1, P.2. Blocks: W.3, V.3.
-
-- Scope: the decisions of P.2 in the workflow, backoff timers, D2's checkpoint list with `index_checkpoint` and `task.checkpoint.committed` for each reference received, the re-place after a schedule-to-start timeout, the scheduler-down behaviour of D15, and the history shape and enforcement of D16.
-- Owns: lane W's globs.
-- Consumes / produces: P.2.
-  Produces the loop.
-- Acceptance criteria:
-  - [ ] `test_lost_completion_job_finishes`: a `FakePool` worker does the work and never completes, the heartbeat timeout is retried from the infrastructure budget, and the job finishes with only the second attempt committed.
-  - [ ] `test_zombie_fenced`: a timed-out attempt's next heartbeat is refused, and its outputs are never committed.
-  - [ ] `test_schedule_to_start_replaces`, `test_scheduler_down_beyond_task_timeout`, `test_deterministic_class_not_retried_in_workflow`, `test_history_budget_ends_job` and `test_checkpoint_indexed_and_committed` pass.
-  - [ ] `test_history_shape` prints events per job, per task and per retry and the events one hour of placement outage adds, and the PR records them against 10, 8 and 6.
-- Verifier: `tests/workflow/test_retry.py`.
-
-### W.3 Aggregate semantics
-
-Lane W, tier T1. Needs: W.2. Blocks: W.4.
-
-- Scope: the `build_index` call before an aggregate task, the aggregate-only job taking its index reference from its parameters, `allow_partial`, and the `partial` terminal status with `job.partial`.
-- Owns: lane W's globs.
-- Consumes / produces: P.1, the index activity name.
-  Produces aggregate handling.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "aggregate_waits_for_all_inputs or allow_partial_partial_status or aggregate_only_job or aggregate_gets_index_reference_only"` passes.
-- Verifier: `tests/workflow/test_aggregate.py`.
-
-### W.4 Cancellation and control signals
-
-Lane W, tier T1. Needs: W.3. Blocks: W.5.
-
-- Scope: `cancel`, `terminate` and `pause` ordered as D19 says, catching both the asyncio and the Temporal cancelled exception, cancelling in-flight tasks and re-raising, the manual pause of decision 7 with `operator_interrupt` under D20 and its rule of D8 for a task that never started, the `Lost` answers of D18, and projection of `cancelled`, `terminated` and `paused`.
-- Owns: lane W's globs.
-- Consumes / produces: the signal schemas.
-  Produces control handling.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "cancel_in_flight or terminate_hard_stop or signal_dedup or resume_and_cancel_same_seq_cancel_wins or cancel_while_resume_pending or manual_pause_interrupts_checkpoint_task or manual_pause_keeps_final_checkpoint or manual_pause_drains_others or manual_pause_queued_task_returns_ready or manual_pause_no_replace or lost_terminal_completes or unexpected_lost_resends"` passes.
-- Verifier: `tests/workflow/test_control.py`.
-
-### W.5 Pause and resume
-
-Lane W, tier T1, and T2 in the exit test. Needs: W.4, and A.1 for the T2 rows. Blocks: V.1.
-
-- Scope: pause on exhausted budgets per D9 and decision 23, waiting on `resume` with no polling, a patched manifest reloaded through `load_plan`, the projection of `resume-pending` to `running` with `job.resumed` before anything else runs, the compile of a patched source re-run (cache keyed), the job moved from `running` back to `paused` with reason `resume-compile-failed` when that compile fails, because the status table has no move from `resume-pending` to `paused`, resume from the head of D2's list with the next resume counter, and the next reference after `CHECKPOINT_CORRUPT`.
-- Owns: lane W's globs.
-- Consumes / produces: the resume signal schema, patch v1.
-  Produces pause and resume.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "drain_then_pause or resume_from_checkpoint or resume_compile_failure_stays_paused or corrupt_checkpoint_falls_back or paused_costs_no_history"` passes, where `resume_compile_failure_stays_paused` checks the moves that `FakeControl` recorded and `paused_costs_no_history` shows the history length unchanged across a 60 s pause.
-- Verifier: `tests/workflow/test_pause.py`.
-
-### D.1 Workflow worker service
-
-Lane D, tier T1. Needs: W.1, A.2. Blocks: D.2, V.2.
-
-- Scope: `python -m wdf_workflow.service` as 0.4, configuration from the environment, SDK Prometheus metrics and the workflow metrics, graceful shutdown, and the reaper's Schedule worker in the same process on a client of namespace `wdf` (decision 16).
-- Owns: lane D's globs.
-- Consumes / produces: the naming contract, `wdf_artifactreaper.schedule`.
-  Produces the service.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "service_starts_three_workers or control_queue_per_build or sigterm_drains or metrics_endpoint or missing_env_refused"` passes against the dev server, with `FakeControl` standing in for the control activities' database and store.
-- Verifier: `tests/service/test_service.py`.
-
-### D.2 Image and deployment
-
-Lane D, tier T2. Needs: D.1, M.2. Blocks: V.2, V.3.
-
-- Scope: the service image on a pinned Python base with `WDF_BUILD_ID` taken from the environment of the build, falling back to the short commit, because the exit test runs from an export with no commit; module `workflow-worker` in `wdf-control` as one Deployment per build id (D21) with requests equal to limits at 256 MiB (S8's reserve, an estimate); an idempotent job that creates the three service logins of decision 24 in their group roles with passwords generated into the state directory; a Secret holding only the `workflow`, `indexer` and `reaper` store identities; and readiness.
-- Owns: lane D's globs.
-- Consumes / produces: module v1, the namespaces, state v2 roles, store v3 roles.
-  Produces module `workflow-worker`.
-- Acceptance criteria:
-  - [ ] `scripts/tilt/run.sh ci` after `just up` exits 0 with `workflow-worker` ready, and its pod log shows the workflow, control and reaper workers polling with the build id.
-  - [ ] Running the login job twice exits 0 both times, and `psql` as the superuser lists the three logins, each a member of only its group role.
-  - [ ] `pytest packages/migrate -v -k credentials` passes with the two new trees.
-- Verifier: the commands above, output pasted.
-
-### V.1 Determinism gate
-
-Lane V, tier T1. Needs: W.5. Blocks: the exit test.
-
-- Scope: recorded histories of `JobWorkflow` in `packages/workflow/corpus/v1/` (D24) covering a plain job, a retry, a cache hit, a partial aggregate, a cancel and a pause with resume, replayed with `wdf_temporal.corpus.replay_corpus([JobWorkflow], root)` in CI, a nondeterminism negative test, and the rules for changing the workflow in `packages/workflow/corpus/README.md`.
-- Owns: lane V's globs.
-- Consumes / produces: the corpus tools of #4.
-  Produces histories and the gate.
-- Acceptance criteria:
-  - [ ] `pytest packages/temporal packages/workflow -v -k replay` passes, and `test_replay_detects_reordered_activity` fails the replay of a history against a changed workflow.
-- Verifier: `tests/replay/test_replay.py`.
-
-### V.2 Worker versioning and rollout
-
-Lane V, tier T1, and T2 in the exit test. Needs: S9, W.1, D.1, and D.2 for the T2 rows. Blocks: the exit test.
-
-- Scope: `wdf_workflow.versioning`, which sets the current build with the raw `set_worker_deployment_current_version` call and the conflict token of `describe_worker_deployment`, after the new build's pollers are seen and without `allow_no_pollers`; counts the open pinned workflows of a build with the query of S9's item (5), a count of 0 meaning drained, and reports the server's drainage status beside the count without waiting on it, because the server refreshes it every 3 minutes after a 3-minute grace period by default; moves an open pinned workflow, a paused one included, to a fixed build with the override of D6 or applies the fallback S9 records; and deletes an old build's Deployment only when drained (D21).
-- Owns: lane V's globs.
-- Consumes / produces: S9.
-  Produces `wdf_workflow.versioning`.
-- Acceptance criteria:
-  - [ ] `pytest packages/workflow -v -k "pinned_finishes_on_old_build or first_deploy_sets_current or drain_detects_no_pinned or override_procedure or only_workflow_queue_versioned"` passes against the T1 dev server, where the last shows `deployment_config` on the `wdf-workflow` worker and on no other worker the service builds.
-- Verifier: `tests/versioning/test_versioning.py`.
-
-### V.3 Durability harness
-
-Lane V, tier T1, and T2 in the exit test. Needs: W.2, A.2, D.2. Blocks: the exit test.
-
-- Scope: `python -m wdf_workflow.harness` with `describe`, `smoke`, `restart` (the Temporal server or the workflow worker with tasks in flight, with `--target` naming the pods, and the Temporal pod under decision 20) and `rollout`, with the flags, scenarios and output lines of 0.4, seeding rows and manifests and running `FakePool` workers on the host.
-- Owns: lane V's globs.
-- Consumes / produces: every lane.
-  Produces the harness for #15 and #16.
-- Acceptance criteria:
-  - [ ] At T1, `pytest packages/workflow -v -k "harness_restart_worker or harness_t1_refuses_row_scenarios"` passes, the first with all jobs finished, using `FakeControl` and seeding nothing, because the dev server, Postgres and the store together are three containers, and the second showing exit 2 for `pause-resume` and `zombie`.
-  - [ ] At T2, `python -m wdf_workflow.harness --kube-context kind-wdf smoke --jobs 200` prints `finished: 200` and `failed: 0`.
-- Verifier: `tests/harness/test_harness.py`, the T2 command output pasted.
+- [#313](https://github.com/AndoNorth/wasm-dag-forge/issues/313) **0.1 Activity and Temporal contracts** Lane 0, tier T0. Needs: nothing. Blocks: every other issue but the spikes.
+- [#314](https://github.com/AndoNorth/wasm-dag-forge/issues/314) **0.2 Package skeleton, stubs and fakes** Lane 0, tier T0, and T1 for the fake pool worker. Needs: 0.1 (issue). Blocks: every code issue.
+- [#315](https://github.com/AndoNorth/wasm-dag-forge/issues/315) **S9 Versioning on SDK 1.35.0 and the pinned-bug override** Lane S, spike, timebox 1.5 days, tier T1, throwaway code in `docs/delivery/spikes/S9/code/`. Needs: nothing. Blocks: V.2.
+- [#316](https://github.com/AndoNorth/wasm-dag-forge/issues/316) **S10 The official Temporal chart on the `ci` preset** Lane S, spike, timebox 2 days, tier T2 under the cluster lock, throwaway values in `docs/delivery/spikes/S10/code/`. Needs: the D22 revisit (#333). Blocks: M.1.
+- [#317](https://github.com/AndoNorth/wasm-dag-forge/issues/317) **M.1 Temporal module** Lane M, tier T2. Needs: lane 0, S10, the D22 revisit (#333). Blocks: M.2.
+- [#318](https://github.com/AndoNorth/wasm-dag-forge/issues/318) **M.2 Bootstrap** Lane M, tier T2. Needs: M.1. Blocks: D.2.
+- [#319](https://github.com/AndoNorth/wasm-dag-forge/issues/319) **P.1 Ready set and job result model** Lane P, tier T0. Needs: lane 0. Blocks: W.1.
+- [#320](https://github.com/AndoNorth/wasm-dag-forge/issues/320) **P.2 Failure decisions and budgets** Lane P, tier T0. Needs: lane 0, and P.1 for its worker. Blocks: W.2.
+- [#321](https://github.com/AndoNorth/wasm-dag-forge/issues/321) **A.1 Plan load and the emit point** Lane A, tier T1 (Postgres and SeaweedFS through `wdf_itest`, marked `pair`, as plain functions without Temporal). Needs: lane 0. Blocks: A.2.
+- [#322](https://github.com/AndoNorth/wasm-dag-forge/issues/322) **A.2 Commit, compile cache and aggregate index activities** Lane A, tier T1, marked `pair`. Needs: A.1. Blocks: D.1, V.3.
+- [#323](https://github.com/AndoNorth/wasm-dag-forge/issues/323) **W.1 Job workflow v1 and the task path** Lane W, tier T1 (dev server through `wdf_itest`, with `FakeControl` and `FakePool`). Needs: lane 0, P.1. Blocks: W.2, D.1, V.2.
+- [#324](https://github.com/AndoNorth/wasm-dag-forge/issues/324) **W.2 Retry loop, schedule-to-start, lost completion and the history budget** Lane W, tier T1. Needs: W.1, P.2. Blocks: W.3, V.3.
+- [#325](https://github.com/AndoNorth/wasm-dag-forge/issues/325) **W.3 Aggregate semantics** Lane W, tier T1. Needs: W.2. Blocks: W.4.
+- [#326](https://github.com/AndoNorth/wasm-dag-forge/issues/326) **W.4 Cancellation and control signals** Lane W, tier T1. Needs: W.3. Blocks: W.5.
+- [#327](https://github.com/AndoNorth/wasm-dag-forge/issues/327) **W.5 Pause and resume** Lane W, tier T1, and T2 in the exit test. Needs: W.4, and A.1 for the T2 rows. Blocks: V.1.
+- [#328](https://github.com/AndoNorth/wasm-dag-forge/issues/328) **D.1 Workflow worker service** Lane D, tier T1. Needs: W.1, A.2. Blocks: D.2, V.2.
+- [#329](https://github.com/AndoNorth/wasm-dag-forge/issues/329) **D.2 Image and deployment** Lane D, tier T2. Needs: D.1, M.2. Blocks: V.2, V.3.
+- [#330](https://github.com/AndoNorth/wasm-dag-forge/issues/330) **V.1 Determinism gate** Lane V, tier T1. Needs: W.5. Blocks: the exit test.
+- [#331](https://github.com/AndoNorth/wasm-dag-forge/issues/331) **V.2 Worker versioning and rollout** Lane V, tier T1, and T2 in the exit test. Needs: S9, W.1, D.1, and D.2 for the T2 rows. Blocks: the exit test.
+- [#332](https://github.com/AndoNorth/wasm-dag-forge/issues/332) **V.3 Durability harness** Lane V, tier T1, and T2 in the exit test. Needs: W.2, A.2, D.2. Blocks: the exit test.
 
 ## 5. Order, stubs and spikes
 
