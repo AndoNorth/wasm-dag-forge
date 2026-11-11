@@ -33,6 +33,7 @@ wdf-stages = { workspace = true }
 wdf-stateops = { workspace = true }
 wdf-storecheck = { workspace = true }
 wdf-temporal = { workspace = true }
+wdf-workflow = { workspace = true }
 wdf-workloads = { workspace = true }
 
 [dependency-groups]
@@ -63,6 +64,7 @@ dev = [
     "wdf-stateops",
     "wdf-storecheck",
     "wdf-temporal",
+    "wdf-workflow",
     "wdf-workloads",
 ]
 

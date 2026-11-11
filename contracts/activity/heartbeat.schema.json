@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "CheckpointReference": {
+      "additionalProperties": false,
+      "description": "A checkpoint reference, a subset of contracts/artifact/reference.schema.json.",
+      "properties": {
+        "kind": {
+          "const": "checkpoint",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-checkpoints/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "CheckpointReference",
+      "type": "object"
+    },
+    "ProducerRef": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "pattern": "^r[0-9]+a[0-9]+$",
+          "title": "Attempt",
+          "type": "string"
+        },
+        "job": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job",
+          "type": "string"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "task",
+        "attempt"
+      ],
+      "title": "ProducerRef",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:activity:heartbeat:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The details of each run_task heartbeat, so a lost worker still hands over its checkpoint.",
+  "properties": {
+    "checkpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CheckpointReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "progress": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Progress"
+    },
+    "started_at": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "title": "Started At",
+      "type": "string"
+    },
+    "step": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Step"
+    },
+    "steps": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Steps"
+    }
+  },
+  "required": [
+    "progress",
+    "step",
+    "steps",
+    "checkpoint",
+    "started_at"
+  ],
+  "title": "contracts/activity heartbeat",
+  "type": "object"
+}

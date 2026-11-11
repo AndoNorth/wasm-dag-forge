@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "ManifestReference": {
+      "additionalProperties": false,
+      "description": "A manifest reference, a subset of contracts/artifact/reference.schema.json.",
+      "properties": {
+        "kind": {
+          "const": "manifest",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-sources/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind"
+      ],
+      "title": "ManifestReference",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:temporal:resume-signal:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The argument of the signal resume, with the row's pending patch or null.",
+  "properties": {
+    "control_seq": {
+      "maximum": 2147483647,
+      "minimum": 1,
+      "title": "Control Seq",
+      "type": "integer"
+    },
+    "manifest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ManifestReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "control_seq",
+    "manifest"
+  ],
+  "title": "contracts/temporal resume-signal",
+  "type": "object"
+}

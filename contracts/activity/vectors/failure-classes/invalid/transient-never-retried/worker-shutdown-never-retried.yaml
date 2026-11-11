@@ -1,0 +1,54 @@
+# Every failure class of a task attempt, with the budget it charges and its action. Schema: failure-classes.schema.json.
+# A workload row copies its pool and deterministic value from contracts/workload/exit-classes.yaml, and an artifact
+# row its deterministic value from contracts/artifact/failures.yaml. The runner, Temporal and placement rows are pinned
+# here.
+# budget: guest and infra consume one attempt of that budget, free consumes nothing, none ends the task at once.
+# An action replaces the budget rule for the occurrence it applies to.
+classes:
+  - {class: timeout, source: workload, pool: simulate, deterministic: false, budget: guest}
+  - {class: guest_memory_cap, source: workload, pool: simulate, deterministic: true, budget: none}
+  # The budget is none instead when the failure details say deterministic.
+  - {class: guest_failed, source: workload, pool: simulate, deterministic: from-error-file, budget: guest}
+  - {class: host_error, source: workload, pool: simulate, deterministic: false, budget: infra}
+  # A kill below the guest's own cap is a platform sizing fault. Two in a row stop the retry.
+  - {class: oom_killed, source: workload, pool: simulate, deterministic: false, budget: infra}
+  - {class: compile_failed, source: workload, pool: compile, deterministic: true, budget: none}
+  # The package mirror is the platform's.
+  - {class: compile_dependency_unavailable, source: workload, pool: compile, deterministic: false, budget: infra}
+  - {class: compile_timeout, source: workload, pool: compile, deterministic: false, budget: guest}
+  - class: compile_oom
+    source: workload
+    pool: compile
+    deterministic: false
+    budget: guest
+    action: escalate-once
+  # The aggregate library is the task's own code.
+  - {class: aggregate_failed, source: workload, pool: aggregate, deterministic: false, budget: guest}
+  - {class: aggregate_input_unavailable, source: workload, pool: aggregate, deterministic: false, budget: infra}
+  - {class: aggregate_input_corrupt, source: workload, pool: aggregate, deterministic: true, budget: none}
+  - {class: aggregate_input_refused, source: workload, pool: aggregate, deterministic: true, budget: none}
+  - {class: aggregate_parse_failed, source: workload, pool: aggregate, deterministic: true, budget: none}
+  - class: aggregate_oom
+    source: workload
+    pool: aggregate
+    deterministic: false
+    budget: guest
+    action: escalate-once
+  - {class: aggregate_timeout, source: workload, pool: aggregate, deterministic: false, budget: guest}
+  - {class: STORE_UNAVAILABLE, source: artifact, deterministic: false, budget: infra}
+  - {class: STORE_FORBIDDEN, source: artifact, deterministic: true, budget: none}
+  # NOT_FOUND and CORRUPT escalate to ARTIFACT_LOST inside the client, so a report of either skipped the refetch.
+  - {class: ARTIFACT_NOT_FOUND, source: artifact, deterministic: true, budget: none}
+  - {class: ARTIFACT_CORRUPT, source: artifact, deterministic: true, budget: none}
+  - {class: ARTIFACT_LOST, source: artifact, deterministic: true, budget: none, action: invalidate-cache-and-rebuild}
+  - {class: OUTPUT_UPLOAD_FAILED, source: artifact, deterministic: false, budget: infra}
+  - {class: OUTPUT_MISSING, source: artifact, deterministic: true, budget: none}
+  - {class: CHECKPOINT_CORRUPT, source: artifact, deterministic: false, budget: infra, action: previous-checkpoint}
+  - {class: operator_interrupt, source: runner, deterministic: false, budget: free}
+  - {class: worker_shutdown, source: runner, deterministic: false, budget: none}
+  - {class: heartbeat_timeout, source: temporal, deterministic: false, budget: infra}
+  - {class: start_to_close_timeout, source: temporal, deterministic: false, budget: infra}
+  - {class: schedule_to_start_timeout, source: temporal, deterministic: false, budget: free, action: re-place}
+  - {class: insufficient_memory, source: placement, deterministic: true, budget: none}
+  - {class: insufficient_cpu, source: placement, deterministic: true, budget: none}
+  - {class: no_matching_pool, source: placement, deterministic: true, budget: none}

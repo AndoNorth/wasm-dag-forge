@@ -29,6 +29,8 @@ Epic numbers link to the epic issues on GitHub.
 | [store](../contracts/store/README.md) | #3 | `packages/storecheck` generates the schema from its models | #12, #13, #16, #17, the object store module and the store contract script | PoC-essential interface |
 | [topology](../contracts/topology/README.md) | #2 | a hand-written table, validated by its schema | placement and workers, observability, load and chaos, and the cluster work of #2 | PoC-essential interface |
 | [module](../contracts/module/README.md) | #2 | each component ships its own `deploy/<component>/module.yaml` | the epics that ship an infrastructure component, and the Tilt skeleton | PoC-essential interface |
+| [activity](../contracts/activity/README.md) | #6 | the `wdf_workflow` models generate the task input, task result, failure details, heartbeat and failure class schemas | #9, #10, #13, #15, #18 | PoC-essential interface |
+| [temporal](../contracts/temporal/README.md) | #6 | the `wdf_workflow` models generate the naming, pool table, signal and status query schemas | #8, #9, #10, #12, #13, #15, #16, #24 | PoC-essential interface |
 | [state](../contracts/state/README.md) | #3 | `packages/jobstate`, `packages/eventstore` and `packages/artifactindex` generate the row schemas | #24, #8, #6, #7, #12, #13, #16, #17 | Shared data format |
 | [workload](../contracts/workload/README.md) | #11 | the `wdf_runtime` models generate the input, error, results, exit class, summary and build info schemas, and `wdf_kernel.format` holds the result format rules | #6, #10, #13, #15, #17, #18, #24 | Shared data format |
 | [status](../contracts/status/README.md) | #4 | a hand-written table, validated by its schema | #3, #6, #8, #24 | Shared data format |

@@ -1,0 +1,40 @@
+{
+  "batch_id": "5b1f0c3e-8a2d-4e6f-9b7a-1c2d3e4f5a6b",
+  "cache_key": "3ed981f991eae17d3a93fc7b6a57c214c9b9fb8d6159f552ec2d692adf492879",
+  "params": {
+    "entry": "sim",
+    "source": {
+      "kind": "source",
+      "name": "bundle.tar.gz",
+      "sha256": "0dd90e3e0c80a9f7501a04e5b2907d869ca9075556651c7488c6806a1c172c0e",
+      "size": 20480,
+      "uri": "s3://wdf-sources/sha256/0d/0dd90e3e0c80a9f7501a04e5b2907d869ca9075556651c7488c6806a1c172c0e"
+    }
+  },
+  "request": {
+    "data": {
+      "cpu_cores": 1,
+      "deadline": "2026-11-10T14:00:00.000000Z",
+      "inputs": [],
+      "memory_mib": 1024,
+      "task_type": "compile"
+    },
+    "datacontenttype": "application/json",
+    "dataschema": "urn:wdf:schema:task.requested:1.0",
+    "id": "5fa38e3f-fe33-574b-9426-60a791d1d37a",
+    "jobclass": "short",
+    "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+    "priorityclass": "standard",
+    "source": "/wdf/workflow",
+    "specversion": "1.0",
+    "subject": "3a9617fa-df7c-5760-a644-42d559e0f433/build",
+    "taskid": "build",
+    "tenant": "acme",
+    "time": "2026-11-10T12:00:00.123456Z",
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    "type": "dev.wdf.task.requested.v1"
+  },
+  "resume_counter": 0,
+  "seed": 7,
+  "task_attempt": 1
+}

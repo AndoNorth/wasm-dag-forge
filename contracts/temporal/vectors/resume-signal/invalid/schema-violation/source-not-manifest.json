@@ -1,0 +1,10 @@
+{
+  "control_seq": 5,
+  "manifest": {
+    "kind": "source",
+    "name": "bundle.tar.gz",
+    "sha256": "0dd90e3e0c80a9f7501a04e5b2907d869ca9075556651c7488c6806a1c172c0e",
+    "size": 20480,
+    "uri": "s3://wdf-sources/sha256/0d/0dd90e3e0c80a9f7501a04e5b2907d869ca9075556651c7488c6806a1c172c0e"
+  }
+}

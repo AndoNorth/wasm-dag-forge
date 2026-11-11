@@ -1,0 +1,214 @@
+{
+  "$defs": {
+    "CheckpointReference": {
+      "additionalProperties": false,
+      "description": "A checkpoint reference, a subset of contracts/artifact/reference.schema.json.",
+      "properties": {
+        "kind": {
+          "const": "checkpoint",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Name",
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/ProducerRef"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^s3://wdf-checkpoints/.+$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "size",
+        "name",
+        "kind",
+        "producer"
+      ],
+      "title": "CheckpointReference",
+      "type": "object"
+    },
+    "ProducerRef": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "pattern": "^r[0-9]+a[0-9]+$",
+          "title": "Attempt",
+          "type": "string"
+        },
+        "job": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job",
+          "type": "string"
+        },
+        "task": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "task",
+        "attempt"
+      ],
+      "title": "ProducerRef",
+      "type": "object"
+    },
+    "TaskStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckpointReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The newest kept checkpoint."
+        },
+        "guest_left": {
+          "minimum": 0,
+          "title": "Guest Left",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "infra_left": {
+          "minimum": 0,
+          "title": "Infra Left",
+          "type": "integer"
+        },
+        "last_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A class of failure-classes.yaml.",
+          "title": "Last Class"
+        },
+        "reschedules": {
+          "minimum": 0,
+          "title": "Reschedules",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "ready",
+            "running",
+            "succeeded",
+            "skipped",
+            "failed",
+            "blocked",
+            "paused",
+            "cancelled"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "task_attempt": {
+          "description": "0 for a task that never ran.",
+          "minimum": 0,
+          "title": "Task Attempt",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "state",
+        "task_attempt",
+        "guest_left",
+        "infra_left",
+        "reschedules",
+        "last_class",
+        "checkpoint"
+      ],
+      "title": "TaskStatus",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:temporal:status-query:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The result of the query status.",
+  "properties": {
+    "control_seq": {
+      "maximum": 2147483647,
+      "minimum": 0,
+      "title": "Control Seq",
+      "type": "integer"
+    },
+    "job_status": {
+      "description": "A status of contracts/status/status.yaml.",
+      "title": "Job Status",
+      "type": "string"
+    },
+    "pause_reason": {
+      "anyOf": [
+        {
+          "enum": [
+            "operator",
+            "retries-exhausted",
+            "resume-compile-failed"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Pause Reason"
+    },
+    "resume_counter": {
+      "minimum": 0,
+      "title": "Resume Counter",
+      "type": "integer"
+    },
+    "tasks": {
+      "description": "In ascending task id.",
+      "items": {
+        "$ref": "#/$defs/TaskStatus"
+      },
+      "minItems": 1,
+      "title": "Tasks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "job_status",
+    "pause_reason",
+    "resume_counter",
+    "control_seq",
+    "tasks"
+  ],
+  "title": "contracts/temporal status-query",
+  "type": "object"
+}

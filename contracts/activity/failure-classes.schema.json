@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "FailureClass": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "enum": [
+                "invalidate-cache-and-rebuild",
+                "previous-checkpoint",
+                "re-place",
+                "escalate-once"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "budget": {
+          "enum": [
+            "guest",
+            "infra",
+            "free",
+            "none"
+          ],
+          "title": "Budget",
+          "type": "string"
+        },
+        "class": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "title": "Class",
+          "type": "string"
+        },
+        "deterministic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "from-error-file",
+              "type": "string"
+            }
+          ],
+          "title": "Deterministic"
+        },
+        "pool": {
+          "anyOf": [
+            {
+              "enum": [
+                "compile",
+                "simulate",
+                "aggregate"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set exactly on a workload row, the pool of exit-classes.yaml.",
+          "title": "Pool"
+        },
+        "source": {
+          "enum": [
+            "workload",
+            "artifact",
+            "runner",
+            "temporal",
+            "placement"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "class",
+        "source",
+        "deterministic",
+        "budget"
+      ],
+      "title": "FailureClass",
+      "type": "object"
+    }
+  },
+  "$id": "urn:wdf:schema:activity:failure-classes:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "failure-classes.yaml: every failure class with its budget and action.",
+  "properties": {
+    "classes": {
+      "items": {
+        "$ref": "#/$defs/FailureClass"
+      },
+      "minItems": 1,
+      "title": "Classes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "classes"
+  ],
+  "title": "contracts/activity failure-classes",
+  "type": "object"
+}

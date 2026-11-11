@@ -1,0 +1,31 @@
+{
+  "log_tail": {
+    "kind": "log-tail",
+    "name": "tail.log",
+    "producer": {
+      "attempt": "r0a1",
+      "job": "3a9617fa-df7c-5760-a644-42d559e0f433",
+      "task": "build"
+    },
+    "sha256": "09f1522e441dd1ae54653f3338d5cc719de265518991b642797621eed5d9cbb1",
+    "size": 1024,
+    "uri": "s3://wdf-results/acme/5b1f0c3e-8a2d-4e6f-9b7a-1c2d3e4f5a6b/3a9617fa-df7c-5760-a644-42d559e0f433/7/build/r0a1/tail.log"
+  },
+  "outputs": [
+    {
+      "kind": "component",
+      "name": "component.wasm",
+      "sha256": "9b8a9df948b22df8f31f22fdfffd88c2080b90c9fc796d83418ce4d44045f353",
+      "size": 9437184,
+      "uri": "s3://wdf-components/sha256/9b/9b8a9df948b22df8f31f22fdfffd88c2080b90c9fc796d83418ce4d44045f353"
+    },
+    {
+      "kind": "build-info",
+      "name": "build-info.json",
+      "sha256": "c0873283de2f812ed79442d961bd8281f2612ed7cf6f362353ffa9c0079cab3a",
+      "size": 612,
+      "uri": "s3://wdf-components/sha256/c0/c0873283de2f812ed79442d961bd8281f2612ed7cf6f362353ffa9c0079cab3a"
+    }
+  ],
+  "started_at": "2026-11-10T12:00:05.000000Z"
+}

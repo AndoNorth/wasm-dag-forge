@@ -1,0 +1,52 @@
+{
+  "batch_id": "5b1f0c3e-8a2d-4e6f-9b7a-1c2d3e4f5a6b",
+  "cache_key": null,
+  "params": {
+    "aggregation": "summary_stats",
+    "args": {
+      "blocks": [
+        "pi"
+      ]
+    },
+    "index": null
+  },
+  "request": {
+    "data": {
+      "cpu_cores": 1,
+      "deadline": "2026-11-10T14:00:00.000000Z",
+      "inputs": [
+        {
+          "kind": "result",
+          "name": "results.xml",
+          "producer": {
+            "attempt": "r0a1",
+            "job": "3a9617fa-df7c-5760-a644-42d559e0f433",
+            "task": "sim-0"
+          },
+          "sha256": "d62aede4b55a1b4cf65db1826e7543c3e82e3a86e5119d6b680cda926cbb95bc",
+          "size": 18432,
+          "uri": "s3://wdf-results/acme/5b1f0c3e-8a2d-4e6f-9b7a-1c2d3e4f5a6b/3a9617fa-df7c-5760-a644-42d559e0f433/7/sim-0/r0a1/results.xml"
+        }
+      ],
+      "memory_mib": 1024,
+      "task_type": "aggregate"
+    },
+    "datacontenttype": "application/json",
+    "dataschema": "urn:wdf:schema:task.requested:1.0",
+    "id": "71617c6c-2c44-55aa-a604-af8c31902ead",
+    "jobclass": "short",
+    "jobid": "3a9617fa-df7c-5760-a644-42d559e0f433",
+    "priorityclass": "standard",
+    "source": "/wdf/workflow",
+    "specversion": "1.0",
+    "subject": "3a9617fa-df7c-5760-a644-42d559e0f433/agg",
+    "taskid": "agg",
+    "tenant": "acme",
+    "time": "2026-11-10T12:00:00.123456Z",
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    "type": "dev.wdf.task.requested.v1"
+  },
+  "resume_counter": 0,
+  "seed": 7,
+  "task_attempt": 1
+}

@@ -34,6 +34,7 @@ members = [
     "wdf-stateops",
     "wdf-storecheck",
     "wdf-temporal",
+    "wdf-workflow",
     "wdf-workloads",
 ]
 
@@ -627,6 +628,7 @@ dev = [
     { name = "wdf-stateops" },
     { name = "wdf-storecheck" },
     { name = "wdf-temporal" },
+    { name = "wdf-workflow" },
     { name = "wdf-workloads" },
 ]
 
@@ -660,6 +662,7 @@ dev = [
     { name = "wdf-stateops", editable = "packages/stateops" },
     { name = "wdf-storecheck", editable = "packages/storecheck" },
     { name = "wdf-temporal", editable = "packages/temporal" },
+    { name = "wdf-workflow", editable = "packages/workflow" },
     { name = "wdf-workloads", editable = "packages/workloads" },
 ]
 
@@ -1091,6 +1094,57 @@ requires-dist = [
     { name = "wdf-events", editable = "packages/events" },
     { name = "wdf-itest", editable = "packages/itest" },
     { name = "wdf-keys", editable = "packages/keys" },
+]
+
+[[package]]
+name = "wdf-workflow"
+version = "0.0.0"
+source = { editable = "packages/workflow" }
+dependencies = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "temporalio" },
+    { name = "wdf-artifactclient" },
+    { name = "wdf-artifactindex" },
+    { name = "wdf-artifactreaper" },
+    { name = "wdf-compat" },
+    { name = "wdf-compile" },
+    { name = "wdf-events" },
+    { name = "wdf-eventstore" },
+    { name = "wdf-itest" },
+    { name = "wdf-jobdoc" },
+    { name = "wdf-jobpatch" },
+    { name = "wdf-jobstate" },
+    { name = "wdf-keys" },
+    { name = "wdf-plan" },
+    { name = "wdf-runtime" },
+    { name = "wdf-stages" },
+    { name = "wdf-temporal" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "psycopg", extras = ["binary"] },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "temporalio" },
+    { name = "wdf-artifactclient", editable = "packages/artifactclient" },
+    { name = "wdf-artifactindex", editable = "packages/artifactindex" },
+    { name = "wdf-artifactreaper", editable = "packages/artifactreaper" },
+    { name = "wdf-compat", editable = "packages/compat" },
+    { name = "wdf-compile", editable = "packages/compile" },
+    { name = "wdf-events", editable = "packages/events" },
+    { name = "wdf-eventstore", editable = "packages/eventstore" },
+    { name = "wdf-itest", editable = "packages/itest" },
+    { name = "wdf-jobdoc", editable = "packages/jobdoc" },
+    { name = "wdf-jobpatch", editable = "packages/jobpatch" },
+    { name = "wdf-jobstate", editable = "packages/jobstate" },
+    { name = "wdf-keys", editable = "packages/keys" },
+    { name = "wdf-plan", editable = "packages/plan" },
+    { name = "wdf-runtime", editable = "packages/runtime" },
+    { name = "wdf-stages", editable = "packages/stages" },
+    { name = "wdf-temporal", editable = "packages/temporal" },
 ]
 
 [[package]]
