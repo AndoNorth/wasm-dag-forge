@@ -6,7 +6,7 @@
 name: ci
 fitted: true
 memory_mib: 10880
-cpus: 7
+cpus: 8
 nodes:
   - role: control-plane
     count: 1
@@ -14,7 +14,7 @@ nodes:
     memory_mib: 1280
   - role: infra
     count: 1
-    cpus: 2
+    cpus: 3
     memory_mib: 5120
   - role: obs
     count: 1
