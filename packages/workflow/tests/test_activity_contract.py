@@ -96,6 +96,12 @@ def test_activity_contract_refuses_a_class_outside_the_table(temporal, task_inpu
     assert "fails: unknown-class" in message
 
 
+def test_activity_contract_refuses_an_interrupt_that_needed_no_cancel(temporal, task_input):
+    script = {**SCRIPT, 3: Fail("operator_interrupt", checkpoint=True)}
+    message = contract_failure(temporal, task_input, script)
+    assert "interrupts: the task ended before a heartbeat carried a checkpoint" in message
+
+
 def test_activity_contract_refuses_a_cancel_without_operator_interrupt(temporal, task_input):
     script = {**SCRIPT, 3: Hang(checkpoint=True)}
     message = contract_failure(temporal, task_input, script)
@@ -114,8 +120,13 @@ def test_fake_pool_lost_worker_outcomes_time_out(temporal, task_input, outcome, 
     async def body():
         client = await connect(temporal)
         queue = f"wdf-simulate-{uuid.uuid4()}"
-        async with FakePool(client, "simulate", lambda task: outcome, queue=queue):
+        async with FakePool(client, "simulate", lambda task: outcome, queue=queue) as fake:
             task = TaskInput.model_validate(task_input("simulate"))
-            return await run_task_once(client, queue, task, **timeouts)
+            answer = await run_task_once(client, queue, task, **timeouts)
+            if isinstance(outcome, Zombie):
+                assert fake.zombies == []
+                await asyncio.sleep(outcome.after_s)
+                assert fake.zombies == [task]
+            return answer
 
     assert run(body()) == {"timeout": expected}

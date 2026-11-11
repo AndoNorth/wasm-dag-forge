@@ -353,6 +353,8 @@ async def control_activity_contract(impl: Mapping[str, Callable], cases: list[Co
     either raises its ApplicationError type, retryable as error_types() says, or returns a value
     of the result type that survives the payload converter. Every activity has a succeeding case,
     and an emit has a case whose move lost, which writes no event.
+    The contract reads only what each activity answers, so the rows behind an answer, such as the
+    events an emit counts as inserted, are for the activity's own tests to read.
     """
     names = {a.name for a in naming().activities.control} | {
         a.name for a in naming().activities.local

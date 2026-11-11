@@ -116,7 +116,8 @@ class FakePool:
 
     With `store`, an ArtifactClient of the pool's store role, every reference names an uploaded
     object. Without it, the references are computed from the fake bytes and nothing is uploaded.
-    `calls` holds every task input in the order the worker took them.
+    `calls` holds every task input in the order the worker took them, and `zombies` each one
+    that a Zombie completed.
     """
 
     def __init__(
@@ -135,12 +136,11 @@ class FakePool:
         self.store = store
         self.beat_s = beat_s
         self.calls: list[TaskInput] = []
+        self.zombies: list[TaskInput] = []
         self._worker: Worker | None = None
 
     async def __aenter__(self) -> "FakePool":
-        [pool_activity] = naming().activities.pool
-
-        @activity.defn(name=pool_activity.name)
+        @activity.defn(name=_pool_activity().name)
         async def run_task(task: TaskInput) -> TaskResult:
             self.calls.append(task)
             return await self._run(task, self.script(task))
@@ -270,8 +270,16 @@ class FakePool:
                         await asyncio.sleep(left)
                     except asyncio.CancelledError:
                         pass
-                return await self._succeed(task, started_at)
+                result = await self._succeed(task, started_at)
+                self.zombies.append(task)
+                return result
         raise TypeError(f"{outcome!r} is not an outcome")
+
+
+@cache
+def _pool_activity():
+    [pool_activity] = naming().activities.pool
+    return pool_activity
 
 
 @workflow.defn(name=CONTRACT_WORKFLOW)
@@ -289,7 +297,7 @@ class RunTaskOnce:
     async def run(
         self, queue: str, task: TaskInput, cancel: bool, heartbeat_s: int, start_to_close_s: int
     ) -> dict:
-        [pool_activity] = naming().activities.pool
+        pool_activity = _pool_activity()
         handle = workflow.start_activity(
             pool_activity.name,
             task,
@@ -303,6 +311,11 @@ class RunTaskOnce:
         if cancel:
             await workflow.wait_condition(lambda: self.cancel_requested or handle.done())
             handle.cancel()
+        outcome = await self._outcome(handle)
+        return {**outcome, "cancelled": self.cancel_requested} if cancel else outcome
+
+    @staticmethod
+    async def _outcome(handle) -> dict:
         try:
             raw = await handle
         except ActivityError as error:
@@ -469,7 +482,11 @@ async def activity_contract(client: Client, queue: str, cases: ContractCases) ->
             problems.append(f"interrupts: {error}")
         else:
             failure = _check_failure(problems, "interrupts", cases.interrupts, outcome)
-            if failure is not None and failure.type != "operator_interrupt":
+            if not outcome["cancelled"]:
+                problems.append(
+                    "interrupts: the task ended before a heartbeat carried a checkpoint"
+                )
+            elif failure is not None and failure.type != "operator_interrupt":
                 problems.append(f"interrupts: a cancel was answered with {failure.type}")
             elif failure is not None and failure.details.checkpoint is None:
                 problems.append("interrupts: operator_interrupt carries no final checkpoint")

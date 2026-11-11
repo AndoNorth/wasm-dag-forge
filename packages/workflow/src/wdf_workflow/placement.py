@@ -32,7 +32,9 @@ class Placement(_Model):
 
     kind: Literal["placement"] = "placement"
     queue: str = Field(min_length=1)
-    memory_class: str = Field(min_length=1)
+    memory_class: str = Field(
+        pattern="^[1-9][0-9]*Mi$", description="The memory of the slot the task runs in."
+    )
     escalated: StrictBool
     schedule_to_start_s: PositiveInt
     start_to_close_s: PositiveInt

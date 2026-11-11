@@ -81,6 +81,19 @@ def wrong_class(answer):
     return answer.model_copy(update={"failure": "no_matching_pool"})
 
 
+class ShrinksOnEscalate(StaticPlacer):
+    def place(self, request, escalate=False):
+        answer = super().place(request, escalate)
+        if escalate and answer.kind == "placement":
+            return answer.model_copy(update={"memory_class": "1Mi", "escalated": True})
+        return answer
+
+
+def test_placer_contract_refuses_an_escalation_to_a_smaller_class():
+    with pytest.raises(AssertionError, match="escalated is True from 1024Mi to 1Mi"):
+        placer_contract(ShrinksOnEscalate())
+
+
 @pytest.mark.parametrize(
     ("change", "message"),
     [
