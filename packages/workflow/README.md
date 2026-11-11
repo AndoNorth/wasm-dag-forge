@@ -6,7 +6,12 @@ The contracts it loads are pinned in `contracts/activity/README.md` and `contrac
 ## State
 
 The models (`wdf_workflow.models`), the loader `python -m wdf_workflow.contract --check FILE [--as NAME]` and the schema generator `python -m wdf_workflow.gen [--check]` are delivered.
-The placer, the fakes and their conformance tests, the pure rules, the control activities, the workflow, the service and the harness are not built yet.
+The placer and the stubs are delivered too:
+
+- `wdf_workflow.placement`: the `Placer` interface, `StaticPlacer` over pool table v0 and the `place` local activity.
+- `wdf_workflow.testing`: `placer_contract`, `FakePool` with `activity_contract`, and `FakeControl` with `control_activity_contract`, where `wdf_workflow.testing.control` pins the argument and result of each control activity.
+
+The pure rules, the control activities, the workflow, the service and the harness are not built yet.
 `pyproject.toml` declares every dependency those parts need, so no later change edits it.
 
 ## Package data
@@ -18,6 +23,7 @@ A built wheel carries the files themselves, so the package never reads a reposit
 
 ```sh
 nix develop -c uv run --frozen pytest packages/workflow -q
+nix develop -c uv run --frozen pytest packages/workflow -v -k "placer_contract or activity_contract or control_contract"
 nix develop -c uv run --frozen python -m wdf_workflow.contract --check FILE
 nix develop -c uv run --frozen python -m wdf_workflow.gen --check
 ```
