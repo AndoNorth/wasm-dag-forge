@@ -1,18 +1,16 @@
 """The `emit` local activity: the one point where the workflow writes events and projects the job
 row's status, in one transaction under a login in `wdf_workflow`."""
 
-import psycopg
 from temporalio import activity
 from wdf_events import to_event_row
 from wdf_eventstore import insert_events
 from wdf_jobstate import IllegalTransition, JobNotFound, Lost, transition
 
 from ..testing.control import Emit, Emitted, control_error
+from .db import connect
 
 # A move the workflow makes out of `paused` that control may have overtaken with a resume.
 STOPS = ("cancelled", "terminated")
-CONNECT_TIMEOUT_S = 10
-LOCK_TIMEOUT = "10s"
 
 
 def _move(conn, request: Emit) -> str | None:
@@ -50,12 +48,7 @@ class Emitter:
         if strays := {e.jobid for e in request.events} - {request.job_id}:
             raise ValueError(f"the batch of {request.job_id} holds events of {sorted(strays)}")
         try:
-            # A lock held elsewhere fails the send, which the activity's retry sends again.
-            with psycopg.connect(
-                self.dsn,
-                connect_timeout=CONNECT_TIMEOUT_S,
-                options=f"-c lock_timeout={LOCK_TIMEOUT}",
-            ) as conn:
+            with connect(self.dsn) as conn:
                 # The row lock orders the sends of one job, so the id check below sees every
                 # committed batch.
                 if not conn.execute(
