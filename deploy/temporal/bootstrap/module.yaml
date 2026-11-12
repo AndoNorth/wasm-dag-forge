@@ -1,0 +1,19 @@
+name: temporal-bootstrap
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: image
+  pin: temporalio/server
+resources:
+  temporal-bootstrap:
+    requests:
+      cpu: 1m
+      memory: 1Mi
+    limits:
+      cpu: 1m
+      memory: 1Mi
+readiness:
+  command: [deploy/temporal/bootstrap/bootstrap.sh, check]
+profiles: [dev, full, ci]
+depends_on:
+  - infra/temporal
