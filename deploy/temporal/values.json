@@ -1,0 +1,54 @@
+{
+  "server": {
+    "replicaCount": 1,
+    "deploymentStrategy": {"type": "Recreate"},
+    "config": {
+      "logLevel": "info",
+      "persistence": {
+        "numHistoryShards": 512,
+        "datastores": {
+          "default": {
+            "sql": {
+              "pluginName": "postgres12",
+              "driverName": "postgres12",
+              "databaseName": "temporal",
+              "connectAddr": "temporaldb.wdf-infra.svc:5432",
+              "connectProtocol": "tcp",
+              "user": "postgres",
+              "existingSecret": "temporaldb",
+              "secretKey": "POSTGRES_PASSWORD",
+              "createDatabase": false,
+              "manageSchema": true,
+              "maxConns": 20,
+              "maxIdleConns": 20
+            }
+          },
+          "visibility": {
+            "sql": {
+              "pluginName": "postgres12",
+              "driverName": "postgres12",
+              "databaseName": "temporal_visibility",
+              "connectAddr": "temporaldb.wdf-infra.svc:5432",
+              "connectProtocol": "tcp",
+              "user": "postgres",
+              "existingSecret": "temporaldb",
+              "secretKey": "POSTGRES_PASSWORD",
+              "createDatabase": false,
+              "manageSchema": true,
+              "maxConns": 20,
+              "maxIdleConns": 20
+            }
+          }
+        }
+      },
+      "namespaces": {"create": false}
+    },
+    "dynamicConfig": {
+      "history.hostLevelCacheMaxSize": [{"value": 1000}],
+      "history.eventsCacheMaxSizeBytes": [{"value": 32768}]
+    }
+  },
+  "admintools": {"enabled": false},
+  "web": {"enabled": false},
+  "schema": {"useHelmHooks": false}
+}
