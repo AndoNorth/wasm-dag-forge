@@ -1,0 +1,55 @@
+name: temporal
+group: infra
+namespace: wdf-infra
+artifact:
+  kind: chart
+  pin: temporal
+resources:
+  temporal-frontend:
+    requests:
+      cpu: 200m
+      memory: 192Mi
+    limits:
+      cpu: 200m
+      memory: 192Mi
+  temporal-history:
+    requests:
+      cpu: 450m
+      memory: 576Mi
+    limits:
+      cpu: 450m
+      memory: 576Mi
+  temporal-matching:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  temporal-worker:
+    requests:
+      cpu: 150m
+      memory: 128Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
+  temporal-schema:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 50m
+      memory: 128Mi
+readiness:
+  command:
+    - kubectl
+    - --context=kind-wdf
+    - --namespace=wdf-infra
+    - wait
+    - --for=condition=Available
+    - deployment
+    - --selector=app.kubernetes.io/name=temporal
+    - --timeout=300s
+profiles: [dev, full, ci]
+depends_on:
+  - infra/temporaldb

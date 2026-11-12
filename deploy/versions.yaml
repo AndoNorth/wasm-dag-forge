@@ -5,7 +5,11 @@ kind_node_image:
   version: v1.35.0
   # yamllint disable-line rule:line-length
   digest: sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
-charts: {}
+charts:
+  temporal:
+    version: 1.8.0
+    # yamllint disable-line rule:line-length
+    digest: sha256:e65b454d620129f3d7da2c16611a7f754e2d89b20b7a135dc5f0916a062f3a9e
 images:
   pause:
     version: "3.10"
@@ -31,6 +35,14 @@ images:
     version: 1.9.1
     # yamllint disable-line rule:line-length
     digest: sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e
+  temporalio/server:
+    version: 1.32.2
+    # yamllint disable-line rule:line-length
+    digest: sha256:7bf69188a6232fea14869b9cef3d94aa82a1601d99517f7e86c71f22da4e0670
+  temporalio/admin-tools:
+    version: 1.32.2
+    # yamllint disable-line rule:line-length
+    digest: sha256:4a95866efba29d7e17ab012df5232795e8b0ad0f7d5f9d1ec4df321f7792a754
   chrislusf/seaweedfs:
     version: "4.51"
     # yamllint disable-line rule:line-length

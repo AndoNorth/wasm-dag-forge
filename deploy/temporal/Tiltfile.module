@@ -1,0 +1,68 @@
+# Temporal module: the official chart, vendored here and pinned by digest, rendered with values.json and an overlay
+# of the pins, the pool placement and the resources of module.yaml. One Tilt resource per service, and the module's
+# own resource is the frontend, which waits for the schema job and the other services, so it is ready only when all are.
+module = read_yaml("module.yaml")
+versions = read_yaml("../versions.yaml")
+pin = versions["charts"][module["artifact"]["pin"]]
+name = module["name"]
+namespace = module["namespace"]
+res = module["resources"]
+topology = read_yaml("../../contracts/topology/topology.yaml")
+pool = {"key": topology["pool_label"], "value": "infra"}
+values = read_json("values.json")
+
+chart = os.path.abspath("%s-%s.tgz" % (name, pin["version"]))
+watch_file(chart)
+digest = "sha256:" + str(local(["sha256sum", chart], quiet = True)).split(" ")[0]
+if digest != pin["digest"]:
+    fail("chart %s has digest %s, deploy/versions.yaml pins %s" % (chart, digest, pin["digest"]))
+
+def sha256(text):
+    return str(local(["sha256sum"], stdin = text, quiet = True)).split(" ")[0]
+
+def image(key):
+    return {"repository": key, "tag": versions["images"][key]["version"] + "@" + versions["images"][key]["digest"]}
+
+placement = {
+    "nodeSelector": {pool["key"]: pool["value"]},
+    "tolerations": [{"key": pool["key"], "operator": "Equal", "value": pool["value"], "effect": topology["taint_effect"]}],
+}
+
+# The dynamic config is read only at start for the two cache keys, so its checksum on the pod template rolls the pods.
+server = {
+    "image": image("temporalio/server"),
+    "podAnnotations": {"checksum/dynamic-config": sha256(encode_json(values["server"]["dynamicConfig"]))},
+}
+services = ["frontend", "history", "matching", "worker"]
+for s in services:
+    server[s] = {"resources": res[name + "-" + s]}
+server.update(placement)
+admintools = {"image": image("temporalio/admin-tools")}
+admintools.update(placement)
+overlay = {"server": server, "admintools": admintools, "schema": {"resources": res[name + "-schema"]}}
+
+manifests = local(
+    ["helm", "template", name, chart, "--namespace", namespace, "--skip-tests", "-f", os.path.abspath("values.json"), "-f", "-"],
+    stdin = encode_json(overlay),
+    quiet = True,
+)
+k8s_yaml(manifests)
+
+# The schema job is named after the chart version, so its name is read from the render.
+job = [o for o in decode_yaml_stream(manifests) if o["kind"] == "Job"][0]["metadata"]["name"]
+group = [module["group"]]
+k8s_resource(
+    job,
+    new_name = name + "-schema",
+    objects = ["%s-%s:configmap:%s" % (name, c, namespace) for c in ["config", "dynamic-config"]],
+    labels = group,
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])],
+)
+for s in services[1:]:
+    k8s_resource(name + "-" + s, labels = group, resource_deps = [name + "-schema"])
+k8s_resource(
+    name + "-frontend",
+    new_name = name,
+    labels = group,
+    resource_deps = [name + "-" + s for s in services[1:]],
+)
