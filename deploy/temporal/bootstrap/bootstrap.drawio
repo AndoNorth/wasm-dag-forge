@@ -1,0 +1,61 @@
+<mxfile>
+  <diagram id="temporal-bootstrap" name="Bootstrap of namespace wdf">
+    <mxGraphModel adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t" value="Module temporal-bootstrap: what it creates in Temporal on the ci preset, and what a second run changes (nothing)" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1150" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="host" value="Host" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="300" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="tilt" value="&lt;b&gt;Tilt local_resource&lt;/b&gt;&lt;br&gt;temporal-bootstrap&lt;br&gt;after resource temporal is ready" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="host">
+          <mxGeometry x="15" y="40" width="270" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="sh" value="&lt;b&gt;bootstrap.sh apply&lt;/b&gt;&lt;br&gt;waits for deployment/temporal-frontend&lt;br&gt;port-forward 127.0.0.1:&amp;lt;free port&amp;gt; -&amp;gt; 7233" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="host">
+          <mxGeometry x="15" y="130" width="270" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="py" value="&lt;b&gt;bootstrap.py apply&lt;/b&gt;&lt;br&gt;names from wdf_workflow.contract.naming()&lt;br&gt;retention 24h&lt;br&gt;Schedule from wdf_artifactreaper.schedule:&lt;br&gt;compared with definition(), else ensure_schedule" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="host">
+          <mxGeometry x="15" y="230" width="270" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="chk" value="readiness: bootstrap.sh check, exit 1 when anything differs" style="text;html=1;align=left;whiteSpace=wrap;fontSize=11;" vertex="1" parent="host">
+          <mxGeometry x="15" y="345" width="270" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="host" source="tilt" target="sh">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="host" source="sh" target="py">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="srv" value="Temporal frontend, wdf-infra (server 1.32.2)" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="50" width="380" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="ns" value="&lt;b&gt;namespace wdf&lt;/b&gt;&lt;br&gt;retention 24h" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="srv">
+          <mxGeometry x="15" y="40" width="350" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="sa" value="&lt;b&gt;search attributes in wdf&lt;/b&gt;&lt;br&gt;WdfTenant keyword&lt;br&gt;WdfPriorityClass keyword&lt;br&gt;WdfJobClass keyword&lt;br&gt;WdfJobId keyword&lt;br&gt;WdfSubmittedAt datetime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;spacingLeft=8;" vertex="1" parent="srv">
+          <mxGeometry x="15" y="100" width="350" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="sc" value="&lt;b&gt;Schedule wdf-artifact-reaper in wdf&lt;/b&gt;&lt;br&gt;every 15m, overlap SKIP, catch-up 1h&lt;br&gt;starts ReapWorkflow, id wdf-artifact-reaper-pass&lt;br&gt;on queue wdf-artifact-reaper&lt;br&gt;served by the workflow worker service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;spacingLeft=8;" vertex="1" parent="srv">
+          <mxGeometry x="15" y="225" width="350" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="py" target="srv">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="runs" value="Log of two runs in a row" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="50" width="390" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="r1" value="&lt;b&gt;run 1&lt;/b&gt;&lt;br&gt;namespace: wdf created&lt;br&gt;retention: 24h created&lt;br&gt;search_attribute: ... created (x5)&lt;br&gt;schedule: wdf-artifact-reaper in wdf created&lt;br&gt;changed: 8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;fontFamily=Courier New;fontSize=11;" vertex="1" parent="runs">
+          <mxGeometry x="15" y="40" width="360" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="r2" value="&lt;b&gt;run 2&lt;/b&gt;&lt;br&gt;namespace: wdf unchanged&lt;br&gt;retention: 24h unchanged&lt;br&gt;search_attribute: ... unchanged (x5)&lt;br&gt;schedule: wdf-artifact-reaper in wdf unchanged&lt;br&gt;changed: 0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=8;fontFamily=Courier New;fontSize=11;" vertex="1" parent="runs">
+          <mxGeometry x="15" y="165" width="360" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="r3" value="A drifted retention or Schedule is converged and reported as updated, a paused Schedule stays paused, and a search attribute of another type is reported, never changed." style="text;html=1;align=left;whiteSpace=wrap;fontSize=11;" vertex="1" parent="runs">
+          <mxGeometry x="15" y="290" width="360" height="70" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
