@@ -1,0 +1,72 @@
+---
+# Throwaway values for the official chart temporal 1.8.0 on the ci infra node, rendered by run.sh with
+# `helm template --skip-tests`. Postgres persistence and SQL visibility on temporaldb, one replica per service,
+# 512 shards, the two cache keys, no web UI, no admin tools pod and no namespace job.
+server:
+  image:
+    tag: 1.32.2@sha256:7bf69188a6232fea14869b9cef3d94aa82a1601d99517f7e86c71f22da4e0670
+  nodeSelector:
+    wdf.dev/pool: infra
+  tolerations:
+    - {key: wdf.dev/pool, operator: Equal, value: infra, effect: NoSchedule}
+  config:
+    logLevel: info
+    persistence:
+      numHistoryShards: 512
+      datastores:
+        default:
+          sql: &sql
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal
+            connectAddr: temporaldb.wdf-infra.svc:5432
+            connectProtocol: tcp
+            user: postgres
+            existingSecret: temporaldb
+            secretKey: POSTGRES_PASSWORD
+            createDatabase: false
+            manageSchema: true
+            maxConns: 20
+            maxIdleConns: 20
+        visibility:
+          sql:
+            <<: *sql
+            databaseName: temporal_visibility
+    namespaces:
+      create: false
+  dynamicConfig:
+    history.hostLevelCacheMaxSize:
+      - value: 1000
+    history.eventsCacheMaxSizeBytes:
+      - value: 32768
+  frontend:
+    resources:
+      requests: {cpu: 200m, memory: 192Mi}
+      limits: {cpu: 200m, memory: 192Mi}
+  history:
+    resources:
+      requests: {cpu: 450m, memory: 576Mi}
+      limits: {cpu: 450m, memory: 576Mi}
+  matching:
+    resources:
+      requests: {cpu: 200m, memory: 128Mi}
+      limits: {cpu: 200m, memory: 128Mi}
+  worker:
+    resources:
+      requests: {cpu: 150m, memory: 128Mi}
+      limits: {cpu: 150m, memory: 128Mi}
+admintools:
+  enabled: false
+  image:
+    tag: 1.32.2@sha256:4a95866efba29d7e17ab012df5232795e8b0ad0f7d5f9d1ec4df321f7792a754
+  nodeSelector:
+    wdf.dev/pool: infra
+  tolerations:
+    - {key: wdf.dev/pool, operator: Equal, value: infra, effect: NoSchedule}
+web:
+  enabled: false
+schema:
+  useHelmHooks: false
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 50m, memory: 128Mi}

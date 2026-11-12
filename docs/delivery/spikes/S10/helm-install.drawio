@@ -1,0 +1,49 @@
+<mxfile>
+  <diagram id="s10" name="S10 chart on the ci infra node">
+    <mxGraphModel adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t" value="Spike S10: chart temporal 1.8.0 (server 1.32.2) on the ci infra node, 3,000 stand-in jobs, pass" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="900" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="node" value="infra node wdf-worker: 3 CPUs, 5,120 MiB. wdf-infra quota used 2,990m of 3,045m CPU, 3,632 of 4,772 MiB" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="920" height="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="tmp" value="Temporal: limits 1,024 MiB and 1,000m, per-pod peaks sum 502 MiB, mean 609m" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="node">
+          <mxGeometry x="20" y="40" width="560" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="h" value="&lt;b&gt;history&lt;/b&gt;&lt;br&gt;limit 576 MiB, 450m&lt;br&gt;peak 343 MiB&lt;br&gt;CPU mean 372m, throttled 21%&lt;br&gt;mutable state cache 1,000 of 1,000" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="tmp">
+          <mxGeometry x="20" y="40" width="250" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="f" value="&lt;b&gt;frontend&lt;/b&gt;&lt;br&gt;limit 192 MiB, 200m&lt;br&gt;peak 61 MiB, CPU mean 114m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="tmp">
+          <mxGeometry x="290" y="40" width="250" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="m" value="&lt;b&gt;matching&lt;/b&gt;&lt;br&gt;limit 128 MiB, 200m&lt;br&gt;peak 63 MiB, CPU mean 116m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="tmp">
+          <mxGeometry x="290" y="110" width="250" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="w" value="&lt;b&gt;worker&lt;/b&gt;&lt;br&gt;limit 128 MiB, 150m&lt;br&gt;peak 35 MiB, CPU mean 7m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="tmp">
+          <mxGeometry x="290" y="180" width="250" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="k" value="dynamic config: hostLevelCacheMaxSize 1000, eventsCacheMaxSizeBytes 32768&lt;br&gt;memory.events max 0 to 0 in all four pods" style="text;html=1;fontSize=11;align=left;whiteSpace=wrap;" vertex="1" parent="tmp">
+          <mxGeometry x="20" y="160" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;temporaldb&lt;/b&gt;&lt;br&gt;Postgres 16.14&lt;br&gt;limit 1,024 MiB, 450m&lt;br&gt;temporal, temporal_visibility" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="node">
+          <mxGeometry x="660" y="80" width="230" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="o" value="&lt;b&gt;other ci modules&lt;/b&gt;&lt;br&gt;appdb 832 MiB, 1,000m&lt;br&gt;objectstore 704 MiB, 440m&lt;br&gt;mirror 32 MiB, 50m&lt;br&gt;dummy-infra 16 MiB, 50m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#999999;" vertex="1" parent="node">
+          <mxGeometry x="660" y="215" width="230" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="SQL" style="endArrow=classic;html=1;fontSize=11;exitX=1;exitY=0.4;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="node" source="tmp" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="host" value="&lt;b&gt;host&lt;/b&gt;: load.py, workflow worker and pool worker, 3,000 jobs, 100 in flight, 13.8 jobs/s, 0 failed&lt;br&gt;through a port-forward on 127.0.0.1 to temporal-frontend:7233" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="420" width="560" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="endArrow=classic;html=1;fontSize=11;exitX=0.2;exitY=0;exitDx=0;exitDy=0;entryX=0.2;entryY=1;entryDx=0;entryDy=0;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="host" target="tmp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
