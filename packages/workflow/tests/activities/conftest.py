@@ -1,4 +1,5 @@
-"""A store and a database for the control activities, each one container for a test module.
+"""A store and a database for the control activities: the session's one store, and one database
+container for a test module.
 
 Every activity runs as its writer: the store client holds the `workflow` identity and the database
 login is a fresh member of `wdf_workflow` or `wdf_artifacts`. The superuser only seeds and reads
@@ -16,7 +17,6 @@ from wdf_artifactclient.client import ArtifactClient, RetryPolicy
 from wdf_artifactclient.keys import split_uri
 from wdf_events import from_bytes
 from wdf_jobstate import JobRow, insert_accepted, transition
-from wdf_storecheck.fixtures import running
 from wdf_storecheck.s3 import client as s3_client
 
 NO_WAIT = RetryPolicy(sleep=lambda seconds: None)
@@ -24,10 +24,11 @@ STARTED = "contracts/events/vectors/golden/job.started/1.0.json"
 
 
 @pytest.fixture(scope="module")
-def shelf(t1, tmp_path_factory):
-    with running(t1, "seaweedfs", tmp_path_factory.mktemp("shelf")) as started:
-        started.store().create_buckets()
-        yield started
+def shelf(store_session):
+    """The session's one SeaweedFS, which a module shares with the database it starts, so a
+    session holds two containers whichever other module holds the session's store."""
+    store_session.store().create_buckets()
+    return store_session
 
 
 @pytest.fixture
