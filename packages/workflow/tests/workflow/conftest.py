@@ -3,6 +3,7 @@ queue of the build and a FakePool per pool."""
 
 import asyncio
 import os
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -10,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from temporalio import activity
 from temporalio.api.deployment.v1 import WorkerDeploymentVersion as ProtoVersion
 from temporalio.api.workflowservice.v1 import (
     DescribeWorkerDeploymentRequest,
@@ -18,18 +20,19 @@ from temporalio.api.workflowservice.v1 import (
 )
 from temporalio.client import Client
 from temporalio.common import WorkerDeploymentVersion
+from temporalio.runtime import MetricBuffer, Runtime, TelemetryConfig
 from temporalio.service import RPCError
 from temporalio.worker import Worker, WorkerDeploymentConfig
 from wdf_events import Event, build_event
 from wdf_events.models import JobParams
 from wdf_jobdoc.plan_models import Plan
 from wdf_keys import workflow_id
-from wdf_temporal import tracing_interceptor
+from wdf_temporal import event_data_converter, tracing_interceptor
 from wdf_workflow.contract import naming
 from wdf_workflow.models import TaskInput
 from wdf_workflow.placement import StaticPlacer, place_activity
-from wdf_workflow.testing import FakeControl, FakePool, Succeed
-from wdf_workflow.testing.control import LoadedPlan
+from wdf_workflow.testing import FakeControl, FakePool, Succeed, connect
+from wdf_workflow.testing.control import Commit, LoadedPlan
 
 os.environ.setdefault(naming().workflow.build_id_env, "test-build")
 BUILD_ID = os.environ[naming().workflow.build_id_env]
@@ -58,9 +61,17 @@ RESOURCES = {
 OUTPUT = {"compile": "component", "simulate": "result"}
 
 
-def _plan(tasks: dict[str, tuple[str, list[str]]], max_parallel: int = 8, **params) -> Plan:
+def _plan(
+    tasks: dict[str, tuple[str, list[str]]],
+    max_parallel: int = 8,
+    *,
+    retries: int = 1,
+    checkpoint: frozenset[str] = frozenset(),
+    **params,
+) -> Plan:
     """A bound plan from `{id: (type, depends_on)}`, whose inputs are the declared output of each
-    dependency, with `params` overriding the params of a task type."""
+    dependency, with `params` overriding the params of a task type, every task's `retries`, and
+    the `checkpoint` flag set on the simulate tasks named."""
     return Plan.model_validate(
         {
             "plan_version": 1,
@@ -78,8 +89,8 @@ def _plan(tasks: dict[str, tuple[str, list[str]]], max_parallel: int = 8, **para
                     ],
                     **RESOURCES[kind],
                     "run_timeout_s": 600,
-                    "retries": 1,
-                    "checkpoint": False,
+                    "retries": retries,
+                    "checkpoint": tid in checkpoint,
                     "allow_partial": False,
                     "params": params.get(kind, PARAMS[kind]),
                 }
@@ -130,15 +141,40 @@ PARAMS_BLOCK = JobParams(seed=7, parameters={})
 
 
 class CountingPlacer(StaticPlacer):
-    """StaticPlacer that counts its calls."""
+    """StaticPlacer that counts its calls, answers with the activity timeouts of `timeouts` in
+    place of pool table v0's, and raises for `down_s` seconds from its first call, as a placement
+    service that is down."""
 
-    def __init__(self):
+    def __init__(self, timeouts: dict[str, int] | None = None, down_s: float = 0):
         super().__init__()
         self.calls = 0
+        self.refused = 0
+        self.timeouts = timeouts or {}
+        self.down_s = down_s
+        self.first: float | None = None
 
     def place(self, request, escalate=False):
+        self.first = self.first or time.monotonic()
+        if time.monotonic() - self.first < self.down_s:
+            self.refused += 1
+            raise RuntimeError("the placement service is down")
         self.calls += 1
-        return super().place(request, escalate)
+        placed = super().place(request, escalate)
+        return placed.model_copy(update=self.timeouts) if placed.kind == "placement" else placed
+
+
+class RecordingControl(FakeControl):
+    """FakeControl that keeps every commit in `commits`, where FakeControl keeps the last of each
+    task."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.commits: list[Commit] = []
+
+    @activity.defn(name="commit")
+    async def commit(self, request: Commit) -> None:
+        await FakeControl.commit(self, request)
+        self.commits.append(request)
 
 
 @dataclass
@@ -149,8 +185,12 @@ class Rig:
     control: FakeControl
     placer: CountingPlacer
     pools: dict[str, FakePool] = field(default_factory=dict)
+    # The pools whose worker starts only when the test serves them.
+    idle: dict[str, FakePool] = field(default_factory=dict)
 
-    async def start(self, plan: Plan, event: Event | None = None) -> Any:
+    async def start(
+        self, plan: Plan, event: Event | None = None, max_history_events: int = 10_000
+    ) -> Any:
         """Starts the job of `plan` as admission would, and returns its handle."""
         event = event or _accepted()
         # FakeControl holds one job row, so the row of a job that ended is claimed again for the
@@ -158,7 +198,7 @@ class Rig:
         if self.control.status in ("succeeded", "partial", "failed", "cancelled", "terminated"):
             self.control.status = "admitted"
         self.control.plans[event.data["manifest"]["uri"]] = LoadedPlan(
-            plan=plan, max_history_events=10_000
+            plan=plan, max_history_events=max_history_events
         )
         return await self.client.start_workflow(
             JobWorkflow.run,
@@ -166,6 +206,10 @@ class Rig:
             id=workflow_id(event.jobid),
             task_queue=naming().workflow.queue,
         )
+
+    async def serve(self, pool: str) -> None:
+        """Starts the worker of an idle pool."""
+        self.pools[pool] = await self.idle.pop(pool).__aenter__()
 
 
 Script = Callable[[TaskInput], Any]
@@ -175,11 +219,14 @@ def _rig(
     client: Client,
     scripts: dict[str, Script] | None = None,
     control: FakeControl | None = None,
+    placer: CountingPlacer | None = None,
+    idle: frozenset[str] = frozenset(),
 ):
-    """An async context of a Rig whose pools run `scripts`, each succeeding by default, and whose
-    workers carry the tracing interceptor of wdf_temporal."""
+    """An async context of a Rig whose pools run `scripts`, each succeeding by default, the pools
+    of `idle` waiting to be served, and whose workers carry the tracing interceptor of
+    wdf_temporal."""
     scripts = {pool: lambda task: Succeed() for pool in naming().pools} | (scripts or {})
-    this = Rig(client, control or FakeControl(), CountingPlacer())
+    this = Rig(client, control or RecordingControl(), placer or CountingPlacer())
     workflow_worker = Worker(
         client,
         task_queue=naming().workflow.queue,
@@ -197,7 +244,9 @@ def _rig(
         activities=this.control.control_activities(),
         interceptors=[tracing_interceptor()],
     )
-    this.pools = {pool: FakePool(client, pool, script) for pool, script in scripts.items()}
+    pools = {pool: FakePool(client, pool, script) for pool, script in scripts.items()}
+    this.pools = {pool: fake for pool, fake in pools.items() if pool not in idle}
+    this.idle = {pool: fake for pool, fake in pools.items() if pool in idle}
     return Running(this, [workflow_worker, control_worker, *this.pools.values()])
 
 
@@ -213,7 +262,8 @@ class Running:
         return self.this
 
     async def __aexit__(self, *exc) -> None:
-        for worker in reversed(self.workers):
+        served = [p for p in self.this.pools.values() if p not in self.workers]
+        for worker in reversed([*self.workers, *served]):
             await worker.__aexit__(*exc)
 
 
@@ -255,9 +305,32 @@ async def make_current(client: Client, timeout_s: float = 60) -> None:
     )
 
 
+async def metered(address: str) -> tuple[Client, MetricBuffer]:
+    """A client whose runtime buffers every SDK and workflow metric update."""
+    await connect(address)
+    buffer = MetricBuffer(100_000)
+    client = await Client.connect(
+        address,
+        namespace=naming().namespace,
+        data_converter=event_data_converter,
+        runtime=Runtime(telemetry=TelemetryConfig(metrics=buffer)),
+    )
+    return client, buffer
+
+
 @pytest.fixture
 def plan():
     return _plan
+
+
+@pytest.fixture
+def placer():
+    return CountingPlacer
+
+
+@pytest.fixture
+def meter():
+    return metered
 
 
 @pytest.fixture

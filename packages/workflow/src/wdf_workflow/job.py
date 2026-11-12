@@ -22,6 +22,8 @@ with workflow.unsafe.imports_passed_through():
     from wdf_events.models import JobParams, ManifestReference
     from wdf_jobdoc.plan_models import Plan
 
+    from .activities.plan import limits
+    from .budgets import Budgets, fresh
     from .contract import naming
     from .models import StatusQuery, TaskState, TaskStatus
     from .ready import initial, settle, to_place
@@ -29,8 +31,6 @@ with workflow.unsafe.imports_passed_through():
     from .testing.control import Emit, Emitted, LoadedPlan, LoadPlan, Transition
 
 SOURCE = "/wdf/workflow"
-# The infrastructure budget of a task in each run.
-INFRA_ATTEMPTS = 10
 # The time format of wdf_events.models.TIME_PATTERN, in which a worker reports its start.
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -86,18 +86,30 @@ class JobWorkflow:
         self.resume_counter = 0
         self.control_seq = 0
         self.plan: Plan | None = None
+        self.tasks: dict[str, Any] = {}
         self.states: dict[str, TaskState] = {}
         self.attempts: Counter[str] = Counter()
-        self.last_class: dict[str, str] = {}
+        self.budgets: dict[str, Budgets] = {}
         # The output references of each done task, by kind.
         self.outputs: dict[str, dict[str, Any]] = {}
         self.cache_keys: dict[str, str] = {}
+        # The compile tasks a cache hit satisfied, and the rebuild of each lost component.
+        self.cache_hits: set[str] = set()
+        self.rebuilds: dict[tuple[str, str], asyncio.Future] = {}
+        # Set once the history reaches its budget, after which the job fails once nothing runs.
+        self.fail_reason: str | None = None
         meter = workflow.metric_meter()
         self.history_events = meter.create_histogram(
             "wdf_workflow_history_events", "History length of a job workflow at each wake."
         )
         self.lost_transitions = meter.create_counter(
             "wdf_workflow_lost_transitions_total", "Status moves of the job row that lost."
+        )
+        self.retries = meter.create_counter(
+            "wdf_workflow_retries_total", "Attempts run again after a failure, by budget charged."
+        )
+        self.reschedules = meter.create_counter(
+            "wdf_workflow_reschedules_total", "Schedule-to-start timeouts followed by a new place."
         )
 
     @workflow.run
@@ -115,15 +127,20 @@ class JobWorkflow:
             await self.end(Outcome("failed", None, failure.reason, (), {}))
             return self.job_status
         self.plan = loaded.plan
+        self.limits = limits().profiles[self.plan.profile]
+        self.max_history_events = loaded.max_history_events
         self.states = initial(self.plan)
-        tasks = {task.id: task for task in self.plan.tasks}
+        self.tasks = {task.id: task for task in self.plan.tasks}
+        self.budgets = {task.id: fresh(task) for task in self.plan.tasks}
         await self.emit(self.job_event("job.started", {}), move="running")
         running: dict[str, asyncio.Task] = {}
-        while (end := outcome(self.plan, self.states)) is None:
-            for tid in to_place(self.plan, self.states):
+        while True:
+            spent = self.history_spent()
+            if (end := outcome(self.plan, self.states, fail_reason=self.fail_reason)) is not None:
+                break
+            for tid in [] if spent else to_place(self.plan, self.states):
                 self.states[tid] = "running"
-                running[tid] = asyncio.create_task(taskpath.path(self, tasks[tid]))
-            self.history_events.record(workflow.info().get_current_history_length())
+                running[tid] = asyncio.create_task(taskpath.path(self, self.tasks[tid]))
             done, _ = await workflow.wait(running.values(), return_when=asyncio.FIRST_COMPLETED)
             for task in done:
                 # A defect raised on a task path fails the workflow task, which Temporal retries.
@@ -136,8 +153,17 @@ class JobWorkflow:
         return self.job_status
 
     def finish(self, task_id: str, state: TaskState) -> None:
-        """Records the state a task ended in and settles the tasks that wait on it."""
+        """Records the state a task moved to and settles the tasks that wait on it."""
         self.states = settle(self.plan, {**self.states, task_id: state})
+
+    def history_spent(self) -> bool:
+        """Records the history length, and whether it reached the budget of the plan's limits
+        profile, from which on no new task or attempt is placed."""
+        length = workflow.info().get_current_history_length()
+        self.history_events.record(length)
+        if self.fail_reason is None and length >= self.max_history_events:
+            self.fail_reason = f"history-budget: {length}"
+        return self.fail_reason is not None
 
     async def end(self, result: Outcome) -> None:
         """Writes the job's end event and moves the row to its status."""
@@ -198,7 +224,6 @@ class JobWorkflow:
     def status(self) -> StatusQuery:
         if self.plan is None:
             raise ApplicationError(f"the plan of {self.job_id} is not loaded")
-        retries = {task.id: task.retries for task in self.plan.tasks}
         return StatusQuery(
             job_status=self.job_status,
             pause_reason=self.pause_reason,
@@ -209,11 +234,11 @@ class JobWorkflow:
                     id=tid,
                     state=state,
                     task_attempt=self.attempts[tid],
-                    guest_left=retries[tid],
-                    infra_left=INFRA_ATTEMPTS,
-                    reschedules=0,
-                    last_class=self.last_class.get(tid),
-                    checkpoint=None,
+                    guest_left=self.budgets[tid].guest_left,
+                    infra_left=self.budgets[tid].infra_left,
+                    reschedules=self.budgets[tid].reschedules,
+                    last_class=self.budgets[tid].last_class,
+                    checkpoint=self.budgets[tid].checkpoint,
                 )
                 for tid, state in self.states.items()
             ],
