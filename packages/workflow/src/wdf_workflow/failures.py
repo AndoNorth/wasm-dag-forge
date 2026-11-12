@@ -70,6 +70,8 @@ def decide(failure: Failure, task: PlanTask, budgets: Budgets, limits: Limits) -
     """The decision for one failed attempt of a task, and the budgets it leaves.
 
     An action replaces the budget rule for the occurrence it applies to.
+    During a manual pause a schedule-to-start timeout is not a failure and never reaches here:
+    the task returns to `ready` to be placed after the resume.
     Raises ValueError for a class the table lacks, a workload class of another pool than the
     task's, and a `from-error-file` failure without its deterministic flag, all of them defects
     of the caller or the worker.
