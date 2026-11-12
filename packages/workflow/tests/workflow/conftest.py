@@ -67,11 +67,13 @@ def _plan(
     *,
     retries: int = 1,
     checkpoint: frozenset[str] = frozenset(),
+    allow_partial: frozenset[str] = frozenset(),
     **params,
 ) -> Plan:
     """A bound plan from `{id: (type, depends_on)}`, whose inputs are the declared output of each
-    dependency, with `params` overriding the params of a task type, every task's `retries`, and
-    the `checkpoint` flag set on the simulate tasks named."""
+    dependency, with `params` overriding the params of a task type, every task's `retries`, the
+    `checkpoint` flag set on the simulate tasks named and `allow_partial` on the aggregate tasks
+    named."""
     return Plan.model_validate(
         {
             "plan_version": 1,
@@ -91,7 +93,7 @@ def _plan(
                     "run_timeout_s": 600,
                     "retries": retries,
                     "checkpoint": tid in checkpoint,
-                    "allow_partial": False,
+                    "allow_partial": tid in allow_partial,
                     "params": params.get(kind, PARAMS[kind]),
                 }
                 for tid, (kind, deps) in tasks.items()
