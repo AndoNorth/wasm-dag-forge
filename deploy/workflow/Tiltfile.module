@@ -1,0 +1,114 @@
+# Workflow worker module: the service image of one build, run as its own Deployment workflow-worker-<build id> on the
+# infra pool, so a second build can run beside it during a rollout. The host-side resource workflow-worker-logins
+# creates the service logins in the app database before the service starts, and two generated Secrets carry their DSNs
+# and the store identities of the service.
+module = read_yaml("module.yaml")
+name = module["name"]
+namespace = module["namespace"]
+res = module["resources"]
+topology = read_yaml("../../contracts/topology/topology.yaml")
+pool = {"key": topology["pool_label"], "value": "infra"}
+naming = read_yaml("../../contracts/temporal/naming.yaml")
+build_env = naming["workflow"]["build_id_env"]
+
+# The build id names the image, the Deployment and the control queue, so it must also be a valid name suffix.
+build_id = os.getenv(build_env, "") or str(local("git rev-parse --short HEAD 2>/dev/null || true", quiet = True)).strip()
+if not build_id:
+    fail("no build id: set %s outside a git checkout" % build_env)
+if len(build_id) > 40 or not build_id.replace("-", "").isalnum() or build_id != build_id.lower() or build_id[0] == "-" or build_id[-1] == "-":
+    fail("build id %r is not a lower-case name of at most 40 letters, digits and inner dashes" % build_id)
+deployment = "%s-%s" % (name, build_id)
+
+image = "wdf-" + name
+custom_build(
+    image,
+    os.path.abspath("image.sh"),
+    deps = ["../../packages", "../../uv.lock", "Dockerfile", "image.sh", "../versions.yaml"],
+    env = {build_env: build_id},
+)
+
+store = str(local([os.path.abspath("../../scripts/storage/store/identities.sh"), "path"], quiet = True)).strip()
+watch_file("logins.py")
+k8s_yaml(encode_yaml_stream(decode_json(str(local(
+    ["uv", "run", "--frozen", "--quiet", "python", os.path.abspath("logins.py"), "render", store],
+    quiet = True,
+)))))
+
+local_resource(
+    name + "-logins",
+    cmd = [os.path.abspath("logins.sh"), "apply"],
+    resource_deps = ["appdb-migrate"],
+    labels = [module["group"]],
+)
+
+svc = lambda service, port: "%s.wdf-infra.svc.cluster.local:%d" % (service, port)
+store_endpoint = "http://" + svc("objectstore", 8333)
+credentials = "/etc/wdf/store/credentials.json"
+ready = "/tmp/wdf-ready"
+labels = {"app.kubernetes.io/name": name, "wdf.dev/build-id": build_id}
+env = {
+    "WDF_TEMPORAL_ADDRESS": svc("temporal-frontend", 7233),
+    "WDF_TEMPORAL_NAMESPACE": naming["namespace"],
+    "WDF_METRICS_ADDRESS": "0.0.0.0:9464",
+    "WDF_STORE_ENDPOINT": store_endpoint,
+    "WDF_WORKFLOW_CREDENTIALS": credentials,
+    "WDF_INDEXER_CREDENTIALS": credentials,
+    "WDF_REAPER_ENDPOINT": store_endpoint,
+    "WDF_REAPER_CREDENTIALS": credentials,
+    "WDF_READY_FILE": ready,
+}
+
+k8s_yaml(encode_yaml({
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {"name": deployment, "namespace": namespace, "labels": labels},
+    "spec": {
+        "replicas": 1,
+        # A surge pod does not fit the infra node, and a second build runs as its own Deployment anyway.
+        "strategy": {"type": "Recreate"},
+        "selector": {"matchLabels": labels},
+        "template": {
+            "metadata": {"labels": labels},
+            "spec": {
+                "nodeSelector": {pool["key"]: pool["value"]},
+                "tolerations": [{
+                    "key": pool["key"],
+                    "operator": "Equal",
+                    "value": pool["value"],
+                    "effect": topology["taint_effect"],
+                }],
+                "automountServiceAccountToken": False,
+                # Above the service's own drain of 60 s, so the tasks in flight finish before a kill.
+                "terminationGracePeriodSeconds": 90,
+                "securityContext": {"runAsNonRoot": True},
+                "containers": [{
+                    "name": name,
+                    "image": image,
+                    "env": [{"name": k, "value": v} for k, v in sorted(env.items())],
+                    "envFrom": [{"secretRef": {"name": name + "-logins"}}],
+                    "ports": [{"name": "metrics", "containerPort": 9464}],
+                    # The service writes the file once Temporal answers for its namespace and the workers poll.
+                    "readinessProbe": {"exec": {"command": ["test", "-e", ready]}, "periodSeconds": 5},
+                    "resources": res[name],
+                    "securityContext": {"allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True},
+                    "volumeMounts": [
+                        {"name": "store", "mountPath": "/etc/wdf/store", "readOnly": True},
+                        {"name": "tmp", "mountPath": "/tmp"},
+                    ],
+                }],
+                "volumes": [
+                    {"name": "store", "secret": {"secretName": name + "-store"}},
+                    {"name": "tmp", "emptyDir": {"sizeLimit": "64Mi"}},
+                ],
+            },
+        },
+    },
+}))
+
+k8s_resource(
+    deployment,
+    new_name = name,
+    objects = ["%s-%s:secret:%s" % (name, s, namespace) for s in ["logins", "store"]],
+    labels = [module["group"]],
+    resource_deps = [d.split("/")[1] for d in module.get("depends_on", [])] + [name + "-logins"],
+)

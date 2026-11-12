@@ -2,6 +2,7 @@
 drain on SIGTERM and the metrics endpoint, and the refusal of a missing variable."""
 
 import asyncio
+import dataclasses
 import logging
 import os
 import signal
@@ -16,6 +17,7 @@ from temporalio.api.enums.v1 import TaskQueueType
 from temporalio.api.taskqueue.v1 import TaskQueue
 from temporalio.api.workflowservice.v1 import DescribeTaskQueueRequest
 from temporalio.client import WorkflowExecutionStatus
+from temporalio.service import RPCError
 from wdf_artifactreaper import schedule
 from wdf_storecheck.s3 import Creds, dump_credentials
 from wdf_workflow.contract import naming
@@ -171,6 +173,41 @@ def test_metrics_endpoint(temporal, config, running, start_job):
     for line in lines:
         if line.startswith("wdf_"):
             assert not any(f"{label}=" in line for label in ("job_id", "jobid", "taskid"))
+
+
+@pytest.mark.integration
+def test_ready_file_while_polling(temporal, config, tmp_path):
+    """The ready file exists once the workers poll and is gone once the service stops, and a
+    namespace the server does not know fails the start without it."""
+    ready = tmp_path / "ready"
+    unknown = dataclasses.replace(config("unknown"), namespace="no-such-namespace")
+    with pytest.raises(RPCError, match="no-such-namespace"):
+        asyncio.run(serve(unknown, [], None, lambda heartbeat: {}, ready_file=ready))
+    assert not ready.exists()
+
+    async def body():
+        client = await connect(temporal)
+        stop = asyncio.Event()
+        control = FakeControl()
+        service = asyncio.create_task(
+            serve(
+                config("ready"),
+                control.control_activities(),
+                control.emit,
+                lambda heartbeat: {},
+                stop=stop,
+                ready_file=ready,
+            )
+        )
+        while not ready.exists():
+            await asyncio.sleep(0.1)
+        polled = await _polled(client, "wdf-control-ready")
+        stop.set()
+        await service
+        return polled
+
+    assert asyncio.run(asyncio.wait_for(body(), LIMIT_S))
+    assert not ready.exists()
 
 
 def test_missing_env_refused():

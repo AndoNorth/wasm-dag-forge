@@ -10,12 +10,19 @@ TREES = (
     "deploy/appdb",
     "deploy/temporaldb",
     "deploy/objectstore",
+    "deploy/temporal",
+    "deploy/workflow",
     "scripts/storage",
     "contracts/state",
     "contracts/store",
 )
 # Negative vectors that name a credential key on purpose, to prove the contract check refuses it.
-EXEMPT = ("contracts/store/vectors/invalid/secret-in-contract/",)
+# The Temporal chart values name the Secret key POSTGRES_PASSWORD that holds the database password,
+# and hold no value.
+EXEMPT = (
+    "contracts/store/vectors/invalid/secret-in-contract/",
+    "deploy/temporal/values.json",
+)
 SECRET_KEY = re.compile(
     r"\b(secret[_-]?key|access[_-]?key|password|passwd|api[_-]?key|token)\b[\"']?\s*[:=]\s*\S",
     re.IGNORECASE,
