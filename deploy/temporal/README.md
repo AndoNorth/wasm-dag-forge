@@ -3,6 +3,7 @@
 The Temporal server of the platform, from the official chart `temporal`, with persistence and SQL visibility on [`temporaldb`](../temporaldb/Tiltfile.module).
 Module: `temporal`.
 The sizing and the pass of the chart on the `ci` preset are in [the S10 spike](../../docs/delivery/spikes/S10/helm-install.md).
+Diagram: [temporal-module.drawio.svg](temporal-module.drawio.svg), the render inputs, the Tilt resources with their limits, and a key change that rolls the pods.
 
 ## Files
 

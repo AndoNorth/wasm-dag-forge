@@ -1,0 +1,82 @@
+<mxfile>
+  <diagram id="temporal-module" name="Temporal module on the ci infra node">
+    <mxGraphModel adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t" value="Module temporal: chart 1.8.0 (server 1.32.2) on the ci infra node, as rendered and run on 2026-11-12" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1060" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="src" value="deploy/temporal and its inputs" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="340" height="465" as="geometry"/>
+        </mxCell>
+        <mxCell id="tgz" value="&lt;b&gt;temporal-1.8.0.tgz&lt;/b&gt;&lt;br&gt;sha256:e65b454d...&lt;br&gt;checked against charts.temporal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="src">
+          <mxGeometry x="15" y="40" width="310" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="vals" value="&lt;b&gt;values.json&lt;/b&gt;&lt;br&gt;temporaldb stores, 512 shards&lt;br&gt;one replica, Recreate strategy&lt;br&gt;dynamicConfig: hostLevelCacheMaxSize 1000,&lt;br&gt;eventsCacheMaxSizeBytes 32768" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="src">
+          <mxGeometry x="15" y="110" width="310" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="mod" value="&lt;b&gt;module.yaml&lt;/b&gt;&lt;br&gt;limits per service and for the schema job" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="src">
+          <mxGeometry x="15" y="215" width="310" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ver" value="&lt;b&gt;deploy/versions.yaml&lt;/b&gt;&lt;br&gt;temporalio/server 1.32.2@sha256:7bf69188...&lt;br&gt;temporalio/admin-tools 1.32.2@sha256:4a95866e..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="src">
+          <mxGeometry x="15" y="275" width="310" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="tilt" value="&lt;b&gt;Tiltfile.module&lt;/b&gt;&lt;br&gt;helm template with values.json&lt;br&gt;and an overlay of the image pins,&lt;br&gt;the infra pool and the limits, and&lt;br&gt;checksum/dynamic-config = sha256 of dynamicConfig" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="src">
+          <mxGeometry x="15" y="360" width="310" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="node" value="infra node: 3 CPUs, 5,120 MiB. wdf-infra quota used 2,990m of 3,045m CPU, 3,632 of 4,772 MiB" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="390" y="50" width="720" height="465" as="geometry"/>
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;temporaldb&lt;/b&gt;&lt;br&gt;temporal, temporal_visibility" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="node">
+          <mxGeometry x="20" y="45" width="190" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="schema" value="&lt;b&gt;temporal-schema&lt;/b&gt;&lt;br&gt;Job, 128 MiB, 50m, completed in 14 s&lt;br&gt;and the two ConfigMaps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="node">
+          <mxGeometry x="290" y="50" width="260" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="h" value="&lt;b&gt;temporal-history&lt;/b&gt;&lt;br&gt;576 MiB, 450m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="node">
+          <mxGeometry x="20" y="150" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="m" value="&lt;b&gt;temporal-matching&lt;/b&gt;&lt;br&gt;128 MiB, 200m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="node">
+          <mxGeometry x="260" y="150" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="w" value="&lt;b&gt;temporal-worker&lt;/b&gt;&lt;br&gt;128 MiB, 150m" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="node">
+          <mxGeometry x="500" y="150" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="f" value="&lt;b&gt;temporal&lt;/b&gt; (the frontend)&lt;br&gt;192 MiB, 200m, ready when all are" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="node">
+          <mxGeometry x="240" y="235" width="240" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum" value="Temporal limits: 1,024 MiB and 1,000m, one replica per service" style="text;html=1;fontSize=11;align=left;whiteSpace=wrap;" vertex="1" parent="node">
+          <mxGeometry x="500" y="240" width="200" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="roll" value="&lt;b&gt;Key change, run 2&lt;/b&gt;: hostLevelCacheMaxSize 1000 to 2000&lt;br&gt;checksum 329c3417... to 2ea3dca0... on all four pod templates&lt;br&gt;Recreate replaced all four pods, 0 restarts, history reads 2000" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;" vertex="1" parent="node">
+          <mxGeometry x="20" y="320" width="680" height="125" as="geometry"/>
+        </mxCell>
+        <mxCell id="e0" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="tilt" target="node">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="waits for" style="endArrow=classic;html=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="node" source="schema" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="endArrow=classic;html=1;" edge="1" parent="node" source="h" target="schema">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="" style="endArrow=classic;html=1;" edge="1" parent="node" source="m" target="schema">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="" style="endArrow=classic;html=1;" edge="1" parent="node" source="w" target="schema">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="" style="endArrow=classic;html=1;" edge="1" parent="node" source="f" target="h">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="" style="endArrow=classic;html=1;" edge="1" parent="node" source="f" target="m">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="" style="endArrow=classic;html=1;" edge="1" parent="node" source="f" target="w">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
