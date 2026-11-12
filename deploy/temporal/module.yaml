@@ -49,6 +49,7 @@ readiness:
     - --for=condition=Available
     - deployment
     - --selector=app.kubernetes.io/name=temporal
+    - --timeout=300s
 profiles: [dev, full, ci]
 depends_on:
   - infra/temporaldb

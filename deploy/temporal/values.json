@@ -50,5 +50,5 @@
   },
   "admintools": {"enabled": false},
   "web": {"enabled": false},
-  "schema": {"useHelmHooks": false}
+  "schema": {"useHelmHooks": false, "ttlSecondsAfterFinished": null}
 }
