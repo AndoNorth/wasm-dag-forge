@@ -1,0 +1,57 @@
+<mxfile host="drawio">
+  <diagram id="load-plan-and-emit" name="load_plan and emit">
+    <mxGraphModel dx="1400" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0" adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="&lt;b&gt;load_plan and the emit point&lt;/b&gt;: a worked example for job 3a9617fa-df7c-5760-a644-42d559e0f433 of example batch-template, build b1" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1100" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="svc" value="workflow worker service, build b1" style="swimlane;startSize=26;rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="60" width="560" height="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="wf" value="&lt;b&gt;JobWorkflow&lt;/b&gt; on queue wdf-workflow (PINNED to b1)&lt;br&gt;input: accepted event + params {seed: 7, parameters: {steps: 1007}}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="svc">
+          <mxGeometry x="20" y="40" width="520" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="lp" value="&lt;b&gt;load_plan&lt;/b&gt; (regular activity)&lt;br&gt;queue wdf-control-b1, unversioned&lt;br&gt;at most 5 attempts, 1 s to 60 s&lt;br&gt;store identity &lt;i&gt;workflow&lt;/i&gt;, no database&lt;br&gt;&lt;br&gt;returns LoadedPlan: the bound plan (1,129 canonical bytes, sha256 a6a702e1...) and max_history_events 10,000 of profile ci" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;" vertex="1" parent="svc">
+          <mxGeometry x="20" y="150" width="250" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="em" value="&lt;b&gt;emit&lt;/b&gt; (local activity, one per batch)&lt;br&gt;no attempt limit, 1 s doubling to 600 s&lt;br&gt;database login in &lt;i&gt;wdf_workflow&lt;/i&gt;&lt;br&gt;one transaction per batch&lt;br&gt;&lt;br&gt;returns Emitted {inserted, lost}: lost is null when the move took or the row already held the target, else the row status with nothing written" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;" vertex="1" parent="svc">
+          <mxGeometry x="290" y="150" width="250" height="160" as="geometry"/>
+        </mxCell>
+        
+        
+        <mxCell id="e1" value="LoadPlan" style="endArrow=classic;html=1;fontSize=10;" edge="1" parent="svc" source="wf" target="lp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="Emit" style="endArrow=classic;html=1;fontSize=10;" edge="1" parent="svc" source="wf" target="em">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        
+        <mxCell id="store" value="&lt;b&gt;object store&lt;/b&gt; wdf-sources&lt;br&gt;sha256/a8/a829c500...7b58&lt;br&gt;manifest.json, 1,157 bytes" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="210" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="pg" value="&lt;b&gt;Postgres&lt;/b&gt;&lt;br&gt;accepted_job.status&lt;br&gt;event (event_id, event_time)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="450" width="210" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="get, verify, refetch once" style="endArrow=classic;html=1;fontSize=10;" edge="1" parent="1" source="lp" target="store">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="lock row, move, id check, insert" style="endArrow=classic;html=1;fontSize=10;" edge="1" parent="1" source="em" target="pg">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="refuse" value="&lt;b&gt;load_plan refusals&lt;/b&gt; (ApplicationError type)&lt;br&gt;object holds other bytes: ARTIFACT_LOST, non-retryable&lt;br&gt;not canonical, not a plan, params do not bind: ARTIFACT_CORRUPT, non-retryable&lt;br&gt;store down: STORE_UNAVAILABLE, retryable" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="620" y="60" width="740" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="batch" value="&lt;b&gt;Batch 1, time 2026-11-12T09:30:00.000000Z, move admitted to running&lt;/b&gt;&lt;br&gt;job.started id 45a93569-b3dc-5ac0-b90a-683c3e68419d&lt;br&gt;task.skipped (build) id c39a8fa0-c0f4-5cd2-a24b-507106a28743&lt;br&gt;stored keys /wdf/workflow#45a93569..., /wdf/workflow#c39a8fa0...&lt;br&gt;answer: inserted 2, lost null, row running&lt;br&gt;&lt;br&gt;&lt;b&gt;The same batch rebuilt by a retried workflow task, every time +1 s&lt;/b&gt;&lt;br&gt;the same ids, the row already running: counts as moved&lt;br&gt;both keys are stored, so 0 rows are inserted, although (key, time) is new" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="620" y="170" width="740" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="lost" value="&lt;b&gt;A move that lost, and the answer&lt;/b&gt;&lt;br&gt;row holds the target (admitted to running, row running): moved, the new events are written, lost null&lt;br&gt;row terminal (running to succeeded, row cancelled): nothing written, lost cancelled, the workflow completes&lt;br&gt;paused to cancelled, row resume-pending: moved again from resume-pending, written, lost null&lt;br&gt;any other (running to succeeded, row paused): rolled back, lost paused, the workflow sends again with backoff" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="620" y="340" width="740" height="110" as="geometry"/>
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
