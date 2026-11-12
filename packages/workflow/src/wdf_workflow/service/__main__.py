@@ -5,10 +5,11 @@ import asyncio
 import logging
 import os
 import sys
+from pathlib import Path
 
 from wdf_artifactreaper import schedule
 
-from . import Config, MissingEnv, real_control, serve
+from . import READY_ENV, Config, MissingEnv, real_control, serve
 
 
 def main() -> int:
@@ -19,7 +20,16 @@ def main() -> int:
         print(f"wdf_workflow.service: {error}", file=sys.stderr)
         return 2
     activities, emit = real_control(config)
-    asyncio.run(serve(config, activities, emit, schedule.default_pass()))
+    ready = os.environ.get(READY_ENV)
+    asyncio.run(
+        serve(
+            config,
+            activities,
+            emit,
+            schedule.default_pass(),
+            ready_file=Path(ready) if ready else None,
+        )
+    )
     return 0
 
 

@@ -1,0 +1,36 @@
+name: workflow-worker
+group: control
+namespace: wdf-control
+artifact:
+  kind: image
+  pin: python
+resources:
+  workflow-worker:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  workflow-worker-logins:
+    requests:
+      cpu: 1m
+      memory: 1Mi
+    limits:
+      cpu: 1m
+      memory: 1Mi
+readiness:
+  command:
+    - kubectl
+    - --context=kind-wdf
+    - --namespace=wdf-control
+    - wait
+    - --for=condition=Available
+    - deployment
+    - --selector=app.kubernetes.io/name=workflow-worker
+    - --timeout=300s
+profiles: [dev, full, ci]
+depends_on:
+  - infra/appdb-migrate
+  - infra/objectstore-bootstrap
+  - infra/temporal-bootstrap
