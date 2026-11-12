@@ -178,8 +178,11 @@ def test_metrics_endpoint(temporal, config, running, start_job):
 @pytest.mark.integration
 def test_ready_file_while_polling(temporal, config, tmp_path):
     """The ready file exists once the workers poll and is gone once the service stops, and a
-    namespace the server does not know fails the start without it."""
+    namespace the server does not know fails the start without it, even when a killed process
+    left one behind."""
     ready = tmp_path / "ready"
+    # Left by a process that was killed, so it never removed its file.
+    ready.touch()
     unknown = dataclasses.replace(config("unknown"), namespace="no-such-namespace")
     with pytest.raises(RPCError, match="no-such-namespace"):
         asyncio.run(serve(unknown, [], None, lambda heartbeat: {}, ready_file=ready))
@@ -200,6 +203,8 @@ def test_ready_file_while_polling(temporal, config, tmp_path):
             )
         )
         while not ready.exists():
+            if service.done():
+                await service
             await asyncio.sleep(0.1)
         polled = await _polled(client, "wdf-control-ready")
         stop.set()

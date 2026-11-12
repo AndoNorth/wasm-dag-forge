@@ -12,7 +12,7 @@ Diagram: [workflow-worker.drawio.svg](workflow-worker.drawio.svg), the module fo
 | `module.yaml` | the module manifest: the pod at 256 MiB of memory, requests equal to limits, and the nominal entry of the login resource |
 | `Tiltfile.module` | the image build, the two Secrets, the login resource and the Deployment of the build id |
 | `image.sh`, `Dockerfile` | the image: wheels of the workspace packages built on the host, over the third-party packages that `uv.lock` pins by hash, on the pinned `python` image of `deploy/versions.yaml` |
-| `logins.sh`, `logins.py` | the service logins in the app database, and the render of the Secrets |
+| `logins.sh`, `logins.py` | the service logins in the app database, whose passwords reach the server as SCRAM verifiers, and the render of the Secrets |
 | `test_render.py`, `test_logins.py` | the render tests, offline through `tilt alpha tiltfile-result`, and the integration tests of the logins against a migrated database |
 
 ## Build id
@@ -46,13 +46,14 @@ Their passwords are generated on first use into `workflow-worker.logins.json` in
 The Secret `workflow-worker-logins` holds the three DSNs, and the Secret `workflow-worker-store` holds `credentials.json` with the `workflow`, `indexer` and `reaper` store identities only, taken from `objectstore.credentials.json`.
 
 Tilt runs `logins.sh apply` as the resource `workflow-worker-logins` once the migrations are applied, and the service starts after it.
-It creates a missing login, and converges one whose password, login right or group membership differs, leaving it a member of its group role only.
+It creates a missing login, and converges one whose password, attributes or membership differs: a login that inherits, has no superuser, role, database, replication or row-security bypass right and no expiry, and is a member of its group role only, with no admin option.
 A second run prints every login `unchanged` and `changed: 0`.
 `logins.sh check` exits 1 when a login differs or cannot log in with its password.
 
 ## Readiness
 
-The service creates `/tmp/wdf-ready` once Temporal answers for namespace `wdf` and its workers poll, and removes it when it starts to drain.
+The service creates `/tmp/wdf-ready` once Temporal answers for namespace `wdf` and its workers have started, and removes it when it starts to drain.
+A new process first removes a file that a killed one left on the `/tmp` volume, which outlives a container restart.
 The readiness probe tests for the file, and the module is ready when the Deployment of the build is `Available`.
 The log shows the three queues and the build id:
 

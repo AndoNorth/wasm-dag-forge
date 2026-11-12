@@ -6,8 +6,9 @@ ENV and REAPER_ENV, serves the SDK's Prometheus metrics, which carry the workflo
 on the address of WDF_METRICS_ADDRESS, and drains on SIGTERM or SIGINT: it stops polling, gives
 the workflow and control tasks in flight DRAIN to finish and report, and returns. The reaper worker
 keeps the shutdown of wdf_artifactreaper.schedule, whose pass is retried by its own policy.
-When READY_ENV names a file, the service creates it once its workers poll and removes it when it
-stops polling, so a readiness probe can test for it.
+When READY_ENV names a file, the service creates it once Temporal answers for its namespace and
+its workers have started, and removes it when it starts to drain, so a readiness probe can test
+for it. A file left by a killed process is removed before the service connects.
 """
 
 import asyncio
@@ -141,6 +142,8 @@ async def serve(
     """
     if (env_build := os.environ.get(naming().workflow.build_id_env)) != config.build_id:
         raise ValueError(f"build id {config.build_id} is not the environment's {env_build}")
+    if ready_file:
+        ready_file.unlink(missing_ok=True)
     stop = stop or asyncio.Event()
     loop = asyncio.get_running_loop()
     for signum in (signal.SIGTERM, signal.SIGINT):

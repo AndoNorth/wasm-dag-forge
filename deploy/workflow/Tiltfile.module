@@ -87,7 +87,7 @@ k8s_yaml(encode_yaml({
                     "env": [{"name": k, "value": v} for k, v in sorted(env.items())],
                     "envFrom": [{"secretRef": {"name": name + "-logins"}}],
                     "ports": [{"name": "metrics", "containerPort": 9464}],
-                    # The service writes the file once Temporal answers for its namespace and the workers poll.
+                    # The service writes the file once Temporal answers for its namespace and the workers have started.
                     "readinessProbe": {"exec": {"command": ["test", "-e", ready]}, "periodSeconds": 5},
                     "resources": res[name],
                     "securityContext": {"allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True},

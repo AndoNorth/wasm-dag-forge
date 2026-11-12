@@ -34,13 +34,24 @@ def run(mode, dsn, capsys) -> tuple[int, list[str], list[str]]:
 def memberships(dsn: str) -> dict[str, list[str]]:
     with psycopg.connect(dsn) as conn:
         return {
-            login: [g for (g,) in conn.execute(logins.MEMBER_OF, (login,))]
+            login: [g for g, *_ in conn.execute(logins.MEMBER_OF, (login,))]
             for login, _ in logins.LOGINS.values()
         }
 
 
+@pytest.fixture
+def server(appdb):
+    """The migrated database, on a server that holds none of the logins, which are server wide
+    and so outlive the database of an earlier test."""
+    with psycopg.connect(appdb, autocommit=True) as conn:
+        for login, _ in logins.LOGINS.values():
+            conn.execute(f"drop role if exists {login}")
+    return appdb
+
+
 @pytest.mark.integration
-def test_apply_twice_then_check(appdb, capsys):
+def test_apply_twice_then_check(server, capsys):
+    appdb = server
     assert run("check", appdb, capsys) == (
         1,
         [f"{item} missing" for item in ITEMS],
@@ -61,11 +72,14 @@ def test_apply_twice_then_check(appdb, capsys):
 
 
 @pytest.mark.integration
-def test_drift_found_and_repaired(appdb, state, capsys):
+def test_drift_found_and_repaired(server, state, capsys):
+    appdb = server
     logins.main("apply", appdb)
     workflow, artifacts, _ = (login for login, _ in logins.LOGINS.values())
+    reaper = logins.LOGINS["WDF_REAPER_DSN"][0]
     with psycopg.connect(appdb, autocommit=True) as conn:
         conn.execute(f"grant wdf_reader to {workflow}")
+        conn.execute(f"alter role {reaper} createrole")
     known = json.loads(logins.state_file().read_text())
     known[artifacts] = "rotated"
     logins.state_file().write_text(json.dumps(known))
@@ -75,10 +89,11 @@ def test_drift_found_and_repaired(appdb, state, capsys):
     assert code == 1
     assert f"{ITEMS[0]} differs: member of wdf_reader, wdf_workflow" in out
     assert f"{ITEMS[1]} differs: password" in out
-    assert err == [f"differs: {ITEMS[0]}", f"differs: {ITEMS[1]}"]
+    assert f"{ITEMS[2]} differs: attributes" in out
+    assert err == [f"differs: {item}" for item in ITEMS]
 
     code, out, _ = run("apply", appdb, capsys)
-    assert (code, out[-1]) == (0, "changed: 2")
+    assert (code, out[-1]) == (0, "changed: 3")
     assert run("check", appdb, capsys)[0] == 0
     assert memberships(appdb)[workflow] == ["wdf_workflow"]
 

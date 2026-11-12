@@ -82,38 +82,49 @@ def render(store_credentials: str) -> list[dict]:
 
 
 MEMBER_OF = """
-select g.rolname from pg_auth_members m
+select g.rolname, m.inherit_option, m.set_option, m.admin_option from pg_auth_members m
 join pg_roles g on g.oid = m.roleid
 join pg_roles l on l.oid = m.member
 where l.rolname = %s
 order by 1
 """
+# A service login logs in, inherits its group's grants and holds no other power or expiry.
+ATTRIBUTES = """
+select rolcanlogin, rolinherit, not (rolsuper or rolcreaterole or rolcreatedb or rolreplication
+    or rolbypassrls), coalesce(rolvaliduntil = 'infinity', true)
+from pg_roles where rolname = %s
+"""
 
 
 def state(conn: psycopg.Connection, login: str, group: str) -> str:
-    row = conn.execute(
-        "select rolcanlogin, rolinherit from pg_roles where rolname = %s", (login,)
-    ).fetchone()
+    row = conn.execute(ATTRIBUTES, (login,)).fetchone()
     if row is None:
         return "missing"
-    groups = [g for (g,) in conn.execute(MEMBER_OF, (login,))]
-    wrong = [] if row == (True, True) else ["cannot log in or inherit"]
-    if groups != [group]:
-        wrong.append(f"member of {', '.join(groups) or 'nothing'}")
+    wrong = [] if all(row) else ["attributes"]
+    groups = conn.execute(MEMBER_OF, (login,)).fetchall()
+    if groups != [(group, True, True, False)]:
+        wrong.append(f"member of {', '.join(g for g, *_ in groups) or 'nothing'}")
     return f"differs: {'; '.join(wrong)}" if wrong else "unchanged"
 
 
 def converge(conn: psycopg.Connection, login: str, group: str, phrase: str) -> None:
+    """Gives `login` the attributes of ATTRIBUTES, the password `phrase` as a SCRAM verifier, so
+    no statement holds it in clear, and the membership of `group` only."""
     role = sql.Identifier(login)
     if conn.execute("select from pg_roles where rolname = %s", (login,)).fetchone() is None:
-        conn.execute(sql.SQL("create role {} login inherit").format(role))
+        conn.execute(sql.SQL("create role {}").format(role))
+    verifier = conn.pgconn.encrypt_password(phrase.encode(), login.encode(), b"scram-sha-256")
     conn.execute(
-        sql.SQL("alter role {} login inherit password {}").format(role, sql.Literal(phrase))
+        sql.SQL(
+            "alter role {} login inherit nosuperuser nocreaterole nocreatedb noreplication"
+            " nobypassrls valid until 'infinity' password {}"
+        ).format(role, sql.Literal(verifier.decode()))
     )
-    for (other,) in conn.execute(MEMBER_OF, (login,)).fetchall():
-        if other != group:
-            conn.execute(sql.SQL("revoke {} from {}").format(sql.Identifier(other), role))
-    conn.execute(sql.SQL("grant {} to {}").format(sql.Identifier(group), role))
+    for other, *_ in conn.execute(MEMBER_OF, (login,)).fetchall():
+        conn.execute(sql.SQL("revoke {} from {}").format(sql.Identifier(other), role))
+    conn.execute(
+        sql.SQL("grant {} to {} with inherit true, set true").format(sql.Identifier(group), role)
+    )
 
 
 def logs_in(dsn: str, login: str, phrase: str) -> bool:
