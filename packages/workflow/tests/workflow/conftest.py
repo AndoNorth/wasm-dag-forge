@@ -167,12 +167,17 @@ class CountingPlacer(StaticPlacer):
 
 class RecordingControl(FakeControl):
     """FakeControl that keeps every commit in `commits`, where FakeControl keeps the last of each
-    task, and every move of the job row in `moves` as `(expected, to, lost)`."""
+    task, and every move of the job row in `moves` as `(expected, to, lost)`.
+
+    A move is recorded once per send, keyed by run and activity id, since Temporal runs a local
+    activity again under the same id when the workflow task that ran it fails.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.commits: list[Commit] = []
         self.moves: list[tuple[str, str, str | None]] = []
+        self.sends: set[tuple[str | None, str]] = set()
 
     @activity.defn(name="commit")
     async def commit(self, request: Commit) -> None:
@@ -182,7 +187,10 @@ class RecordingControl(FakeControl):
     @activity.defn(name="emit")
     async def emit(self, request: Emit) -> Emitted:
         emitted = await FakeControl.emit(self, request)
-        if (move := request.transition) is not None:
+        info = activity.info()
+        send = (info.workflow_run_id, info.activity_id)
+        if (move := request.transition) is not None and send not in self.sends:
+            self.sends.add(send)
             self.moves.append((move.expected, move.to, emitted.lost))
         return emitted
 

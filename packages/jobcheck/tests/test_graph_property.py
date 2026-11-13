@@ -57,11 +57,13 @@ def test_acyclic_documents_are_accepted(deps):
 @settings(max_examples=100)
 def test_cycle_path_is_a_real_cycle(deps, data):
     """A back edge from the end of a walk of real edges to its start always makes a cycle."""
-    high = data.draw(st.integers(0, len(deps) - 1))
-    low = high
+    starts = [i for i, ds in deps.items() if ds]
+    # The walk takes at least one edge, so only a graph without edges is discarded.
+    assume(starts)
+    high = data.draw(st.sampled_from(starts))
+    low = data.draw(st.sampled_from(deps[high]))
     while deps[low] and data.draw(st.booleans()):
         low = data.draw(st.sampled_from(deps[low]))
-    assume(low != high)
     deps[low] = sorted({*deps[low], high})
     cycles = [i for i in check_graph(document(deps)) if i.code == "dependency-cycle"]
     assert cycles
