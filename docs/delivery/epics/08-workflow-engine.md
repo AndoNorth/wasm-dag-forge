@@ -1,6 +1,6 @@
 # Epic #6: Workflow engine (Temporal) - breakdown
 
-Status: approved
+Status: closed 2026-11-13
 Epic: https://github.com/AndoNorth/wasm-dag-forge/issues/6
 Architecture note: docs/architecture/12-dag-and-workflow.drawio
 Verifier: none, per decision 1.
@@ -543,7 +543,7 @@ Row 12 opens one more, `kubectl --context kind-wdf port-forward --address 127.0.
 | 2 | `for m in wdf_workflow.gen wdf_runtime.gen wdf_events.schemagen wdf_jobdoc.schemagen wdf_artifactclient.gen wdf_artifactindex.gen wdf_eventstore.gen wdf_jobstate.gen wdf_stateops.gen wdf_storecheck.gen wdf_compat.vectors wdf_jobexamples.golden; do python -m $m --check \|\| echo "DRIFT $m"; done` | no output |
 | 3 | `for c in activity temporal; do for f in contracts/$c/vectors/*/valid/*; do contracts/$c/check.sh "$f"; done; done`, the same over every file under `contracts/{activity,temporal}/vectors/*/invalid/` | exit 0 for each valid file, exit 1 with the `reason:` of its directory for each invalid one |
 | 4 | `scripts/check-contracts-map.sh`, `scripts/export-diagrams.sh --check`, `just versions --check`, then the two refined diagrams opened | exit 0 for each, and the DAG diagram shows the four refinements of 0.2 (issue), checked by eye because an export gives every file one time and the diagram check compares times |
-| 5 | `pytest packages/workflow -q -rs`, then `pytest packages/workflow -m isolated -q -rs` | all pass with no `SKIPPED` line, the second run covering the tests that the first deselects |
+| 5 | `pytest packages/workflow -q -rs`, then `pytest packages/workflow -m isolated -q -rs` | the first run passes with no `SKIPPED` line, and since no workflow test carries `isolated`, it deselects nothing and the second run selects no test and exits 5 |
 | 6 | `pytest packages/workflow -v -k "lost_completion_job_finishes or zombie_fenced or schedule_to_start_replaces or scheduler_down_beyond_task_timeout or history_budget_ends_job or deterministic_class_not_retried or infra_cap_exhausted or operator_interrupt_free or repeated_oom_killed_stops or drain_then_pause or resume_from_checkpoint or resume_compile_failure_stays_paused or corrupt_checkpoint_falls_back or manual_pause_interrupts_checkpoint_task or manual_pause_keeps_final_checkpoint or manual_pause_drains_others or manual_pause_queued_task_returns_ready or manual_pause_no_replace or lost_terminal_completes or unexpected_lost_resends or checkpoint_indexed_and_committed or index_checkpoint_refuses_other_attempt or resume_and_cancel_same_seq_cancel_wins or cache_hit_skips or cache_error_not_miss or stale_invalidate_keeps_fresh_entry or cache_invalidate_races_fresh_record or build_info_key_mismatch_refused or emit_retry_with_shifted_time_inserts_nothing or aggregate_waits_for_all or allow_partial_partial_status or aggregate_only_job or cancel_in_flight or terminate_hard_stop or signal_dedup or stage_contract_workflow or failure_table_covers or pinned_finishes_on_old_build"` | each named test is listed `PASSED` |
 | 7 | `pytest packages/temporal packages/workflow -v -k replay` | all pass, including `test_replay_detects_reordered_activity` and the replay of `packages/workflow/corpus/v1/` |
 | 8 | `pytest packages/workflow -v -m slow -k cache_key_matches_build_info` | `PASSED` |
@@ -570,7 +570,71 @@ Not provable by this epic: the real placement service, pool table and OOM escala
 - Estimates, not measurements, in worker-days: lane 0 (4: 0.1 2.5, 0.2 1.5), the D22 revisit (0.5), S9 (1.5), S10 (2), M.1 (2.5), M.2 (1.5), P.1 (2.5), P.2 (2), A.1 (2.5), A.2 (3.5), W.1 (3), W.2 (4), W.3 (2), W.4 (3.5), W.5 (3.5), D.1 (2), D.2 (3), V.1 (2), V.2 (3), V.3 (3), exit test (2.5).
   That is about 54 worker-days of effort and about 27 days elapsed along lane 0, P.1, W.1 to W.5, V.1 and the exit test (4 + 2.5 + 3 + 4 + 2 + 3.5 + 3.5 + 2 + 2.5), with S10 failing into the fallback of decision 20, the chart's per-service footprint, the D22 revisit, the SDK's raw versioning calls and cluster lock contention as the main sources of slip.
 
-## 9. Closure (filled at close)
+## 9. Closure
+
+Run on 2026-11-13 against `d44d62d735d95945a742caf10db106017177617f`, the commit of the last fix merge, from a `git archive origin/main` extracted into a scratch directory with no enclosing git repository.
+Every row passes, row 5 as corrected in section 7.
+The pasted output of every row is in the pull request that records this run.
+
+Method of the run:
+
+- The worker that ran it wrote none of the lanes.
+- The host is the 20 GiB WSL2 VM with Docker running for the whole run, and the only container not started by the run was left untouched.
+- Rows 0 to 9 ran first in order, row 0 was repeated just before row 10, rows 10 to 17 ran in one sequence under the cluster lock with `WDF_BUILD_ID=exit-a`, and row 18 ran after the lock was released.
+- Row 12 reads the cache series through a port-forward from 127.0.0.1:19090 to port 9090 of the history pod.
+- Row 15 names the Temporal pods by their Deployments, `temporal-frontend`, `temporal-history`, `temporal-matching` and `temporal-worker`.
+
+Results:
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 0 | pass | `MemAvailable` 18,523,124 kB at the start and 18,535,444 kB before row 10, both above 12,189,696 kB |
+| 1 | pass | `uv sync --frozen` exit 0, `uv lock --check` exit 0 with 66 packages resolved, the `uv.lock` SHA-256 unchanged |
+| 2 | pass | no output |
+| 3 | pass | 20 valid files exit 0, and 75 invalid files exit 1 with the `reason:` of their directory |
+| 4 | pass | exit 0 for the three commands, and the DAG diagram shows native completion, the single attempt with the retry loop in the workflow, the pause keyed on the checkpoint flag and the control activities |
+| 5 | pass as corrected | 384 passed and no `SKIPPED` line, then `384 deselected` and exit 5, because no workflow test carries `isolated` |
+| 6 | pass | 44 passed, and each of the 38 names matches a `PASSED` line |
+| 7 | pass | 16 passed, `test_replay_detects_reordered_activity` and the replay of `packages/workflow/corpus/v1/` among them |
+| 8 | pass | `test_cache_key_matches_build_info PASSED` |
+| 9 | pass | 10 passed, with both cache keys rolling the pods and the limits of S10 |
+| 10 | pass | every module ready, the four Temporal pods listed, and the worker log `polling in namespace wdf: wdf-workflow as build exit-a of wdf-workflow-worker, wdf-control-exit-a and wdf-artifact-reaper` |
+| 11 | pass | `namespace: wdf`, `retention: 24h`, five `search_attribute:` lines with their types, `schedule: wdf-artifact-reaper` |
+| 12 | pass | `finished: 2000`, `failed: 0` in 39 minutes, mutable state cache 1,000, events cache 32,532, and `max 0` in every Temporal pod before and after |
+| 13 | pass | `finished: 20`, `failed: 0`, `paused_resumed: 20` |
+| 14 | pass | `finished: 20`, `failed: 0`, `zombie_commits: 0` |
+| 15 | pass | `finished: 200`, `failed: 0`, `infra_retries: 7`, with the four Temporal pods and `workflow-worker` restarted |
+| 16 | pass | `old_build: exit-a`, `new_build: exit-b`, `open_job_build: exit-a`, `new_job_build: exit-b`, `drained: exit-a`, then the `workflow-worker-exit-a` Deployment deleted |
+| 17 | pass | exit 0 for `just doctor`, `just down` and both `just nuke`, and no kind cluster left |
+| 18 | pass | `just ci` exit 0 in the export, full path, 2,521 passed in `just test` and 510 passed in `just itest` |
+| 19 | pass | the `ci` run [43427341573](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/43427341573) and the `state-modules` run [43427341418](https://github.com/AndoNorth/wasm-dag-forge/actions/runs/43427341418), success on `d44d62d` on `main` |
+
+An earlier run on `65740cb` stopped at row 12, after rows 0 to 11 passed.
+`H smoke --jobs 2000` ended after 62 minutes on `RPCError: Timeout expired` from the status query, with 1,392 jobs completed, 608 running and none failed.
+The workflow worker had been OOMKilled twice at its 256 MiB limit, and its workflow tasks passed the 10 s task timeout.
+The fix in `d44d62d` runs 8 workflow tasks at once with at most 150 cached workflows, and retries the harness status query, and the run above is the full rerun from row 0 on that commit.
+
+What was learned:
+
+- The SDK defaults of 100 concurrent workflow tasks and 1,000 cached workflows do not fit a worker of half a core and 256 MiB with 2,000 open jobs, and bounding both holds the 2,000 jobs at the same limit.
+- The history service holds its mutable state cache at exactly 1,000 under 2,000 jobs, as S10 measured, and no Temporal pod reached its memory limit.
+
+What the architecture note now shows: `docs/architecture/12-dag-and-workflow.drawio` and its SVG are unchanged from 0.2 (issue), and were re-checked by eye in this run for the four refinements of row 4.
+
+What moved to which epic, unchanged from section 7:
+
+- the real placement service, pool table and OOM escalation (#9)
+- real pool workers with the runner, the warm-up, exit 137 with node events and heartbeats from a guest (#10)
+- the checkpoint format, segments, continue-as-new and kill-and-resume (#18)
+- the admission start call and slot release (#8), and signals through the control API and its outbox (#24)
+- dashboards and alerts (#13), engine and database outages longer than the heartbeat timeout (#15)
+- the standard load of 100,000 jobs on the deployed Temporal and a rollout with an old build kept for a month (#16)
+
+Follow-ups found, none filed by this run:
+
+- #360, the harness restart mode that can hang after printing its result, stays open, and row 15 exited on its own in this run.
+- In `docs/architecture/12-dag-and-workflow.drawio` the text of "Place task" and "Retry loop in the workflow" touches the edges of its box.
+- In `docs/architecture/15-contracts.drawio` connectors cross the subtitle of "Shared data formats".
 
 Closure addenda, one dated line each, added after close when a `revisit` child issue is filed against this epic:
 
