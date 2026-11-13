@@ -6,9 +6,7 @@ The reaper of the artifact passing epic: retention of artifact objects and their
 
 `reap_once` runs the passes that act on results, checkpoints, running jobs, the compile cache and content-addressed blobs.
 The Temporal Schedule is delivered.
-A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
-Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
-`tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
+No module has a stub, so every `STUBBED` is empty, and `tests/test_stubs.py` fails on a name that raises the stub error without being listed there.
 
 ## One run
 
@@ -44,7 +42,7 @@ An unknown name raises.
 
 The Schedule `wdf-artifact-reaper` starts a workflow every 15 minutes, with overlap policy skip and a catch-up window of 1 hour.
 The workflow has one activity that runs a pass with a heartbeat per batch and retries a failure up to 5 times with backoff.
-The task queue and the Schedule id are constants until the workflow epic pins the Temporal naming.
+The task queue, the Schedule id, the workflow and the activity are pinned in `contracts/temporal/naming.yaml`.
 
 | Command | Does |
 | --- | --- |
@@ -52,8 +50,7 @@ The task queue and the Schedule id are constants until the workflow epic pins th
 | `schedule trigger --temporal-address ADDR` | starts one pass now and prints its counters, and prints a skip and exits 0 when the Schedule is paused or a pass is already running |
 | `schedule worker --temporal-address ADDR` | serves the task queue until interrupted, with the database and store taken from `WDF_REAPER_DSN`, `WDF_REAPER_ENDPOINT` and `WDF_REAPER_CREDENTIALS` |
 
-A pod that hosts the worker needs a service image, which does not exist yet.
-The worker is therefore run by hand against the cluster, and its deployment belongs to the workflow epic's worker deployment.
+On the cluster the worker runs inside `python -m wdf_workflow.service`, which `deploy/workflow/README.md` deploys.
 
 ## Contract files
 

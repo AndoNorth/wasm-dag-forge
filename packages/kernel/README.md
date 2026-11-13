@@ -6,10 +6,8 @@ The format it follows is pinned in `contracts/workload/README.md`.
 ## State
 
 `format` holds the value formats and the document rules of `wdf.sim.v1`, and the contract loader of `wdf_runtime` calls it for `results.xml`.
-`expected` and `check` are stubs.
-A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
-Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
-`tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
+`expected` holds the blocks and digest a workload must write, and `python -m wdf_kernel.check results|summary` checks a result or an aggregate summary against them.
+No module has a stub, so every `STUBBED` is empty, and `tests/test_stubs.py` fails on a name that raises the stub error without being listed there.
 
 ## Standard library only
 

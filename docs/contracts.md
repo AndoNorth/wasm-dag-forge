@@ -120,5 +120,5 @@ The module contract resolves its artifact pins against this file.
 
 The stage table says, for each stage, which source it writes under, which attributes and data fields it reads and which event types it emits.
 Its loader cross-checks the table against the event catalogue, so a type emitted by two stages without a condition, or by none, fails.
-Only `packages/stages` reads the table in the repository today, and that is the reason for the scaffolding role.
+Only test code reads the table today, `packages/stages` and the stage contract test of `packages/workflow` through `run_stage_contract`, and that is the reason for the scaffolding role.
 Details: [contracts/stages/README.md](../contracts/stages/README.md).

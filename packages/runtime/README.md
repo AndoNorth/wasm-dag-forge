@@ -6,10 +6,8 @@ The contract it loads is pinned in `contracts/workload/README.md`.
 ## State
 
 The models, the loader `python -m wdf_runtime.contract --check FILE`, the schema generator `python -m wdf_runtime.gen [--check]` and the pins are delivered.
-`command`, `classify`, `calibrate` and `python -m wdf_runtime run` are stubs.
-A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
-Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
-`tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
+`command`, `classify`, `calibrate` and `python -m wdf_runtime run` are delivered too.
+No module has a stub, so every `STUBBED` is empty, and `tests/test_stubs.py` fails on a name that raises the stub error without being listed there.
 
 ## Pins
 
