@@ -1,0 +1,100 @@
+<mxfile>
+  <diagram id="workflow-worker" name="Module workflow-worker">
+    <mxGraphModel adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t" value="Module workflow-worker on the ci preset, for build id exit-a, with the Deployment of a second build exit-b during a rollout" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1260" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="host" value="Host, Tilt with WDF_BUILD_ID=exit-a" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="330" height="560" as="geometry"/>
+        </mxCell>
+        <mxCell id="img" value="&lt;b&gt;custom_build: image.sh&lt;/b&gt;&lt;br&gt;uv build: 20 workspace wheels&lt;br&gt;uv export: hash-pinned third-party&lt;br&gt;FROM python:3.13.15-slim-trixie@sha256:7c61...&lt;br&gt;ENV WDF_BUILD_ID=exit-a, USER 65532&lt;br&gt;pushed to localhost:5001" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=6;" vertex="1" parent="host">
+          <mxGeometry x="15" y="40" width="300" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="state" value="&lt;b&gt;state directory&lt;/b&gt;&lt;br&gt;workflow-worker.logins.json (0600):&lt;br&gt;one generated password per login&lt;br&gt;objectstore.credentials.json:&lt;br&gt;every store role, from identities.sh" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=6;" vertex="1" parent="host">
+          <mxGeometry x="15" y="180" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="render" value="&lt;b&gt;logins.py render&lt;/b&gt; at load: two Secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="host">
+          <mxGeometry x="15" y="310" width="300" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="logins" value="&lt;b&gt;local_resource workflow-worker-logins&lt;/b&gt;&lt;br&gt;after appdb-migrate&lt;br&gt;logins.sh apply: port-forward 127.0.0.1 to appdb-0,&lt;br&gt;logins.py apply as postgres&lt;br&gt;second run: 3 x unchanged, changed: 0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=6;" vertex="1" parent="host">
+          <mxGeometry x="15" y="380" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="hdeps" value="workflow-worker waits for appdb-migrate, objectstore-bootstrap, temporal-bootstrap and workflow-worker-logins" style="text;html=1;align=left;whiteSpace=wrap;fontSize=11;" vertex="1" parent="host">
+          <mxGeometry x="15" y="500" width="300" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="hs1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="host" source="state" target="render">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ctl" value="Namespace wdf-control, on the infra pool" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="390" y="50" width="450" height="560" as="geometry"/>
+        </mxCell>
+        <mxCell id="dep" value="&lt;b&gt;Deployment workflow-worker-exit-a&lt;/b&gt;&lt;br&gt;1 replica, strategy Recreate, label wdf.dev/build-id=exit-a&lt;br&gt;memory 256Mi request = limit, cpu 250m / 500m&lt;br&gt;readiness: test -e /tmp/wdf-ready&lt;br&gt;&lt;br&gt;&lt;b&gt;python -m wdf_workflow.service&lt;/b&gt;, one process:&lt;br&gt;workflow worker: wdf-workflow, build exit-a of wdf-workflow-worker&lt;br&gt;control worker: wdf-control-exit-a&lt;br&gt;reaper worker: wdf-artifact-reaper&lt;br&gt;metrics :9464" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;spacingLeft=6;verticalAlign=top;" vertex="1" parent="ctl">
+          <mxGeometry x="15" y="40" width="420" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1" value="&lt;b&gt;Secret workflow-worker-logins&lt;/b&gt; (envFrom)&lt;br&gt;WDF_WORKFLOW_DSN, WDF_ARTIFACTS_DSN, WDF_REAPER_DSN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="ctl">
+          <mxGeometry x="15" y="250" width="420" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2" value="&lt;b&gt;Secret workflow-worker-store&lt;/b&gt;, /etc/wdf/store/credentials.json&lt;br&gt;workflow, indexer, reaper only (not admin, submit or the pools)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="ctl">
+          <mxGeometry x="15" y="320" width="420" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="depb" value="&lt;b&gt;Deployment workflow-worker-exit-b&lt;/b&gt;, a rollout only&lt;br&gt;same shape, wdf-control-exit-b; exit-a is deleted once drained" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;dashed=1;" vertex="1" parent="ctl">
+          <mxGeometry x="15" y="400" width="420" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="ce1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="ctl" source="s1" target="dep">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ce2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;exitX=1;exitY=0.5;entryX=1;entryY=0.75;" edge="1" parent="ctl" source="s2" target="dep">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="445" y="345"/>
+              <mxPoint x="445" y="175"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="infra" value="Namespace wdf-infra" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="50" width="400" height="560" as="geometry"/>
+        </mxCell>
+        <mxCell id="tf" value="&lt;b&gt;temporal-frontend:7233&lt;/b&gt;&lt;br&gt;namespace wdf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="infra">
+          <mxGeometry x="15" y="40" width="370" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="os" value="&lt;b&gt;objectstore:8333&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="infra">
+          <mxGeometry x="15" y="120" width="370" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;appdb:5432, database postgres&lt;/b&gt;&lt;br&gt;&lt;br&gt;login, member of only&lt;br&gt;workflow_worker_workflow -&amp;gt; wdf_workflow (emit)&lt;br&gt;workflow_worker_artifacts -&amp;gt; wdf_artifacts (commit, cache, index)&lt;br&gt;workflow_worker_reaper -&amp;gt; wdf_reaper (reaper pass)&lt;br&gt;&lt;br&gt;the group roles are NOLOGIN, from R__roles.sql" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;spacingLeft=6;verticalAlign=top;" vertex="1" parent="infra">
+          <mxGeometry x="15" y="190" width="370" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="img" target="dep">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" edge="1" parent="1" source="render" target="s1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" edge="1" parent="1" source="render" target="s2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="create or converge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;exitX=1;exitY=0.75;entryX=0;entryY=0.75;" edge="1" parent="1" source="logins" target="db">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="505"/>
+              <mxPoint x="370" y="630"/>
+              <mxPoint x="860" y="630"/>
+              <mxPoint x="860" y="352"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="dep" target="tf">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="dep" target="os">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="dep" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -6,6 +6,9 @@ ENV and REAPER_ENV, serves the SDK's Prometheus metrics, which carry the workflo
 on the address of WDF_METRICS_ADDRESS, and drains on SIGTERM or SIGINT: it stops polling, gives
 the workflow and control tasks in flight DRAIN to finish and report, and returns. The reaper worker
 keeps the shutdown of wdf_artifactreaper.schedule, whose pass is retried by its own policy.
+When READY_ENV names a file, the service creates it once Temporal answers for its namespace and
+its workers have started, and removes it when it starts to drain, so a readiness probe can test
+for it. A file left by a killed process is removed before the service connects.
 """
 
 import asyncio
@@ -16,7 +19,9 @@ from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import timedelta
+from pathlib import Path
 
+from temporalio.api.workflowservice.v1 import DescribeNamespaceRequest
 from temporalio.client import Client
 from temporalio.common import WorkerDeploymentVersion
 from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
@@ -52,6 +57,8 @@ ENV = {
 }
 # Read by the reaper's own pass, with its login in wdf_reaper and the `reaper` store identity.
 REAPER_ENV = (schedule.ENV_DSN, schedule.ENV_ENDPOINT, schedule.ENV_CREDENTIALS)
+# Optional: the file that marks the service ready.
+READY_ENV = "WDF_READY_FILE"
 
 
 class MissingEnv(Exception):
@@ -123,16 +130,20 @@ async def serve(
     run_pass: RunPass,
     stop: asyncio.Event | None = None,
     runtime: Runtime | None = None,
+    ready_file: Path | None = None,
 ) -> None:
     """Runs the three workers until `stop` is set or the process gets SIGTERM or SIGINT, then
     drains them.
 
     The workflow reads its control queue from the environment's build id, so a `config.build_id`
-    that differs from it, whose workflows would wait on a queue nobody polls, is refused. A fatal
-    error of any worker drains the others and is raised.
+    that differs from it, whose workflows would wait on a queue nobody polls, is refused. A
+    namespace the server does not know fails before `ready_file` is created. A fatal error of any
+    worker drains the others and is raised.
     """
     if (env_build := os.environ.get(naming().workflow.build_id_env)) != config.build_id:
         raise ValueError(f"build id {config.build_id} is not the environment's {env_build}")
+    if ready_file:
+        ready_file.unlink(missing_ok=True)
     stop = stop or asyncio.Event()
     loop = asyncio.get_running_loop()
     for signum in (signal.SIGTERM, signal.SIGINT):
@@ -144,6 +155,9 @@ async def serve(
             data_converter=event_data_converter,
             interceptors=[tracing_interceptor()],
             runtime=runtime or prometheus(config.metrics_address),
+        )
+        await client.workflow_service.describe_namespace(
+            DescribeNamespaceRequest(namespace=config.namespace)
         )
         with (
             ThreadPoolExecutor(THREADS) as local,
@@ -185,16 +199,22 @@ async def serve(
                 control_queue(config.build_id),
                 schedule.TASK_QUEUE,
             )
-            await _run_until(workers, stop)
+            await _run_until(workers, stop, ready_file)
     finally:
         for signum in (signal.SIGTERM, signal.SIGINT):
             loop.remove_signal_handler(signum)
 
 
-async def _run_until(workers: list[Worker], stop: asyncio.Event) -> None:
+async def _run_until(workers: list[Worker], stop: asyncio.Event, ready_file: Path | None) -> None:
     runs = [asyncio.create_task(worker.run()) for worker in workers]
     stopped = asyncio.create_task(stop.wait())
-    await asyncio.wait([*runs, stopped], return_when=asyncio.FIRST_COMPLETED)
+    if ready_file:
+        ready_file.touch()
+    try:
+        await asyncio.wait([*runs, stopped], return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        if ready_file:
+            ready_file.unlink(missing_ok=True)
     stopped.cancel()
     log.info("draining for at most %s", DRAIN)
     await asyncio.gather(*(worker.shutdown() for worker in workers))
