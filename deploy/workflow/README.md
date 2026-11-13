@@ -4,6 +4,7 @@ The workflow worker service, `python -m wdf_workflow.service`, deployed in `wdf-
 One process runs the workflow worker of one build, its control activity worker on `wdf-control-<build id>` and the reaper's Schedule worker.
 Module: `workflow-worker`.
 Diagram: [workflow-worker.drawio.svg](workflow-worker.drawio.svg), the module for one build id, its Secrets, the logins and a second build during a rollout.
+Sizing: [worker-bounds.drawio.svg](worker-bounds.drawio.svg), how the service's bounds on workflow tasks and cached workflows keep the pod inside its 256 MiB and 500m with 2,000 jobs open.
 
 ## Files
 
