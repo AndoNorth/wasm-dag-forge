@@ -32,7 +32,7 @@ from wdf_workflow.contract import naming
 from wdf_workflow.models import TaskInput
 from wdf_workflow.placement import StaticPlacer, place_activity
 from wdf_workflow.testing import FakeControl, FakePool, Succeed, connect
-from wdf_workflow.testing.control import Commit, LoadedPlan
+from wdf_workflow.testing.control import Commit, Emit, Emitted, LoadedPlan
 
 os.environ.setdefault(naming().workflow.build_id_env, "test-build")
 BUILD_ID = os.environ[naming().workflow.build_id_env]
@@ -167,16 +167,24 @@ class CountingPlacer(StaticPlacer):
 
 class RecordingControl(FakeControl):
     """FakeControl that keeps every commit in `commits`, where FakeControl keeps the last of each
-    task."""
+    task, and every move of the job row in `moves` as `(expected, to, lost)`."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.commits: list[Commit] = []
+        self.moves: list[tuple[str, str, str | None]] = []
 
     @activity.defn(name="commit")
     async def commit(self, request: Commit) -> None:
         await FakeControl.commit(self, request)
         self.commits.append(request)
+
+    @activity.defn(name="emit")
+    async def emit(self, request: Emit) -> Emitted:
+        emitted = await FakeControl.emit(self, request)
+        if (move := request.transition) is not None:
+            self.moves.append((move.expected, move.to, emitted.lost))
+        return emitted
 
 
 @dataclass
@@ -328,6 +336,11 @@ def plan():
 @pytest.fixture
 def placer():
     return CountingPlacer
+
+
+@pytest.fixture
+def recording():
+    return RecordingControl
 
 
 @pytest.fixture

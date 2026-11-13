@@ -191,8 +191,8 @@ def test_workflow_metrics_recorded(temporal, rig, plan, fan):
     async def body():
         async with rig(await client()) as this:
             await (await this.start(plan(fan))).result()
-        # A row another stage moved to paused: the start move loses, and the workflow task
-        # fails and retries.
+        # A row another stage moved to paused: the start move loses, and the workflow sends it
+        # again until the row agrees.
         async with rig(await client(), control=FakeControl(status="paused")) as this:
             handle = await this.start(plan(fan))
             for _ in range(100):
