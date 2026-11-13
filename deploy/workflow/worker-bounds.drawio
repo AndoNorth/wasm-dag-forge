@@ -1,0 +1,89 @@
+<mxfile host="Electron">
+  <diagram id="worker-bounds" name="worker bounds">
+    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1100" pageHeight="700" math="0" shadow="0" adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="&lt;b&gt;Workflow worker under H smoke --jobs 2000, pod limit 256 MiB and 500m CPU&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="900" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="before" value="SDK defaults (before)" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="500" height="510" as="geometry"/>
+        </mxCell>
+        <mxCell id="b1" value="2,000 jobs started at once" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="before">
+          <mxGeometry x="140" y="45" width="220" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="b2" value="&lt;b&gt;100 workflow task slots&lt;/b&gt; on half a core&lt;br&gt;a task needs about 35 ms of CPU,&lt;br&gt;so it waits 7 to 10 s inside the process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="before">
+          <mxGeometry x="110" y="120" width="280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="b3" value="Task passes its 10 s timeout:&lt;br&gt;server drops it (Workflow task not found),&lt;br&gt;run evicted, next task replays its history&lt;br&gt;&lt;i&gt;300 jobs: 1,699 of 5,214 tasks dropped&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="before">
+          <mxGeometry x="20" y="230" width="280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="b4" value="&lt;b&gt;Cache up to 1,000 runs&lt;/b&gt;&lt;br&gt;up to 0.5 MiB each,&lt;br&gt;fills as every job stays open" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="before">
+          <mxGeometry x="310" y="230" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="b5" value="&lt;b&gt;OOMKilled twice&lt;/b&gt; at 256 MiB&lt;br&gt;62 min: 1,392 finished, 608 still running,&lt;br&gt;harness crashed on a status query timeout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=0;" vertex="1" parent="before">
+          <mxGeometry x="100" y="360" width="300" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="b6" value="300 jobs measured: CPU throttled in 95% of periods,&lt;br&gt;mean task 9.7 s, 597 s to finish, 221 MiB" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="before">
+          <mxGeometry x="60" y="450" width="380" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="be1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="before" source="b1" target="b2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="be2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="before" source="b2" target="b3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="be3" value="more CPU" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="before" source="b3" target="b2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="50" y="155"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="be4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="before" source="b2" target="b4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="be5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="before" source="b4" target="b5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="after" value="Bounded in wdf_workflow.service (after)" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="50" width="500" height="510" as="geometry"/>
+        </mxCell>
+        <mxCell id="a1" value="2,000 jobs started at once" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="after">
+          <mxGeometry x="140" y="45" width="220" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="a2" value="Tasks wait on the server's task queue,&lt;br&gt;where no workflow task timeout runs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="after">
+          <mxGeometry x="110" y="120" width="280" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="a3" value="&lt;b&gt;WORKFLOW_TASKS = 8&lt;/b&gt;&lt;br&gt;mean task 0.8 s, none dropped" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="after">
+          <mxGeometry x="20" y="230" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="a4" value="&lt;b&gt;CACHED_WORKFLOWS = 150&lt;/b&gt;&lt;br&gt;a run out of the cache replays&lt;br&gt;its history on its next task" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="after">
+          <mxGeometry x="260" y="230" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="a5" value="&lt;b&gt;finished: 2000, failed: 0&lt;/b&gt;&lt;br&gt;38 min, peak 221 MiB of 256, no restart" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="after">
+          <mxGeometry x="100" y="360" width="300" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="a6" value="2,000 jobs measured: 19,046 workflow tasks,&lt;br&gt;none dropped, worker oom_kill 0" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="after">
+          <mxGeometry x="60" y="450" width="380" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="after" source="a1" target="a2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="after" source="a2" target="a3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="after" source="a2" target="a4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="after" source="a3" target="a5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="after" source="a4" target="a5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,23 +1,56 @@
 """The harness command line: smoke jobs that load and bind as load_plan would, a T1 restart of the
 workflow worker with tasks in flight, and the T1 refusal of the scenarios that read the job row or
-the index."""
+the index, and the status query that the counters read, asked again while it times out."""
 
+import asyncio
 import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from temporalio.api.common.v1 import SearchAttributes
 from temporalio.converter import encode_search_attributes
+from temporalio.service import RPCError, RPCStatusCode
+from wdf_keys import workflow_id
 from wdf_plan import plan_hash, read_plan
 from wdf_workflow.activities.cache import bundle_key
+from wdf_workflow.budgets import INFRA_RETRIES
 from wdf_workflow.contract import naming
-from wdf_workflow.harness import ENTRY, SIMULATE_TASKS, search_attributes, smoke_jobs
+from wdf_workflow.harness import (
+    ENTRY,
+    SIMULATE_TASKS,
+    Counters,
+    infra_retries,
+    search_attributes,
+    smoke_jobs,
+)
 from wdf_workflow.harness.__main__ import main
+from wdf_workflow.models import StatusQuery
 
 LIMIT_S = 300
+# The infrastructure budget that the one task of STATUS spent.
+SPENT = 2
+STATUS = {
+    "job_status": "running",
+    "pause_reason": None,
+    "resume_counter": 0,
+    "control_seq": 0,
+    "tasks": [
+        {
+            "id": "sim-1",
+            "state": "running",
+            "task_attempt": 3,
+            "guest_left": 1,
+            "infra_left": INFRA_RETRIES - SPENT,
+            "reschedules": 0,
+            "last_class": None,
+            "checkpoint": None,
+        }
+    ],
+}
 
 
 def harness(*args: str) -> subprocess.CompletedProcess:
@@ -99,3 +132,62 @@ def test_harness_t1_refuses_row_scenarios(temporal, scenario):
     assert done.returncode == 2
     assert done.stdout == ""
     assert f"refused: {scenario} reads the job row or the index" in done.stderr
+
+
+class Handle:
+    """A workflow handle whose status query times out `timeouts` times before it answers."""
+
+    def __init__(self, timeouts: int, status: RPCStatusCode = RPCStatusCode.CANCELLED):
+        self.timeouts = timeouts
+        self.status = status
+        self.asked = 0
+
+    async def query(self, name, result_type):
+        self.asked += 1
+        if self.asked <= self.timeouts:
+            raise RPCError("Timeout expired", self.status, b"")
+        return StatusQuery.model_validate(STATUS)
+
+
+class Client:
+    def __init__(self, handles: dict[str, Handle]):
+        self.handles = handles
+
+    def get_workflow_handle(self, workflow: str) -> Handle:
+        return self.handles[workflow]
+
+
+def retried_pool(*job_ids: str) -> SimpleNamespace:
+    calls = [
+        SimpleNamespace(request=SimpleNamespace(jobid=job_id), task_attempt=2) for job_id in job_ids
+    ]
+    return SimpleNamespace(calls=calls)
+
+
+def test_status_query_timeout_is_retried():
+    """A status query that times out is asked again, and the counters still come out."""
+    slow = Handle(timeouts=2)
+    client = Client({workflow_id("slow"): slow})
+    counters = Counters()
+    asyncio.run(infra_retries(counters, client, {"simulate": retried_pool("slow")}))
+    assert slow.asked == 3
+    assert counters.infra_retries == SPENT
+    assert "status_unanswered" not in counters.extra
+
+
+def test_status_query_that_never_answers_is_counted():
+    client = Client({workflow_id("dead"): Handle(timeouts=10**9), workflow_id("ok"): Handle(0)})
+    counters = Counters()
+    asyncio.run(infra_retries(counters, client, {"simulate": retried_pool("dead", "ok")}, 0))
+    assert counters.infra_retries == SPENT
+    assert counters.extra["status_unanswered"] == 1
+    assert "status_unanswered: 1" in counters.lines()
+    # A count that could not be read fails the run even when every job finished.
+    counters.finished = 2
+    assert not counters.passed(2)
+
+
+def test_status_query_other_error_is_raised():
+    client = Client({workflow_id("gone"): Handle(1, RPCStatusCode.NOT_FOUND)})
+    with pytest.raises(RPCError):
+        asyncio.run(infra_retries(Counters(), client, {"simulate": retried_pool("gone")}))

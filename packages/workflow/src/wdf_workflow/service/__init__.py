@@ -40,6 +40,13 @@ log = logging.getLogger(__name__)
 DRAIN = timedelta(seconds=60)
 # The threads of each worker's blocking activities, and so its database connections at once.
 THREADS = 8
+# The workflow tasks run at once. A task takes tens of milliseconds of CPU, so on the pod's half
+# core more of them at once only queue inside the process until they pass their timeout.
+WORKFLOW_TASKS = 8
+# The workflows kept in memory between their tasks, up to half a MiB each, so the cache fits in
+# the pod's 256 MiB however many jobs are open. A workflow out of it replays its history on its
+# next task.
+CACHED_WORKFLOWS = 150
 
 ENV = {
     "temporal_address": "WDF_TEMPORAL_ADDRESS",
@@ -171,6 +178,8 @@ async def serve(
                     workflows=[JobWorkflow],
                     activities=[place_activity(StaticPlacer()), emit],
                     activity_executor=local,
+                    max_cached_workflows=CACHED_WORKFLOWS,
+                    max_concurrent_workflow_tasks=WORKFLOW_TASKS,
                     max_concurrent_local_activities=THREADS,
                     graceful_shutdown_timeout=DRAIN,
                     deployment_config=WorkerDeploymentConfig(
