@@ -1,6 +1,7 @@
 # Diagrams
 
 Architecture diagrams live in `docs/architecture/` as draw.io files.
+Diagrams of one package, deployment or spike live beside it, under `packages/`, `deploy/` and `docs/delivery/spikes/`.
 Every `NN-name.drawio` has a same-named `NN-name.drawio.svg` beside it.
 Keep both: commit them together.
 
@@ -30,7 +31,7 @@ docker run --rm -v <dir>:/data -w /data rlespinasse/drawio-desktop-headless \
 
 - `-e` embeds the diagram XML in the SVG.
 - `--theme light` pins the authored (dark) palette, so GitHub dark mode does not flip colours.
-- Each SVG is roughly 400-600 KB because draw.io embeds fallback images of the text.
+- Each SVG is roughly 350 KB to 1.6 MB because draw.io embeds fallback images of the text.
 
 To check that no SVG is missing or older than its source (no Docker needed):
 
@@ -39,6 +40,8 @@ scripts/export-diagrams.sh --check
 ```
 
 The check compares file mtimes, so run it in the checkout where you edited.
+`scripts/export-diagrams.sh` covers `docs/architecture/` only.
+A diagram elsewhere is exported with the `docker run` command above, run from its own directory, and the check does not see it.
 A fresh clone has arbitrary mtimes: regenerate rather than trust `--check` there.
 
 ## Embedding

@@ -22,7 +22,7 @@ A value that is not a model keeps the stock `json/plain` behaviour.
 
 `wdf_temporal.standin.StandInJob` takes the accepted event and the job params block as its two start arguments.
 It builds a task request event, runs one activity with it as input, and returns the result ready event that the activity builds.
-The real workflow replaces it, and keeps the same converter.
+It stays as the workflow that the tests of this package run, and `JobWorkflow` of `wdf_workflow` uses the same converter.
 
 ## Trace context
 
@@ -49,7 +49,7 @@ uv run --frozen python -m wdf_temporal.corpus record <release>
 `replay_corpus(classes)` replays every history whose workflow type has a class among the ones given, with the current workflow code and payload decoding.
 It fails with a message that names the history file and its owner for a history that has an `owners.yaml` entry and no class given, and for a history with neither.
 A history is never skipped, so a runner built from a partial list of classes cannot pass over the histories of another epic.
-Another epic adds its histories under a `<release>/` directory it creates, with a line in `owners.yaml`, and replays them with its own class through the same runner.
+Another package keeps its histories in a corpus of its own with the same layout and replays them with its own class through the same runner, as `packages/workflow/corpus/` does for `JobWorkflow`.
 
 The corpus only grows.
 The one exception is the retirement of a release: a pull request that names the release directory and deletes it, after the compatibility window of `wdf_compat.window.readable_days()` days.

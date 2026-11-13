@@ -14,9 +14,9 @@ A bump edits `version`, `url` and `hash` for that tool in `nix/wasm-tools.nix`.
 The hash is the SHA-256 of the release asset, taken from the release page and re-checked by downloading the asset.
 The compile image uses the same versions, so a local build and a cluster build run the same tools.
 
-`componentize-py` is not pinned here.
-`uv.lock` belongs to the Python bootstrap, and the package has no consumer before the compile image exists.
-The compile image adds a hash-pinned `componentize-py` entry to `uv.lock`.
+`componentize-py` is a Python package, so it is not pinned in `nix/wasm-tools.nix`.
+`packages/compile/pyproject.toml` pins it to `==0.25.1`, and `uv.lock` holds it with the hash of every wheel.
+`wdf_runtime.pins` names the same version, and `packages/runtime/tests/test_pins.py` holds the two equal.
 
 ## Where each pin lives
 

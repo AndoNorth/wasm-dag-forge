@@ -3,7 +3,7 @@
 The Schedule starts one workflow whose single activity runs a pass and heartbeats once per batch.
 Overlapping starts are skipped, so a slow pass is never doubled, and the pass itself also holds
 a database lock for the case of a second worker.
-Names are constants until the workflow epic pins the Temporal naming.
+The names are pinned in contracts/temporal/naming.yaml.
 """
 
 import asyncio

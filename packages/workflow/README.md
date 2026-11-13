@@ -11,8 +11,13 @@ The placer and the stubs are delivered too:
 - `wdf_workflow.placement`: the `Placer` interface, `StaticPlacer` over pool table v0 and the `place` local activity.
 - `wdf_workflow.testing`: `placer_contract`, `FakePool` with `activity_contract`, and `FakeControl` with `control_activity_contract`, where `wdf_workflow.testing.control` pins the argument and result of each control activity.
 
-The pure rules, the control activities, the workflow, the service and the harness are not built yet.
-`pyproject.toml` declares every dependency those parts need, so no later change edits it.
+The rest of the package is delivered as well:
+
+- The pure rules: `ready`, `result`, `failures` and `budgets`.
+- `wdf_workflow.activities`: the control activities.
+- `wdf_workflow.job`: `JobWorkflow`, with `wdf_workflow.versioning` for its builds and the replay corpus in `corpus/`, whose rules are in `corpus/README.md`.
+- `wdf_workflow.service`: the worker service, which `deploy/workflow/README.md` deploys.
+- `wdf_workflow.harness`: the harness that runs smoke, restart and rollout jobs against a dev server or the cluster.
 
 ## Package data
 
@@ -26,4 +31,9 @@ nix develop -c uv run --frozen pytest packages/workflow -q
 nix develop -c uv run --frozen pytest packages/workflow -v -k "placer_contract or activity_contract or control_contract"
 nix develop -c uv run --frozen python -m wdf_workflow.contract --check FILE
 nix develop -c uv run --frozen python -m wdf_workflow.gen --check
+nix develop -c uv run --frozen python -m wdf_workflow.service
+nix develop -c uv run --frozen python -m wdf_workflow.harness (--address HOST:PORT | --kube-context NAME) describe|smoke|restart|rollout
 ```
+
+`wdf_workflow.service` reads its configuration from the environment only and exits 2 when a variable is missing.
+The harness exits 0 when every job finished, 1 when one did not, and 2 for a usage error or a command the tier refuses.

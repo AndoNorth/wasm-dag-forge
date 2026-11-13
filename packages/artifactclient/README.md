@@ -6,10 +6,8 @@ The contract it loads is pinned in `contracts/artifact/README.md`.
 ## State
 
 The contract loader, the models, the schema generator, the key builders, the typed errors, the client, `verify`, commit by reference, staging and the fault hooks are delivered.
-The modules of the checkpoints, the aggregate index and the compile cache are stubs.
-A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
-Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
-`tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
+The checkpoints, the aggregate index and the compile cache are delivered too.
+No module has a stub, so every `STUBBED` is empty, and `tests/test_stubs.py` fails on a name that raises the stub error without being listed there.
 
 ## The client
 

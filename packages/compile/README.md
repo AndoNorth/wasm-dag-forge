@@ -5,10 +5,8 @@ The bundle and build info formats are pinned in `contracts/workload/README.md`.
 
 ## State
 
-Every module is a stub.
-A stub raises `NotImplementedError("not implemented: owned by lane <letter>")`.
-Each module lists its stubs in `STUBBED`, and the lane that delivers a name removes it from that list.
-`tests/test_stubs.py` accepts the stub error only for the names of `STUBBED`.
+The bundle format, the build, `python -m wdf_compile build|info`, the offline fetch of `wdf_compile.limits` and the heavy bundle generator of `wdf_compile.heavy` are delivered.
+No module has a stub, so every `STUBBED` is empty, and `tests/test_stubs.py` fails on a name that raises the stub error without being listed there.
 
 ## Toolchain
 

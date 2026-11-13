@@ -54,15 +54,16 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 | `lint` | real | - | ruff, yamllint, shellcheck, actionlint, kubeconform and nixfmt over the files each owns |
 | `test` | real | - | `pytest -m "not integration"`, nothing collected counts as success |
 | `itest [domain]` | real | - | `pytest -m integration`, optionally limited to `packages/<domain>` |
-| `ci` | real | - | `lint`, `verify-lint`, `test`, `itest`, `nix flake check` |
+| `contracts-map` | real | - | fails when a directory under `contracts/` has no row in the map of [contracts.md](contracts.md), or a row points at a missing path |
+| `ci` | real | - | `lint`, `check-links`, `contracts-map` and its self-test, the `ci-paths` self-test, `verify-lint`, then `test` and `itest` unless only documentation changed, then `nix flake check` |
 | `verify-lint` | real | - | checks each `verify-<domain>` skill has a `SKILL.md` named after its directory, passes when none exist |
 | `pre-push` | real | - | the fast gate that the pre-push hook runs, see [Git hooks](#git-hooks) |
 | `hooks-status` | real | - | prints whether the git hooks are installed for this checkout |
 | `verify` | stub | cluster | end-to-end verifier run |
 | `verify-clean` | stub | cluster | removes verifier evidence |
-| `up` | stub | cluster | create the cluster |
-| `down` | stub | cluster | stop the cluster |
-| `nuke` | stub | cluster | destroy the cluster and its state |
+| `up` | real | - | brings up the kind cluster `wdf` and its local registry for `WDF_PRESET` (default `ci`) |
+| `down` | real | - | stops the node containers and keeps the cluster, the registry and the host data directory |
+| `nuke` | real | - | destroys the cluster, its registry and the host data directory of the preset that started it |
 | `cluster-verify` | stub | cluster | cluster acceptance checks |
 | `smoke` | stub | acceptance | end-to-end smoke run |
 | `e2e` | stub | acceptance | end-to-end run |
@@ -72,10 +73,10 @@ No logic lives in the justfile, and each real recipe calls `scripts/<name>.sh`.
 A stub fails the way a real failure does, so a script cannot mistake it for success:
 
 ```text
-$ nix develop -c just up
-scripts/up.sh
-not implemented: owned by #2
-error: recipe `up` failed on line 2 with exit code 3
+$ nix develop -c just smoke
+scripts/smoke.sh
+not implemented: owned by #17
+error: recipe `smoke` failed on line 2 with exit code 3
 ```
 
 ## Python with uv
