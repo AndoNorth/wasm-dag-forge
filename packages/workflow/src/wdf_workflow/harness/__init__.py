@@ -85,12 +85,13 @@ HOLD_S = 5.0
 DEADLINE_S = 3600.0
 # How many workflow results are awaited at once, which bounds the long polls on one connection.
 WAITERS = 64
-# How long a status query keeps being asked again while a busy worker or server fails to answer
-# it in time, after which the job counts as unanswered instead of ending the run.
+# How long the status queries of a run keep being asked again while a busy worker or server fails
+# to answer them in time, after which a job counts as unanswered instead of ending the run.
 QUERY_RETRY_S = 300.0
 QUERY_TIMEOUTS = (
     RPCStatusCode.CANCELLED,
     RPCStatusCode.DEADLINE_EXCEEDED,
+    RPCStatusCode.RESOURCE_EXHAUSTED,
     RPCStatusCode.UNAVAILABLE,
 )
 # The build of the workflow worker that a T1 run starts, when WDF_BUILD_ID names none.
@@ -425,9 +426,11 @@ class Counters:
     printed: bool = False
 
     def passed(self, jobs: int) -> bool:
-        """Whether every job finished and no scenario counter shows a fault."""
+        """Whether every job finished, every count was read and no scenario counter shows a
+        fault."""
         return (
             self.finished == jobs
+            and "status_unanswered" not in self.extra
             and self.extra.get("zombie_commits", 0) == 0
             and self.extra.get("paused_resumed", jobs) == jobs
         )
@@ -555,11 +558,10 @@ async def ended(handles: list[WorkflowHandle], deadline_s: float = DEADLINE_S) -
     return await asyncio.gather(*(one(handle) for handle in handles))
 
 
-async def status(client: Client, job_id: str, retry_s: float = QUERY_RETRY_S) -> StatusQuery:
+async def status(client: Client, job_id: str, end: float) -> StatusQuery:
     """The status query of a job, asked again while it times out or the server is unreachable,
-    for up to `retry_s`."""
+    until the loop time `end`."""
     handle = client.get_workflow_handle(workflow_id(job_id))
-    end = asyncio.get_running_loop().time() + retry_s
     while True:
         try:
             return await handle.query(naming().queries[0], result_type=StatusQuery)
@@ -573,18 +575,20 @@ async def infra_retries(
     counters: Counters, client: Client, fakes: dict[str, FakePool], retry_s: float = QUERY_RETRY_S
 ) -> None:
     """Counts the infrastructure budget the jobs spent, read from the status query of each job in
-    which a pool saw a task run more than once, since only those can have spent any. A job whose
-    query never answers is counted under `status_unanswered`, so the run still prints."""
+    which a pool saw a task run more than once, since only those can have spent any. The queries
+    share `retry_s`, and a job whose query has not answered by then is counted under
+    `status_unanswered`, so the run still prints."""
     retried = {
         task.request.jobid
         for fake in fakes.values()
         for task in fake.calls
         if task.task_attempt > 1
     }
+    end = asyncio.get_running_loop().time() + retry_s
     unanswered = 0
     for job_id in sorted(retried):
         try:
-            query = await status(client, job_id, retry_s)
+            query = await status(client, job_id, end)
         except RPCError as error:
             if error.status not in QUERY_TIMEOUTS:
                 raise

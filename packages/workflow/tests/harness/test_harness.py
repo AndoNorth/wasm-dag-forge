@@ -182,6 +182,9 @@ def test_status_query_that_never_answers_is_counted():
     assert counters.infra_retries == SPENT
     assert counters.extra["status_unanswered"] == 1
     assert "status_unanswered: 1" in counters.lines()
+    # A count that could not be read fails the run even when every job finished.
+    counters.finished = 2
+    assert not counters.passed(2)
 
 
 def test_status_query_other_error_is_raised():
