@@ -15,6 +15,7 @@ import os
 import sys
 import uuid
 from collections.abc import Awaitable, Callable
+from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -292,19 +293,15 @@ async def _record(address: str, directory: Path, build: str) -> list[Path]:
     written = []
     for name, scenario in RECORDINGS.items():
         rig = Rig(client, build)
-        for worker in rig.workers:
-            await worker.__aenter__()
-        try:
+        async with AsyncExitStack() as stack, asyncio.timeout(LIMIT_S):
+            for worker in rig.workers:
+                await stack.enter_async_context(worker)
             await versioning.set_current(client, build)
             handle = await scenario(rig)
-            async with asyncio.timeout(LIMIT_S):
-                status = await handle.result()
+            status = await handle.result()
             if status != ENDS[name]:
                 raise RuntimeError(f"{name} ended {status}, not {ENDS[name]}")
             history = await handle.fetch_history()
-        finally:
-            for worker in reversed(rig.workers):
-                await worker.__aexit__(None, None, None)
         path = directory / f"{name}.json"
         path.write_text(
             json.dumps(

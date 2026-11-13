@@ -3,7 +3,6 @@ workflow, each holds the behaviour it was recorded for, and a changed workflow f
 
 import base64
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -69,15 +68,15 @@ def test_each_history_holds_the_behaviour_it_was_recorded_for(name):
     assert (result(name), signals(name), attempts(name)) == RECORDED[name]
 
 
-def test_replay_detects_reordered_activity(tmp_path, monkeypatch):
+def test_replay_detects_reordered_activity(monkeypatch):
     # The sandbox of the replay runner imports a workflow's module by name, so the changed build is
     # a module on the path and not a class of this test module.
     monkeypatch.syspath_prepend(Path(__file__).parent)
-    from reordered import Reordered
+    from reordered import Reordered, Unchanged
 
-    shutil.copytree(CORPUS, tmp_path, dirs_exist_ok=True)
+    assert replay_corpus([Unchanged], CORPUS) == len(RECORDED)
     with pytest.raises(CorpusError) as caught:
-        replay_corpus([Reordered], tmp_path)
+        replay_corpus([Reordered], CORPUS)
     failures = str(caught.value).splitlines()
     assert sorted(line.split(" ")[0] for line in failures) == sorted(
         f"{name}.json" for name in RECORDED
