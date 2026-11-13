@@ -233,8 +233,10 @@ async def run(job, task, attempt: int, after: Next) -> TaskResult:
         raise TaskFailed(placed.failure, placed.reason)
     if after.schedule_to_start_s is not None:
         placed = placed.model_copy(update={"schedule_to_start_s": after.schedule_to_start_s})
+    job.placements[task.id] += 1
+    placement = job.placements[task.id]
     await job.emit(
-        job.task_event("task.placed", task.id, {"queue": placed.queue}, sequence=attempt)
+        job.task_event("task.placed", task.id, {"queue": placed.queue}, sequence=placement)
     )
     # A simulate task reads the component of its compile, and an aggregate one index.
     if task.type == "aggregate":
@@ -305,15 +307,19 @@ async def cache_hit(job, task) -> bool:
         ),
         CacheAnswer,
     )
+    # A patched source may have another key, or none.
+    job.cache_keys.pop(task.id, None)
     if answer.key is not None:
         job.cache_keys[task.id] = answer.key
     if answer.component is None:
+        job.cache_hits.discard(task.id)
         return False
     job.cache_hits.add(task.id)
     job.outputs[task.id] = {"component": answer.component, "build-info": answer.build_info}
     data = {"reason": "compile-cache-hit", "cache_key": answer.key}
-    # A compile that hits again after a rebuild writes a skip of its own.
-    hits = sum(compile_id == task.id for compile_id, _ in job.rebuilds)
+    # A compile that hits again, after a rebuild or a patched resume, writes a skip of its own.
+    hits = job.skips[task.id]
+    job.skips[task.id] += 1
     await job.emit(job.task_event("task.skipped", task.id, data, sequence=hits))
     return True
 

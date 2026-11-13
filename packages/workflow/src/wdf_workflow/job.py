@@ -23,13 +23,14 @@ with workflow.unsafe.imports_passed_through():
     from wdf_events import Event, build_event
     from wdf_events.models import JobParams, ManifestReference
     from wdf_jobdoc.plan_models import Plan
+    from wdf_jobpatch import patch_check
     from wdf_jobstate import status_vocabulary
 
     from .activities.plan import limits
-    from .budgets import Budgets, fresh
+    from .budgets import Budgets, fresh, resumed
     from .contract import naming
     from .models import ControlSignal, ResumeSignal, StatusQuery, TaskState, TaskStatus
-    from .ready import initial, settle, to_interrupt, to_place
+    from .ready import DONE, initial, resume, settle, to_interrupt, to_place
     from .result import Outcome, Stop, outcome
     from .testing.control import Emit, Emitted, LoadedPlan, LoadPlan, Transition
 
@@ -112,8 +113,12 @@ class JobWorkflow:
         # The output references of each done task, by kind.
         self.outputs: dict[str, dict[str, Any]] = {}
         self.cache_keys: dict[str, str] = {}
-        # The compile tasks a cache hit satisfied, and the rebuild of each lost component.
+        # The compile tasks a cache hit satisfied, the hits of each, and the rebuild of each lost
+        # component.
         self.cache_hits: set[str] = set()
+        self.skips: Counter[str] = Counter()
+        # The placements of each task, which a withdrawn attempt does not take back.
+        self.placements: Counter[str] = Counter()
         self.rebuilds: dict[tuple[str, str], asyncio.Future] = {}
         # The path of each task in flight, and its pool activity once scheduled.
         self.running: dict[str, asyncio.Task] = {}
@@ -173,9 +178,15 @@ class JobWorkflow:
             await self.emit(self.job_event("job.started", {}), move="running")
             await self.end(await self.drain())
             while self.job_status == "paused":
-                # A paused job waits for its end, without a timer.
-                await workflow.wait_condition(lambda: self.stop in ENDING)
-                await self.end(outcome(self.plan, self.states, stop=self.stop))
+                # A paused job waits for a resume or its end, without a timer, so the wait adds
+                # nothing to its history.
+                await workflow.wait_condition(
+                    lambda: self.stop in ENDING or self.resume_request is not None
+                )
+                if self.stop in ENDING:
+                    await self.end(outcome(self.plan, self.states, stop=self.stop))
+                elif await self.run_again():
+                    await self.end(await self.drain())
         except Ended as ended:
             # The job ended outside the workflow: its tasks are cancelled and nothing more is
             # written.
@@ -216,6 +227,65 @@ class JobWorkflow:
                     # retries. A path re-raises the cancel that ended it.
                     if not task.cancelled():
                         task.result()
+
+    async def run_again(self) -> bool:
+        """Resumes a paused job on the last resume applied, and returns whether it runs again.
+
+        The row moves from `resume-pending` back to `running` with `job.resumed` under the next
+        resume counter before anything else runs. Then the patched plan, if any, is put in force,
+        and every task that has not succeeded runs again with fresh budgets from the head of its
+        kept checkpoints, the compile tasks the patch changed among them with every task after
+        them.
+        A cancel or terminate that arrives while the move waits for the row to reach
+        `resume-pending` wins, and the job stays paused for it to end.
+        A patch that does not load, or that the patch check refuses, runs nothing, and the job
+        pauses again for the reason it had, since the row has no move from `resume-pending` back
+        to `paused`.
+        """
+        request, self.resume_request = self.resume_request, None
+        reason = self.pause_reason
+        if self.stop == "pause":
+            # The manual pause is over, which request() never allows, since it only strengthens.
+            # It ends before the move, so a pause that arrives during the move stays in force.
+            self.stop = None
+        sequence = self.resume_counter + 1
+        resumed_event = self.identity.event("job.resumed", workflow.now(), {}, sequence=sequence)
+        if not await self.emit(resumed_event, move="running", expected="resume-pending"):
+            return False
+        self.resume_counter = sequence
+        self.pause_reason = None
+        rerun: tuple[str, ...] = ()
+        if request.manifest is not None:
+            if (patched := await self.patch(request.manifest)) is None:
+                await self.end(Outcome("paused", reason, None, (), self.states))
+                return False
+            rerun = patched
+        self.states = resume(self.plan, self.states, rerun)
+        for tid, state in self.states.items():
+            if state not in DONE:
+                self.budgets[tid] = resumed(self.tasks[tid], self.budgets[tid])
+        return True
+
+    async def patch(self, manifest: ManifestReference) -> tuple[str, ...] | None:
+        """Loads the patched plan of a resume and puts it in force, returning the compile tasks it
+        runs again, or None when it does not load or the patch check refuses it."""
+        try:
+            loaded = await taskpath.control(
+                "load_plan", LoadPlan(manifest=manifest, params=self.params), LoadedPlan
+            )
+        except taskpath.TaskFailed as failure:
+            workflow.logger.warning("the patch of %s does not load: %s", self.job_id, failure)
+            return None
+        done = {tid for tid, state in self.states.items() if state in DONE}
+        report = patch_check(self.plan, loaded.plan, done)
+        if not report.compatible:
+            codes = [issue.code for issue in report.issues]
+            workflow.logger.warning("the patch of %s is refused: %s", self.job_id, codes)
+            return None
+        self.plan = loaded.plan
+        self.tasks = {task.id: task for task in self.plan.tasks}
+        self.max_history_events = loaded.max_history_events
+        return report.recompile
 
     def interrupt(self) -> None:
         """Acts on the control request in force: a manual pause cancels the pool activity of each
@@ -261,6 +331,9 @@ class JobWorkflow:
     def pause(self, signal: ControlSignal) -> None:
         if self.newer(signal.control_seq):
             self.request("pause")
+            # A pause after a resume leaves nothing to resume: control asks for a pause only of an
+            # admitted or running job, so the resume was applied already or is stale.
+            self.resume_request = None
 
     @workflow.signal(name="resume")
     def resume(self, signal: ResumeSignal) -> None:
@@ -326,18 +399,22 @@ class JobWorkflow:
             sequence=sequence,
         )
 
-    async def emit(self, *events: Event, move: str | None = None) -> None:
-        """Writes a batch of events, and the move of the job row to `move` with them.
+    async def emit(
+        self, *events: Event, move: str | None = None, expected: str | None = None
+    ) -> bool:
+        """Writes a batch of events, and the move of the job row to `move` from `expected`, by
+        default the workflow's own status, with them, and returns whether it did.
 
         A move that lost wrote none of the batch. A row already at the target was moved by an
         earlier send of this batch. A row at a terminal status raises Ended. A cancel or terminate
         of a paused job that control moved to `resume-pending` meanwhile is tried once more from
         there. Any other loss is sent again with the backoff of `emit` until the row and the
-        workflow agree, and the job places nothing meanwhile.
+        workflow agree, and the job places nothing meanwhile, except that a resume gives way to a
+        cancel or terminate in force: it returns False and the job keeps its status.
         A typed error of `emit` is a defect of this build and fails the workflow task, which
         Temporal retries until a fixed build runs it.
         """
-        expected = self.job_status
+        expected = expected or self.job_status
         entry = taskpath.named(taskpath.NAMING.activities.local, "emit")
         retry = taskpath.retry_policy(entry.retry)
         backoff = retry.initial_interval
@@ -354,12 +431,15 @@ class JobWorkflow:
             if lost == "resume-pending" and expected == "paused" and ending:
                 expected = lost
                 continue
+            if move == "running" and expected == "resume-pending" and self.stop in ENDING:
+                return False
             self.lost_transitions.add(1)
             workflow.logger.warning("the move %s lost, the row is %s", transition, lost)
             await workflow.sleep(backoff)
             backoff = min(backoff * retry.backoff_coefficient, retry.maximum_interval)
         if move is not None:
             self.job_status = move
+        return True
 
     @workflow.query(name=naming().queries[0])
     def status(self) -> StatusQuery:
