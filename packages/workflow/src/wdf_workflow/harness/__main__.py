@@ -20,6 +20,13 @@ from ..contract import naming
 from . import SCENARIOS, Local, Refused, describe, rollout, run_jobs
 
 
+def targets(value: str) -> list[str]:
+    named = [t for t in value.split(",") if t]
+    if not named:
+        raise argparse.ArgumentTypeError("names no pod")
+    return named
+
+
 def parser() -> argparse.ArgumentParser:
     top = argparse.ArgumentParser(prog="python -m wdf_workflow.harness")
     where = top.add_mutually_exclusive_group(required=True)
@@ -38,7 +45,7 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument(
                 "--target",
                 required=True,
-                type=lambda value: [t for t in value.split(",") if t],
+                type=targets,
                 metavar="POD,...",
             )
     return top
@@ -69,7 +76,7 @@ async def run(args: argparse.Namespace) -> int:
     if not counters.printed:
         for line in counters.lines():
             print(line)
-    return 0 if counters.finished == args.jobs * (2 if args.command == "rollout" else 1) else 1
+    return 0 if counters.passed(args.jobs * (2 if args.command == "rollout" else 1)) else 1
 
 
 def main(argv: list[str] | None = None) -> int:

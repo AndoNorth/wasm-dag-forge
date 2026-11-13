@@ -12,16 +12,25 @@ import json
 import os
 import socket
 import subprocess
+import sys
+import threading
 import time
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 
 import psycopg
-from temporalio.client import Client, WorkflowHandle
+from temporalio.client import Client, WorkflowHandle, WorkflowQueryFailedError
 from temporalio.service import RPCError
 from wdf_artifactclient.client import ArtifactClient
-from wdf_jobstate import JobRow, insert_accepted, request_action, transition
+from wdf_jobstate import (
+    JobRow,
+    Moved,
+    insert_accepted,
+    request_action,
+    status_vocabulary,
+    transition,
+)
 from wdf_storecheck.s3 import load_credentials
 
 from .. import versioning
@@ -47,6 +56,7 @@ FORWARDS = {
     "appdb": (INFRA, "pod/appdb-0", 5432),
     "objectstore": (INFRA, "svc/objectstore", 8333),
 }
+TERMINAL = status_vocabulary().terminal
 WORKER_LABEL = f"app.kubernetes.io/name={WORKFLOW_WORKER}"
 REGISTRY = "localhost:5001"
 IMAGE = f"wdf-{WORKFLOW_WORKER}"
@@ -91,35 +101,42 @@ class Forward:
         self.remote = remote
         self.port = free_port()
         self.process: subprocess.Popen | None = None
+        # The watchdog and a restart both open a forward again, each from its own thread.
+        self.lock = threading.Lock()
 
-    def open(self) -> None:
-        self.close()
+    def _spawn(self) -> None:
         self.process = subprocess.Popen(
             [*self.argv, f"{self.port}:{self.remote}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        deadline = time.monotonic() + UP_S
-        while not _listening(self.port):
-            if self.process.poll() is not None:
-                # The resource is not up yet, as right after its pod restarted.
-                self.process = subprocess.Popen(
-                    [*self.argv, f"{self.port}:{self.remote}"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            if time.monotonic() > deadline:
-                raise TimeoutError(f"{' '.join(self.argv)} did not listen within {UP_S:.0f} s")
-            time.sleep(0.5)
+
+    def open(self) -> None:
+        with self.lock:
+            self._close()
+            self._spawn()
+            deadline = time.monotonic() + UP_S
+            while not _listening(self.port):
+                if self.process.poll() is not None:
+                    # The resource is not up yet, as right after its pod restarted.
+                    self._spawn()
+                if time.monotonic() > deadline:
+                    self._close()
+                    raise TimeoutError(f"{' '.join(self.argv)} did not listen in {UP_S:.0f} s")
+                time.sleep(0.5)
 
     @property
     def alive(self) -> bool:
         return self.process is not None and self.process.poll() is None
 
-    def close(self) -> None:
+    def _close(self) -> None:
         if self.process is not None and self.process.poll() is None:
             self.process.terminate()
             self.process.wait()
+
+    def close(self) -> None:
+        with self.lock:
+            self._close()
 
 
 def kubectl(context: str, *args: str, capture: bool = True) -> str:
@@ -139,7 +156,6 @@ class Cluster:
         self.forwards = {name: Forward(context, *spec) for name, spec in FORWARDS.items()}
         self.client: Client | None = None
         self.db: psycopg.Connection | None = None
-        self._stack = AsyncExitStack()
         self._watch: asyncio.Task | None = None
 
     def refuse(self, command: str, scenario: str | None, targets: list[str]) -> None:
@@ -153,22 +169,50 @@ class Cluster:
     async def __aenter__(self) -> "Cluster":
         from ..testing import connect
 
-        for forward in self.forwards.values():
-            await asyncio.to_thread(forward.open)
-        self._watch = asyncio.create_task(self._reopen())
-        state = state_dir()
-        self.credentials = load_credentials(state / "objectstore.credentials.json")
-        self.password = (state / "appdb.credential").read_text().strip()
-        self.db = self._connect()
-        self.submit = ArtifactClient(self.endpoint, self.credentials["submit"])
-        self.client = await connect(f"127.0.0.1:{self.forwards['temporal'].port}")
+        try:
+            for forward in self.forwards.values():
+                await asyncio.to_thread(forward.open)
+            self._watch = asyncio.create_task(self._reopen())
+            state = state_dir()
+            self.credentials = load_credentials(state / "objectstore.credentials.json")
+            self.password = (state / "appdb.credential").read_text().strip()
+            self.db = await asyncio.to_thread(self._connect)
+            self.submit = ArtifactClient(self.endpoint, self.credentials["submit"])
+            self.client = await connect(f"127.0.0.1:{self.forwards['temporal'].port}")
+            await self._first_current()
+        except BaseException:
+            await self.__aexit__()
+            raise
         return self
 
+    async def _first_current(self) -> None:
+        """Makes the deployed build current when no build is, as a first deploy needs, since a
+        deployment with no current build gives a new job to no worker."""
+        if await versioning.current(self.client) is not None:
+            return
+        builds = kubectl(
+            self.context,
+            f"--namespace={CONTROL}",
+            "get",
+            "deployments",
+            "-l",
+            WORKER_LABEL,
+            "-o",
+            "jsonpath={.items[*].metadata.labels.wdf\\.dev/build-id}",
+        ).split()
+        if len(builds) != 1:
+            raise Refused(f"no current build, and the deployed builds are {builds}")
+        await versioning.set_current(self.client, builds[0])
+        print(f"harness: made build {builds[0]} current", file=sys.stderr, flush=True)
+
     async def __aexit__(self, *exc) -> None:
-        self._watch.cancel()
-        self.db.close()
+        if self._watch is not None:
+            self._watch.cancel()
+            await asyncio.gather(self._watch, return_exceptions=True)
+        if self.db is not None:
+            self.db.close()
         for forward in self.forwards.values():
-            forward.close()
+            await asyncio.to_thread(forward.close)
 
     def _connect(self) -> psycopg.Connection:
         port = self.forwards["appdb"].port
@@ -181,9 +225,12 @@ class Cluster:
     async def _reopen(self) -> None:
         """Opens again each forward whose kubectl exited, as it does when its pod goes away."""
         while True:
-            for forward in self.forwards.values():
+            for name, forward in self.forwards.items():
                 if not forward.alive:
-                    await asyncio.to_thread(forward.open)
+                    try:
+                        await asyncio.to_thread(forward.open)
+                    except TimeoutError as error:
+                        print(f"harness: forward to {name}: {error}", file=sys.stderr, flush=True)
             await asyncio.sleep(1)
 
     def _seed(self, jobs: list[Job]) -> None:
@@ -293,10 +340,10 @@ class Cluster:
                 if time.monotonic() > deadline:
                     raise TimeoutError(f"{target} was not ready again within {UP_S:.0f} s")
                 time.sleep(1)
-        for forward in self.forwards.values():
-            forward.open()
-        self.db.close()
-        self.db = self._connect()
+        # The forward to the frontend holds a stream to a pod that is gone, and the others
+        # forward to pods that never restart here.
+        if any(target.startswith("temporal-") for target in targets):
+            self.forwards["temporal"].open()
 
     async def restart(self, targets: list[str]) -> None:
         await asyncio.to_thread(self._restart, targets)
@@ -322,7 +369,7 @@ class Cluster:
     async def _status(self, handle: WorkflowHandle) -> StatusQuery | None:
         try:
             return await handle.query(naming().queries[0], result_type=StatusQuery)
-        except RPCError:
+        except (RPCError, WorkflowQueryFailedError):
             # A job whose plan is not loaded yet answers no status.
             return None
 
@@ -330,13 +377,18 @@ class Cluster:
         """Pauses the job while its simulate tasks run and resumes it once it is paused, as the
         control API and admission would, and says whether it was paused and then resumed."""
 
-        async def running() -> bool:
+        async def running() -> StatusQuery | None:
             status = await self._status(handle)
-            return status is not None and any(
+            simulating = status is not None and any(
                 t.state == "running" and t.id.startswith("sim-") for t in status.tasks
             )
+            ended = status is not None and status.job_status in TERMINAL
+            return status if simulating or ended else None
 
-        await _until(running, DEADLINE_S, f"simulate task of {job.job_id} running")
+        status = await _until(running, DEADLINE_S, f"simulate task of {job.job_id} running")
+        if status.job_status in TERMINAL:
+            # The job ended before the pause could land while it ran.
+            return False
         pause = await asyncio.to_thread(request_action, self.db, job.job_id, "pause")
         await handle.signal("pause", ControlSignal(control_seq=pause.control_seq, reason="harness"))
 
@@ -348,7 +400,9 @@ class Cluster:
 
         def request_resume() -> int:
             resume = request_action(self.db, job.job_id, "resume")
-            transition(self.db, job.job_id, "paused", "resume-pending")
+            moved = transition(self.db, job.job_id, "paused", "resume-pending")
+            if not isinstance(moved, Moved):
+                raise RuntimeError(f"the row of {job.job_id} did not move to resume-pending")
             return resume.control_seq
 
         control_seq = await asyncio.to_thread(request_resume)

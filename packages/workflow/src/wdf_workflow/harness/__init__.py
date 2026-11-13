@@ -14,6 +14,7 @@ for which the harness seeds rows, manifests and sources.
 
 import asyncio
 import hashlib
+import inspect
 import os
 import tempfile
 import uuid
@@ -28,7 +29,12 @@ from temporalio import activity, workflow
 from temporalio.api.enums.v1 import EventType, IndexedValueType
 from temporalio.api.operatorservice.v1 import ListSearchAttributesRequest
 from temporalio.api.workflowservice.v1 import DescribeNamespaceRequest
-from temporalio.client import Client, WorkflowHandle
+from temporalio.client import (
+    Client,
+    WorkflowFailureError,
+    WorkflowHandle,
+    WorkflowQueryFailedError,
+)
 from temporalio.common import (
     SearchAttributeKey,
     SearchAttributePair,
@@ -208,11 +214,10 @@ def search_attributes(event: Event) -> TypedSearchAttributes:
     pairs = []
     for name, kind in naming().search_attributes.items():
         value = getattr(event, SEARCH_ATTRIBUTES[name])
-        key = (
-            SearchAttributeKey.for_datetime
-            if kind == "datetime"
-            else SearchAttributeKey.for_keyword
-        )
+        if kind == "datetime":
+            key, value = SearchAttributeKey.for_datetime, datetime.fromisoformat(value)
+        else:
+            key = SearchAttributeKey.for_keyword
         pairs.append(SearchAttributePair(key(name), value))
     return TypedSearchAttributes(pairs)
 
@@ -411,6 +416,14 @@ class Counters:
     # Set once the lines are out, as a rollout prints them before it deletes the old build.
     printed: bool = False
 
+    def passed(self, jobs: int) -> bool:
+        """Whether every job finished and no scenario counter shows a fault."""
+        return (
+            self.finished == jobs
+            and self.extra.get("zombie_commits", 0) == 0
+            and self.extra.get("paused_resumed", jobs) == jobs
+        )
+
     def lines(self) -> list[str]:
         head = [
             f"finished: {self.finished}",
@@ -472,11 +485,15 @@ def _script(scenario: str | None, deaths: int, zombie_s: float) -> Scripts:
 
 async def _until(check: Callable[[], Any], timeout_s: float, what: str, every_s: float = 0.5):
     deadline = asyncio.get_running_loop().time() + timeout_s
-    while not (value := await check() if asyncio.iscoroutinefunction(check) else check()):
+    while True:
+        value = check()
+        if inspect.isawaitable(value):
+            value = await value
+        if value:
+            return value
         if asyncio.get_running_loop().time() > deadline:
             raise TimeoutError(f"no {what} within {timeout_s:.0f} s")
         await asyncio.sleep(every_s)
-    return value
 
 
 async def start(client: Client, tier, job: Job) -> WorkflowHandle:
@@ -506,13 +523,25 @@ async def ended(handles: list[WorkflowHandle], deadline_s: float = DEADLINE_S) -
     `error` for a workflow that failed."""
     gate = asyncio.Semaphore(WAITERS)
 
+    end = asyncio.get_running_loop().time() + deadline_s
+
+    async def result(handle: WorkflowHandle) -> str:
+        while True:
+            try:
+                return await handle.result()
+            except RPCError:
+                # The server or the forward to it is restarting, which ends no job.
+                await asyncio.sleep(1)
+
     async def one(handle: WorkflowHandle) -> str:
         async with gate:
             try:
-                return await asyncio.wait_for(handle.result(), deadline_s)
+                return await asyncio.wait_for(
+                    result(handle), end - asyncio.get_running_loop().time()
+                )
             except TimeoutError:
                 return "wedged"
-            except Exception:  # noqa: BLE001 - any failed workflow counts as failed
+            except WorkflowFailureError:
                 return "error"
 
     return await asyncio.gather(*(one(handle) for handle in handles))
@@ -599,7 +628,7 @@ async def _simulating(client: Client, handle: WorkflowHandle) -> bool:
     """Whether the job has a simulate task scheduled, which a job past its compile has."""
     try:
         status = await handle.query(naming().queries[0], result_type=StatusQuery)
-    except RPCError:
+    except (RPCError, WorkflowQueryFailedError):
         return False
     return any(t.state == "running" and t.id.startswith("sim-") for t in status.tasks)
 

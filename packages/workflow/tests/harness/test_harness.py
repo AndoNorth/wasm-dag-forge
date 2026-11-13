@@ -9,9 +9,12 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from temporalio.api.common.v1 import SearchAttributes
+from temporalio.converter import encode_search_attributes
 from wdf_plan import plan_hash, read_plan
 from wdf_workflow.activities.cache import bundle_key
-from wdf_workflow.harness import ENTRY, SIMULATE_TASKS, smoke_jobs
+from wdf_workflow.contract import naming
+from wdf_workflow.harness import ENTRY, SIMULATE_TASKS, search_attributes, smoke_jobs
 from wdf_workflow.harness.__main__ import main
 
 LIMIT_S = 300
@@ -47,12 +50,20 @@ def test_smoke_jobs_load_as_load_plan_reads_them():
     assert jobs[0].source == jobs[2].source != jobs[1].source != jobs[3].source
 
 
+def test_start_options_encode_every_search_attribute():
+    [job] = smoke_jobs(1)
+    encoded = SearchAttributes()
+    encode_search_attributes(search_attributes(job.event), encoded)
+    assert set(encoded.indexed_fields) == set(naming().search_attributes)
+
+
 @pytest.mark.parametrize(
     "argv",
     [
         ["--address", "127.0.0.1:1", "restart", "--jobs", "1"],
         ["--address", "127.0.0.1:1", "smoke", "--jobs", "0"],
         ["--address", "127.0.0.1:1", "--kube-context", "kind-wdf", "describe"],
+        ["--address", "127.0.0.1:1", "restart", "--target", ","],
     ],
 )
 def test_usage_errors_exit_2(argv, capsys):
